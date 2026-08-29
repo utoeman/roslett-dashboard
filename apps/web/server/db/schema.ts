@@ -3,11 +3,10 @@
  *
  * Grundsaetze:
  * - Primaerschluessel sind UUIDs, erzeugt von der Datenbank.
- * - Geloescht wird nichts. Stattdessen setzt `archiviert_am` einen Zeitstempel.
+ * - Geloescht wird nichts. Stattdessen setzt `archived_at` einen Zeitstempel.
  * - Geldbetraege liegen als NUMERIC(14,4) vor. Die vier Nachkommastellen
  *   nehmen Zwischenwerte auf, ohne dass gerundet werden muss; die Anwendung
- *   rechnet trotzdem durchgaengig in ganzzahligen Cent und wandelt nur an der
- *   Systemgrenze um (Regel 1).
+ *   rechnet trotzdem durchgaengig in ganzzahligen Cent (Regel 1).
  * - Der Bestand ist kein Feld. Er ergibt sich aus dem Buchungsjournal (Regel 8).
  */
 
@@ -30,9 +29,9 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Geldspalte. NUMERIC statt double precision, weil Fliesskomma bei Geld ausfaellt. */
-const geld = (name: string) => numeric(name, { precision: 14, scale: 4 });
+const money = (name: string) => numeric(name, { precision: 14, scale: 4 });
 
-const erstelltAm = timestamp('erstellt_am', { withTimezone: true })
+const createdAt = timestamp('created_at', { withTimezone: true })
   .notNull()
   .defaultNow();
 
@@ -40,49 +39,46 @@ const erstelltAm = timestamp('erstellt_am', { withTimezone: true })
 // Aufzaehlungen
 // ---------------------------------------------------------------------------
 
-export const kostenpositionArtEnum = pgEnum('kostenposition_art', [
-  'fix',
-  'prozent',
-]);
+export const costItemKindEnum = pgEnum('cost_item_kind', ['fix', 'percent']);
 
 /** Verteilmethode fuer Nebenkosten einer Sendung (Regel 7). */
-export const verteilmethodeEnum = pgEnum('verteilmethode', [
-  'wert',
-  'stueckzahl',
+export const distributionMethodEnum = pgEnum('distribution_method', [
+  'value',
+  'quantity',
 ]);
 
-export const preisregelEnum = pgEnum('preisregel', ['gleiche_marge', 'fest']);
+export const pricingRuleEnum = pgEnum('pricing_rule', ['same_margin', 'fixed']);
 
-export const buchungsartEnum = pgEnum('buchungsart', [
-  'wareneingang',
-  'verkauf',
-  'retoure',
-  'korrektur',
-  'inventur',
-  'schwund',
+export const stockEntryKindEnum = pgEnum('stock_entry_kind', [
+  'goods_receipt',
+  'sale',
+  'return',
+  'correction',
+  'stocktake',
+  'shrinkage',
 ]);
 
 /**
- * Herkunft einer Buchung. Wird in Phase 1 angelegt, aber noch nicht verwendet;
- * die Etsy-Anbindung ist ausdruecklich nicht Teil dieses Projekts.
+ * Herkunft einer Buchung. Wird angelegt, aber in diesem Projekt nicht
+ * verwendet; die Etsy-Anbindung ist ausdruecklich nicht Teil davon.
  */
-export const buchungsquelleEnum = pgEnum('buchungsquelle', [
-  'manuell',
+export const stockEntrySourceEnum = pgEnum('stock_entry_source', [
+  'manual',
   'etsy',
-  'korrektur',
+  'correction',
 ]);
 
 // ---------------------------------------------------------------------------
 // Stammdaten
 // ---------------------------------------------------------------------------
 
-export const produkte = pgTable('produkte', {
+export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  beschreibung: text('beschreibung'),
-  kategorie: text('kategorie'),
-  archiviertAm: timestamp('archiviert_am', { withTimezone: true }),
-  erstelltAm,
+  description: text('description'),
+  category: text('category'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt,
 });
 
 /**
@@ -90,44 +86,45 @@ export const produkte = pgTable('produkte', {
  *
  * Auch ein Produkt ohne echte Varianten bekommt genau eine Standardvariante.
  * Das haelt jede nachgelagerte Abfrage frei von Sonderfaellen: Chargen,
- * Buchungen und Preise haengen ausnahmslos an einer Variante, nie an einem Produkt.
+ * Buchungen und Preise haengen ausnahmslos an einer Variante, nie an einem
+ * Produkt.
  */
-export const varianten = pgTable(
-  'varianten',
+export const variants = pgTable(
+  'variants',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    produktId: uuid('produkt_id')
+    productId: uuid('product_id')
       .notNull()
-      .references(() => produkte.id),
+      .references(() => products.id),
     sku: text('sku').notNull(),
-    bezeichnung: text('bezeichnung').notNull(),
-    mindestbestand: integer('mindestbestand').notNull().default(0),
-    basispreisNetto: geld('basispreis_netto'),
+    label: text('label').notNull(),
+    minimumStock: integer('minimum_stock').notNull().default(0),
+    basePriceNet: money('base_price_net'),
     /** Umsatzsteuersatz zur Information. Beruehrt die Kalkulation nicht (Regel 2). */
-    ustSatz: numeric('ust_satz', { precision: 5, scale: 4 })
+    vatRate: numeric('vat_rate', { precision: 5, scale: 4 })
       .notNull()
       .default('0.1900'),
-    archiviertAm: timestamp('archiviert_am', { withTimezone: true }),
-    erstelltAm,
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt,
   },
   (t) => [
-    uniqueIndex('varianten_sku_idx').on(t.sku),
-    index('varianten_produkt_idx').on(t.produktId),
+    uniqueIndex('variants_sku_idx').on(t.sku),
+    index('variants_product_idx').on(t.productId),
   ],
 );
 
-export const lieferanten = pgTable('lieferanten', {
+export const suppliers = pgTable('suppliers', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  land: text('land'),
-  notiz: text('notiz'),
+  country: text('country'),
+  note: text('note'),
   /**
    * Geloescht wird nicht. Ein Lieferant, mit dem nicht mehr gearbeitet wird,
    * bekommt hier einen Zeitstempel und verschwindet aus den Auswahllisten.
    * Seine Chargen bleiben unangetastet, sonst ginge die Historie verloren.
    */
-  archiviertAm: timestamp('archiviert_am', { withTimezone: true }),
-  erstelltAm,
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt,
 });
 
 // ---------------------------------------------------------------------------
@@ -142,41 +139,41 @@ export const lieferanten = pgTable('lieferanten', {
  * Wareneingang ein; zur Anzeigezeit wird nie umgerechnet, sonst wuerde sich
  * der Wareneinsatz vergangener Perioden mit jedem Kursstand aendern.
  *
- * `nebenkosten_eur` und `einstandspreis_eur` sind festgeschriebene Ergebnisse
- * der Verteilung, keine berechneten Felder (Regel 7).
+ * `additional_costs_eur` und `landed_cost_eur` sind festgeschriebene
+ * Ergebnisse der Verteilung, keine berechneten Felder (Regel 7).
  *
- * `menge_rest` ist die einzige Ausnahme von Regel 8: es ist kein Bestandsfeld,
- * sondern der FIFO-Zeiger dieser Charge. Der Bestand einer Variante ergibt sich
- * weiterhin allein aus dem Journal.
+ * `quantity_remaining` ist die einzige Ausnahme von Regel 8: es ist kein
+ * Bestandsfeld, sondern der FIFO-Zeiger dieser Charge. Der Bestand einer
+ * Variante ergibt sich weiterhin allein aus dem Journal.
  */
-export const chargen = pgTable(
-  'chargen',
+export const batches = pgTable(
+  'batches',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    varianteId: uuid('variante_id')
+    variantId: uuid('variant_id')
       .notNull()
-      .references(() => varianten.id),
-    lieferantId: uuid('lieferant_id').references(() => lieferanten.id),
-    wareneingangAm: timestamp('wareneingang_am', { withTimezone: true })
+      .references(() => variants.id),
+    supplierId: uuid('supplier_id').references(() => suppliers.id),
+    receivedAt: timestamp('received_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    mengeEingang: integer('menge_eingang').notNull(),
-    mengeRest: integer('menge_rest').notNull(),
-    einkaufspreisFremd: geld('einkaufspreis_fremd').notNull(),
+    quantityReceived: integer('quantity_received').notNull(),
+    quantityRemaining: integer('quantity_remaining').notNull(),
+    purchasePriceForeign: money('purchase_price_foreign').notNull(),
     /** ISO-4217-Code. Bei Einkauf in Euro schlicht "EUR" mit Kurs 1. */
-    waehrung: text('waehrung').notNull().default('EUR'),
-    wechselkurs: numeric('wechselkurs', { precision: 14, scale: 6 })
+    currency: text('currency').notNull().default('EUR'),
+    exchangeRate: numeric('exchange_rate', { precision: 14, scale: 6 })
       .notNull()
       .default('1.000000'),
-    einkaufspreisEur: geld('einkaufspreis_eur').notNull(),
-    nebenkostenEur: geld('nebenkosten_eur').notNull().default('0'),
-    einstandspreisEur: geld('einstandspreis_eur').notNull(),
-    notiz: text('notiz'),
+    purchasePriceEur: money('purchase_price_eur').notNull(),
+    additionalCostsEur: money('additional_costs_eur').notNull().default('0'),
+    landedCostEur: money('landed_cost_eur').notNull(),
+    note: text('note'),
   },
   (t) => [
     // Deckt die FIFO-Abfrage ab: Chargen einer Variante mit Restmenge,
     // aelteste zuerst.
-    index('chargen_fifo_idx').on(t.varianteId, t.wareneingangAm),
+    index('batches_fifo_idx').on(t.variantId, t.receivedAt),
   ],
 );
 
@@ -187,66 +184,64 @@ export const chargen = pgTable(
 /**
  * Kostenpositionen.
  *
- * `variante_id` null bedeutet: gilt global. `vorsteuerabzugsfaehig` steuert,
+ * `variant_id` null bedeutet: gilt global. `input_tax_deductible` steuert,
  * ob die Position in die Selbstkosten eingeht (Regel 3): Einfuhrumsatzsteuer
  * bleibt draussen, Zoll geht hinein.
  *
- * `verteilmethode` ergaenzt das urspruengliche Datenmodell. Regel 7 verlangt,
- * dass die Methode pro Kostenposition umschaltbar ist; ohne eigene Spalte
- * liesse sich diese Einstellung nicht speichern.
+ * `distribution_method` ergaenzt das urspruengliche Datenmodell. Regel 7
+ * verlangt, dass die Methode pro Kostenposition umschaltbar ist; ohne eigene
+ * Spalte liesse sich diese Einstellung nicht speichern.
  */
-export const kostenpositionen = pgTable(
-  'kostenpositionen',
+export const costItems = pgTable(
+  'cost_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    varianteId: uuid('variante_id').references(() => varianten.id),
-    bezeichnung: text('bezeichnung').notNull(),
-    art: kostenpositionArtEnum('art').notNull(),
-    /** Bei art "fix" ein Betrag, bei "prozent" ein Satz (0.1900 = 19 %). */
-    wert: geld('wert').notNull(),
-    vorsteuerabzugsfaehig: boolean('vorsteuerabzugsfaehig')
+    variantId: uuid('variant_id').references(() => variants.id),
+    label: text('label').notNull(),
+    kind: costItemKindEnum('kind').notNull(),
+    /** Bei kind "fix" ein Betrag, bei "percent" eine Rate (0.1900 = 19 %). */
+    value: money('value').notNull(),
+    inputTaxDeductible: boolean('input_tax_deductible').notNull().default(false),
+    active: boolean('active').notNull().default(true),
+    distributionMethod: distributionMethodEnum('distribution_method')
       .notNull()
-      .default(false),
-    aktiv: boolean('aktiv').notNull().default(true),
-    verteilmethode: verteilmethodeEnum('verteilmethode')
-      .notNull()
-      .default('wert'),
+      .default('value'),
   },
-  (t) => [index('kostenpositionen_variante_idx').on(t.varianteId)],
+  (t) => [index('cost_items_variant_idx').on(t.variantId)],
 );
 
-export const kanaele = pgTable('kanaele', {
+export const channels = pgTable('channels', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   /** Prozentuale Gebuehr auf den Verkaufspreis, 0.0650 = 6,5 %. */
-  gebuehrProzent: numeric('gebuehr_prozent', { precision: 6, scale: 4 })
+  feePercent: numeric('fee_percent', { precision: 6, scale: 4 })
     .notNull()
     .default('0'),
-  gebuehrFix: geld('gebuehr_fix').notNull().default('0'),
-  preisregel: preisregelEnum('preisregel').notNull().default('gleiche_marge'),
-  aktiv: boolean('aktiv').notNull().default(true),
+  feeFixed: money('fee_fixed').notNull().default('0'),
+  pricingRule: pricingRuleEnum('pricing_rule').notNull().default('same_margin'),
+  active: boolean('active').notNull().default(true),
 });
 
-export const kanalpreise = pgTable(
-  'kanalpreise',
+export const channelPrices = pgTable(
+  'channel_prices',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    varianteId: uuid('variante_id')
+    variantId: uuid('variant_id')
       .notNull()
-      .references(() => varianten.id),
-    kanalId: uuid('kanal_id')
+      .references(() => variants.id),
+    channelId: uuid('channel_id')
       .notNull()
-      .references(() => kanaele.id),
+      .references(() => channels.id),
     /** Ergebnis der Rueckwaertsrechnung (Regel 5). */
-    vorgeschlagenerPreis: geld('vorgeschlagener_preis'),
+    suggestedPrice: money('suggested_price'),
     /** Was tatsaechlich im Shop steht. Weicht bewusst ab, wenn der Nutzer es so will. */
-    gelisteterPreis: geld('gelisteter_preis'),
-    aktualisiertAm: timestamp('aktualisiert_am', { withTimezone: true })
+    listedPrice: money('listed_price'),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
-    uniqueIndex('kanalpreise_variante_kanal_idx').on(t.varianteId, t.kanalId),
+    uniqueIndex('channel_prices_variant_channel_idx').on(t.variantId, t.channelId),
   ],
 );
 
@@ -256,40 +251,40 @@ export const kanalpreise = pgTable(
 
 /**
  * Bestandsbuchungen. Das Journal ist die einzige Wahrheit ueber den Bestand
- * (Regel 8); `menge` ist vorzeichenbehaftet, Abgaenge sind negativ.
+ * (Regel 8); `quantity` ist vorzeichenbehaftet, Abgaenge sind negativ.
  *
  * Storniert wird nicht durch Loeschen, sondern durch eine Gegenbuchung, die
- * ueber `storniert_von_id` auf das Original zeigt. So bleibt die Historie
+ * ueber `reversed_by_id` auf das Original zeigt. So bleibt die Historie
  * vollstaendig nachvollziehbar.
  *
- * `quelle` und `externe_referenz` werden angelegt, aber in diesem Projekt
- * nicht verwendet. Die eindeutige Bedingung auf `externe_referenz` verhindert
- * spaeter doppelte Importe derselben Bestellung.
+ * `source` und `external_reference` werden angelegt, aber in diesem Projekt
+ * nicht verwendet. Die eindeutige Bedingung auf `external_reference`
+ * verhindert spaeter doppelte Importe derselben Bestellung.
  */
-export const bestandsbuchungen = pgTable(
-  'bestandsbuchungen',
+export const stockEntries = pgTable(
+  'stock_entries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    varianteId: uuid('variante_id')
+    variantId: uuid('variant_id')
       .notNull()
-      .references(() => varianten.id),
-    art: buchungsartEnum('art').notNull(),
-    menge: integer('menge').notNull(),
-    gebuchtAm: timestamp('gebucht_am', { withTimezone: true })
+      .references(() => variants.id),
+    kind: stockEntryKindEnum('kind').notNull(),
+    quantity: integer('quantity').notNull(),
+    postedAt: timestamp('posted_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    notiz: text('notiz'),
-    quelle: buchungsquelleEnum('quelle').notNull().default('manuell'),
-    externeReferenz: text('externe_referenz'),
-    stornoVonId: uuid('storniert_von_id'),
+    note: text('note'),
+    source: stockEntrySourceEnum('source').notNull().default('manual'),
+    externalReference: text('external_reference'),
+    reversedById: uuid('reversed_by_id'),
   },
   (t) => [
-    index('buchungen_variante_idx').on(t.varianteId, t.gebuchtAm),
+    index('stock_entries_variant_idx').on(t.variantId, t.postedAt),
     // Partieller eindeutiger Index: mehrere Buchungen ohne externe Referenz
     // sind erlaubt, dieselbe Referenz zweimal aber nicht.
-    uniqueIndex('buchungen_externe_referenz_idx')
-      .on(t.externeReferenz)
-      .where(sql`${t.externeReferenz} is not null`),
+    uniqueIndex('stock_entries_external_reference_idx')
+      .on(t.externalReference)
+      .where(sql`${t.externalReference} is not null`),
   ],
 );
 
@@ -301,26 +296,26 @@ export const bestandsbuchungen = pgTable(
  * aus der die Ware stammt. Wuerde man die Zuordnung nachtraeglich neu
  * herleiten, verschoebe jede spaetere Buchung das Ergebnis rueckwirkend.
  *
- * `einstandspreis_eur` wird mitgeschrieben, obwohl er in der Charge steht:
- * so bleibt der Wareneinsatz des Vorgangs auch dann unveraendert, wenn die
+ * `landed_cost_eur` wird mitgeschrieben, obwohl er in der Charge steht: so
+ * bleibt der Wareneinsatz des Vorgangs auch dann unveraendert, wenn die
  * Charge spaeter korrigiert wird.
  */
-export const chargenzuordnungen = pgTable(
-  'chargenzuordnungen',
+export const batchAllocations = pgTable(
+  'batch_allocations',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    buchungId: uuid('buchung_id')
+    stockEntryId: uuid('stock_entry_id')
       .notNull()
-      .references(() => bestandsbuchungen.id),
-    chargeId: uuid('charge_id')
+      .references(() => stockEntries.id),
+    batchId: uuid('batch_id')
       .notNull()
-      .references(() => chargen.id),
-    menge: integer('menge').notNull(),
-    einstandspreisEur: geld('einstandspreis_eur').notNull(),
+      .references(() => batches.id),
+    quantity: integer('quantity').notNull(),
+    landedCostEur: money('landed_cost_eur').notNull(),
   },
   (t) => [
-    index('chargenzuordnungen_buchung_idx').on(t.buchungId),
-    index('chargenzuordnungen_charge_idx').on(t.chargeId),
+    index('batch_allocations_stock_entry_idx').on(t.stockEntryId),
+    index('batch_allocations_batch_idx').on(t.batchId),
   ],
 );
 
@@ -328,88 +323,85 @@ export const chargenzuordnungen = pgTable(
 // Beziehungen
 // ---------------------------------------------------------------------------
 
-export const produkteRelations = relations(produkte, ({ many }) => ({
-  varianten: many(varianten),
+export const productsRelations = relations(products, ({ many }) => ({
+  variants: many(variants),
 }));
 
-export const variantenRelations = relations(varianten, ({ one, many }) => ({
-  produkt: one(produkte, {
-    fields: [varianten.produktId],
-    references: [produkte.id],
+export const variantsRelations = relations(variants, ({ one, many }) => ({
+  product: one(products, {
+    fields: [variants.productId],
+    references: [products.id],
   }),
-  chargen: many(chargen),
-  buchungen: many(bestandsbuchungen),
-  kostenpositionen: many(kostenpositionen),
-  kanalpreise: many(kanalpreise),
+  batches: many(batches),
+  stockEntries: many(stockEntries),
+  costItems: many(costItems),
+  channelPrices: many(channelPrices),
 }));
 
-export const lieferantenRelations = relations(lieferanten, ({ many }) => ({
-  chargen: many(chargen),
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  batches: many(batches),
 }));
 
-export const chargenRelations = relations(chargen, ({ one, many }) => ({
-  variante: one(varianten, {
-    fields: [chargen.varianteId],
-    references: [varianten.id],
+export const batchesRelations = relations(batches, ({ one, many }) => ({
+  variant: one(variants, {
+    fields: [batches.variantId],
+    references: [variants.id],
   }),
-  lieferant: one(lieferanten, {
-    fields: [chargen.lieferantId],
-    references: [lieferanten.id],
+  supplier: one(suppliers, {
+    fields: [batches.supplierId],
+    references: [suppliers.id],
   }),
-  zuordnungen: many(chargenzuordnungen),
+  allocations: many(batchAllocations),
 }));
 
-export const kanaeleRelations = relations(kanaele, ({ many }) => ({
-  kanalpreise: many(kanalpreise),
+export const channelsRelations = relations(channels, ({ many }) => ({
+  channelPrices: many(channelPrices),
 }));
 
-export const kanalpreiseRelations = relations(kanalpreise, ({ one }) => ({
-  variante: one(varianten, {
-    fields: [kanalpreise.varianteId],
-    references: [varianten.id],
+export const channelPricesRelations = relations(channelPrices, ({ one }) => ({
+  variant: one(variants, {
+    fields: [channelPrices.variantId],
+    references: [variants.id],
   }),
-  kanal: one(kanaele, {
-    fields: [kanalpreise.kanalId],
-    references: [kanaele.id],
+  channel: one(channels, {
+    fields: [channelPrices.channelId],
+    references: [channels.id],
   }),
 }));
 
-export const kostenpositionenRelations = relations(
-  kostenpositionen,
-  ({ one }) => ({
-    variante: one(varianten, {
-      fields: [kostenpositionen.varianteId],
-      references: [varianten.id],
-    }),
+export const costItemsRelations = relations(costItems, ({ one }) => ({
+  variant: one(variants, {
+    fields: [costItems.variantId],
+    references: [variants.id],
   }),
-);
+}));
 
-export const bestandsbuchungenRelations = relations(
-  bestandsbuchungen,
+export const stockEntriesRelations = relations(
+  stockEntries,
   ({ one, many }) => ({
-    variante: one(varianten, {
-      fields: [bestandsbuchungen.varianteId],
-      references: [varianten.id],
+    variant: one(variants, {
+      fields: [stockEntries.variantId],
+      references: [variants.id],
     }),
-    storniertVon: one(bestandsbuchungen, {
-      fields: [bestandsbuchungen.stornoVonId],
-      references: [bestandsbuchungen.id],
-      relationName: 'storno',
+    reversedBy: one(stockEntries, {
+      fields: [stockEntries.reversedById],
+      references: [stockEntries.id],
+      relationName: 'reversal',
     }),
-    zuordnungen: many(chargenzuordnungen),
+    allocations: many(batchAllocations),
   }),
 );
 
-export const chargenzuordnungenRelations = relations(
-  chargenzuordnungen,
+export const batchAllocationsRelations = relations(
+  batchAllocations,
   ({ one }) => ({
-    buchung: one(bestandsbuchungen, {
-      fields: [chargenzuordnungen.buchungId],
-      references: [bestandsbuchungen.id],
+    stockEntry: one(stockEntries, {
+      fields: [batchAllocations.stockEntryId],
+      references: [stockEntries.id],
     }),
-    charge: one(chargen, {
-      fields: [chargenzuordnungen.chargeId],
-      references: [chargen.id],
+    batch: one(batches, {
+      fields: [batchAllocations.batchId],
+      references: [batches.id],
     }),
   }),
 );

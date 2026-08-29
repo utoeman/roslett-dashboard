@@ -16,7 +16,7 @@ import * as schema from './schema.js';
 
 let pool: Pool | undefined;
 
-function datenbankUrl(): string {
+function databaseUrl(): string {
   let url: string | undefined;
   try {
     url = useRuntimeConfig().databaseUrl;
@@ -24,19 +24,19 @@ function datenbankUrl(): string {
     // Ausserhalb eines Nitro-Kontexts, etwa in einem Skript.
     url = undefined;
   }
-  const wert = url || process.env.DATABASE_URL;
-  if (!wert) {
+  const value = url || process.env.DATABASE_URL;
+  if (!value) {
     throw new Error(
       'DATABASE_URL ist nicht gesetzt. .env.example nach .env kopieren und den Wert eintragen.',
     );
   }
-  return wert;
+  return value;
 }
 
 export function getPool(): Pool {
   if (pool === undefined) {
     pool = new Pool({
-      connectionString: datenbankUrl(),
+      connectionString: databaseUrl(),
       // Bewusst knapp gehalten: die Anwendung laeuft einprozessig und
       // beantwortet keine hohen Lastspitzen.
       max: 10,

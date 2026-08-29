@@ -12,10 +12,25 @@ trd-dashboard/
   packages/core/     Kalkulations-Engine, reines TypeScript
   apps/web/
     shared/schemas/  Zod-Schemas, von Client und Server gemeinsam genutzt
+    shared/types/    Antworttypen der API
     app/             Oberfläche: Seiten, Komponenten, Composables
     server/          Nitro-API, Drizzle-Schema, Migrationen
   docker-compose.yml Postgres 16 für die lokale Entwicklung
 ```
+
+## Sprache
+
+**Der Code ist englisch, die Oberfläche deutsch.** Bezeichner, Tabellen- und
+Spaltennamen, API-Pfade und Typen tragen englische Namen. Alles, was der
+Nutzer zu sehen bekommt — Beschriftungen, Fehlermeldungen, Hilfetexte — ist
+deutsch, ebenso die Kommentare im Code, weil sie deutsches Steuerrecht
+erklären.
+
+Die Fachbegriffe folgen dem Handelsüblichen: `landedCost` für den
+Einstandspreis, `contributionMargin` für den Deckungsbeitrag, `markup` für
+den Aufschlag, `inputTaxDeductible` für vorsteuerabzugsfähig. Die Schlüssel
+`fehler` und `felder` in Fehlerantworten bleiben deutsch, weil sie
+unverändert im Formular angezeigt werden.
 
 `packages/core` kennt weder Vue noch eine Datenbank. Die Engine lässt sich
 deshalb vollständig ohne laufende Infrastruktur testen.
@@ -78,13 +93,13 @@ relative Pfade an.
 | Methode und Pfad | Zweck |
 |---|---|
 | `GET /api/health` | Zustand samt Datenbankverbindung |
-| `GET /api/artikel` | Liste, Parameter `suche`, `kategorie`, `mitArchivierten` |
-| `POST /api/artikel` | Anlegen; ohne Variantenangabe entsteht eine Standardvariante |
-| `GET /api/artikel/:id` | Detail samt Varianten und geltenden Kostenpositionen |
-| `PATCH /api/artikel/:id` | Stammdaten ändern, Varianten anlegen und ändern |
-| `GET POST /api/lieferanten`, `PATCH /api/lieferanten/:id` | Lieferanten |
-| `GET POST /api/kostenpositionen`, `PATCH /api/kostenpositionen/:id` | Kostenpositionen |
-| `GET POST /api/kanaele`, `PATCH /api/kanaele/:id` | Kanäle |
+| `GET /api/products` | Liste, Parameter `search`, `category`, `includeArchived` |
+| `POST /api/products` | Anlegen; ohne Variantenangabe entsteht eine Standardvariante |
+| `GET /api/products/:id` | Detail samt Varianten und geltenden Kostenpositionen |
+| `PATCH /api/products/:id` | Stammdaten ändern, Varianten anlegen und ändern |
+| `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten |
+| `GET POST /api/cost-items`, `PATCH /api/cost-items/:id` | Kostenpositionen |
+| `GET POST /api/channels`, `PATCH /api/channels/:id` | Kanäle |
 
 Fehler kommen einheitlich zurück:
 
@@ -102,6 +117,9 @@ Die API nimmt Geldbeträge in deutscher wie englischer Schreibweise entgegen
 (`"24,90"`, `"1.234,56"`, `24.9`) und gibt sie ausnahmslos als ganzzahlige
 Cent zurück. Prozentsätze werden als `6,5` eingegeben und als `0.065`
 zurückgeliefert. Umgerechnet wird nur an dieser Grenze, nie dazwischen.
+
+Die Listenantworten haben durchgehend die Form
+`{ items, total, limit, offset }`.
 
 ## Zustandsprüfung
 
@@ -153,11 +171,12 @@ Diese Regeln sind im Code verankert und dürfen nicht aufgeweicht werden:
 ## Tests
 
 ```bash
-npm test                       # 97 Tests
+npm test                       # 142 Tests
 npx vitest run --coverage      # mit Abdeckungsbericht
 ```
 
-Abgedeckt sind unter anderem Fremdwährung mit eingefrorenem Kurs, gemischte
+Abgedeckt sind die Kalkulations-Engine (97 Tests) sowie die Zod-Schemas und
+die Umrechnung an der Datenbankgrenze (45 Tests). Darunter Fremdwährung mit eingefrorenem Kurs, gemischte
 Fix- und Prozentkosten, vorsteuerabzugsfähige Positionen, rechnerisch
 unmögliche Zielmargen, Nebenkostenverteilung über drei Artikel mit stark
 unterschiedlichen Werten, FIFO-Abgänge über drei Chargen mit Restmenge und die

@@ -9,46 +9,46 @@
  */
 const route = useRoute();
 
-/** Ein Punkt, der noch nicht gebaut ist, traegt `folgt` und wird nicht verlinkt. */
-interface Navigationspunkt {
+/** Ein Punkt, der noch nicht gebaut ist, traegt `pending` und wird nicht verlinkt. */
+interface NavLink {
   name: string;
-  pfad: string;
-  symbol: string;
-  folgt?: boolean;
+  path: string;
+  icon: string;
+  pending?: boolean;
 }
 
-interface Navigationsbereich {
-  titel: string | null;
-  punkte: Navigationspunkt[];
+interface NavSection {
+  title: string | null;
+  links: NavLink[];
 }
 
-const bereiche: Navigationsbereich[] = [
+const sections: NavSection[] = [
   {
-    titel: null,
-    punkte: [{ name: 'Übersicht', pfad: '/', symbol: 'i-lucide-layout-dashboard' }],
+    title: null,
+    links: [{ name: 'Übersicht', path: '/', icon: 'i-lucide-layout-dashboard' }],
   },
   {
-    titel: 'Stammdaten',
-    punkte: [
-      { name: 'Artikel', pfad: '/artikel', symbol: 'i-lucide-package' },
-      { name: 'Lieferanten', pfad: '/einstellungen/lieferanten', symbol: 'i-lucide-truck' },
-      { name: 'Kostenpositionen', pfad: '/einstellungen/kostenpositionen', symbol: 'i-lucide-receipt' },
-      { name: 'Kanäle', pfad: '/einstellungen/kanaele', symbol: 'i-lucide-store' },
+    title: 'Stammdaten',
+    links: [
+      { name: 'Artikel', path: '/artikel', icon: 'i-lucide-package' },
+      { name: 'Lieferanten', path: '/einstellungen/lieferanten', icon: 'i-lucide-truck' },
+      { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen', icon: 'i-lucide-receipt' },
+      { name: 'Kanäle', path: '/einstellungen/kanaele', icon: 'i-lucide-store' },
     ],
   },
   {
-    titel: 'Bestand',
-    punkte: [
-      { name: 'Wareneingang', pfad: '/wareneingang', symbol: 'i-lucide-package-plus', folgt: true },
-      { name: 'Buchungen', pfad: '/buchungen', symbol: 'i-lucide-arrow-left-right', folgt: true },
-      { name: 'Inventur', pfad: '/inventur', symbol: 'i-lucide-clipboard-check', folgt: true },
+    title: 'Bestand',
+    links: [
+      { name: 'Wareneingang', path: '/wareneingang', icon: 'i-lucide-package-plus', pending: true },
+      { name: 'Buchungen', path: '/buchungen', icon: 'i-lucide-arrow-left-right', pending: true },
+      { name: 'Inventur', path: '/inventur', icon: 'i-lucide-clipboard-check', pending: true },
     ],
   },
 ];
 
-function istAktiv(pfad: string): boolean {
-  if (pfad === '/') return route.path === '/';
-  return route.path === pfad || route.path.startsWith(`${pfad}/`);
+function isActive(path: string): boolean {
+  if (path === '/') return route.path === '/';
+  return route.path === path || route.path.startsWith(`${path}/`);
 }
 </script>
 
@@ -65,36 +65,36 @@ function istAktiv(pfad: string): boolean {
       <span class="text-sm font-semibold tracking-tight">The Refined Decor</span>
     </NuxtLink>
 
-    <div v-for="(bereich, i) in bereiche" :key="i" class="mb-5">
+    <div v-for="(section, i) in sections" :key="i" class="mb-5">
       <p
-        v-if="bereich.titel"
+        v-if="section.title"
         class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500"
       >
-        {{ bereich.titel }}
+        {{ section.title }}
       </p>
       <ul class="space-y-0.5">
-        <li v-for="punkt in bereich.punkte" :key="punkt.pfad">
+        <li v-for="link in section.links" :key="link.path">
           <span
-            v-if="punkt.folgt"
+            v-if="link.pending"
             class="flex cursor-default items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-zinc-400 dark:text-zinc-600"
-            :title="`${punkt.name} folgt in Phase 3`"
+            :title="`${link.name} folgt in Phase 3`"
           >
-            <UIcon :name="punkt.symbol" class="size-4 shrink-0" />
-            {{ punkt.name }}
+            <UIcon :name="link.icon" class="size-4 shrink-0" />
+            {{ link.name }}
             <span class="ml-auto text-[10px] uppercase tracking-wide">folgt</span>
           </span>
           <NuxtLink
             v-else
-            :to="punkt.pfad"
+            :to="link.path"
             class="flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500"
             :class="
-              istAktiv(punkt.pfad)
+              isActive(link.path)
                 ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
                 : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/60'
             "
           >
-            <UIcon :name="punkt.symbol" class="size-4 shrink-0" />
-            {{ punkt.name }}
+            <UIcon :name="link.icon" class="size-4 shrink-0" />
+            {{ link.name }}
           </NuxtLink>
         </li>
       </ul>

@@ -1,147 +1,139 @@
 <script setup lang="ts">
-import type { ArtikelDetail, Variante } from '~~/shared/typen/api';
+import type { ProductDetail, Variant } from '~~/shared/types/api';
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));
 
-const { formatGeld, formatProzent, formatDatum } = useGeld();
-const { leseFehler } = useApiFehler();
+const { formatMoney, formatPercent, formatDate, toInput } = useMoney();
+const { readError } = useApiError();
 
-const { data, pending, error, refresh } = await useFetch<ArtikelDetail>(
-  () => `/api/artikel/${id.value}`,
+const { data, pending, error, refresh } = await useFetch<ProductDetail>(
+  () => `/api/products/${id.value}`,
 );
 
 useHead({ title: () => data.value?.name ?? 'Artikel' });
 
-const speichert = ref(false);
-const meldung = ref<string | null>(null);
-const formularFehler = ref<Record<string, string>>({});
+const saving = ref(false);
+const message = ref<string | null>(null);
+const fieldErrors = ref<Record<string, string>>({});
 
 /** Stammdaten des Artikels, direkt bearbeitbar. */
-const bearbeitet = ref(false);
-const form = reactive({ name: '', kategorie: '', beschreibung: '' });
+const editing = ref(false);
+const form = reactive({ name: '', category: '', description: '' });
 
 watchEffect(() => {
   if (data.value) {
     form.name = data.value.name;
-    form.kategorie = data.value.kategorie ?? '';
-    form.beschreibung = data.value.beschreibung ?? '';
+    form.category = data.value.category ?? '';
+    form.description = data.value.description ?? '';
   }
 });
 
-async function stammdatenSpeichern() {
-  speichert.value = true;
-  meldung.value = null;
-  formularFehler.value = {};
+async function saveProduct() {
+  saving.value = true;
+  message.value = null;
+  fieldErrors.value = {};
   try {
-    await $fetch(`/api/artikel/${id.value}`, {
+    await $fetch(`/api/products/${id.value}`, {
       method: 'PATCH',
       body: {
         name: form.name,
-        kategorie: form.kategorie || null,
-        beschreibung: form.beschreibung || null,
+        category: form.category || null,
+        description: form.description || null,
       },
     });
-    bearbeitet.value = false;
+    editing.value = false;
     await refresh();
-  } catch (fehler) {
-    const { meldung: text, felder } = leseFehler(fehler);
-    meldung.value = text;
-    formularFehler.value = felder;
+  } catch (err) {
+    const { message: text, fields } = readError(err);
+    message.value = text;
+    fieldErrors.value = fields;
   } finally {
-    speichert.value = false;
+    saving.value = false;
   }
 }
 
 /**
- * Derselbe Dialog legt Varianten an und bearbeitet sie. Ist `bearbeiteVarianteId`
- * gesetzt, wird gespeichert statt angelegt – so gibt es nur ein Formular, und
- * beide Wege koennen nicht auseinanderlaufen.
+ * Derselbe Dialog legt Varianten an und bearbeitet sie. Ist
+ * `editingVariantId` gesetzt, wird gespeichert statt angelegt – so gibt es
+ * nur ein Formular, und beide Wege koennen nicht auseinanderlaufen.
  */
-const variantenDialog = ref(false);
-const bearbeiteVarianteId = ref<string | null>(null);
-const variantenForm = reactive({
+const variantDialog = ref(false);
+const editingVariantId = ref<string | null>(null);
+const variantForm = reactive({
   sku: '',
-  bezeichnung: '',
-  basispreisNetto: '',
-  mindestbestand: 0,
+  label: '',
+  basePriceNet: '',
+  minimumStock: 0,
 });
 
-/** Cent zurueck in den Euro-Betrag mit Komma, wie der Nutzer ihn eingegeben hat. */
-function betragFuerFormular(cent: number | null): string {
-  if (cent === null) return '';
-  return (cent / 100).toFixed(2).replace('.', ',');
+function openVariantDialog(variant?: Variant) {
+  message.value = null;
+  fieldErrors.value = {};
+  editingVariantId.value = variant?.id ?? null;
+  variantForm.sku = variant?.sku ?? '';
+  variantForm.label = variant?.label ?? '';
+  variantForm.basePriceNet = variant ? toInput(variant.basePriceNet) : '';
+  variantForm.minimumStock = variant?.minimumStock ?? 0;
+  variantDialog.value = true;
 }
 
-function variantenDialogOeffnen(variante?: Variante) {
-  meldung.value = null;
-  formularFehler.value = {};
-  bearbeiteVarianteId.value = variante?.id ?? null;
-  variantenForm.sku = variante?.sku ?? '';
-  variantenForm.bezeichnung = variante?.bezeichnung ?? '';
-  variantenForm.basispreisNetto = variante
-    ? betragFuerFormular(variante.basispreisNetto)
-    : '';
-  variantenForm.mindestbestand = variante?.mindestbestand ?? 0;
-  variantenDialog.value = true;
-}
-
-async function varianteSpeichern() {
-  speichert.value = true;
-  meldung.value = null;
-  formularFehler.value = {};
-  const felder = {
-    sku: variantenForm.sku,
-    bezeichnung: variantenForm.bezeichnung,
-    basispreisNetto: variantenForm.basispreisNetto || null,
-    mindestbestand: variantenForm.mindestbestand,
+async function saveVariant() {
+  saving.value = true;
+  message.value = null;
+  fieldErrors.value = {};
+  const fields = {
+    sku: variantForm.sku,
+    label: variantForm.label,
+    basePriceNet: variantForm.basePriceNet || null,
+    minimumStock: variantForm.minimumStock,
   };
   try {
-    await $fetch(`/api/artikel/${id.value}`, {
+    await $fetch(`/api/products/${id.value}`, {
       method: 'PATCH',
-      body: bearbeiteVarianteId.value
-        ? { geaenderteVarianten: [{ id: bearbeiteVarianteId.value, ...felder }] }
-        : { neueVarianten: [felder] },
+      body: editingVariantId.value
+        ? { updatedVariants: [{ id: editingVariantId.value, ...fields }] }
+        : { newVariants: [fields] },
     });
-    variantenDialog.value = false;
+    variantDialog.value = false;
     await refresh();
-  } catch (fehler) {
-    const { meldung: text, felder: fehlerFelder } = leseFehler(fehler);
-    meldung.value = text;
+  } catch (err) {
+    const { message: text, fields: errorFields } = readError(err);
+    message.value = text;
     // Feldpfade aus der Liste auf das Formular zurueckfuehren:
-    // "neueVarianten.0.sku" wird zu "sku".
-    formularFehler.value = Object.fromEntries(
-      Object.entries(fehlerFelder).map(([k, v]) => [k.split('.').pop() ?? k, v]),
+    // "newVariants.0.sku" wird zu "sku".
+    fieldErrors.value = Object.fromEntries(
+      Object.entries(errorFields).map(([k, v]) => [k.split('.').pop() ?? k, v]),
     );
   } finally {
-    speichert.value = false;
+    saving.value = false;
   }
 }
 
-async function varianteArchivierung(varianteId: string, archivieren: boolean) {
+async function archiveVariant(variantId: string, archive: boolean) {
   try {
-    await $fetch(`/api/artikel/${id.value}`, {
+    await $fetch(`/api/products/${id.value}`, {
       method: 'PATCH',
       body: {
-        geaenderteVarianten: [
+        updatedVariants: [
           {
-            id: varianteId,
-            archiviertAm: archivieren ? new Date().toISOString() : null,
+            id: variantId,
+            archivedAt: archive ? new Date().toISOString() : null,
           },
         ],
       },
     });
     await refresh();
-  } catch (fehler) {
-    meldung.value = leseFehler(fehler).meldung;
+  } catch (err) {
+    message.value = readError(err).message;
   }
 }
 
-const aktiveVarianten = computed(
-  () => data.value?.varianten.filter((v) => !v.archiviertAm) ?? [],
+const activeVariants = computed(
+  () => data.value?.variants.filter((v) => !v.archivedAt) ?? [],
 );
-const archivierteVarianten = computed(
-  () => data.value?.varianten.filter((v) => v.archiviertAm) ?? [],
+const archivedVariants = computed(
+  () => data.value?.variants.filter((v) => v.archivedAt) ?? [],
 );
 </script>
 
@@ -153,7 +145,7 @@ const archivierteVarianten = computed(
         variant="subtle"
         class="rounded-[12px]"
         title="Artikel nicht gefunden"
-        :description="'Der angeforderte Artikel existiert nicht oder wurde entfernt.'"
+        description="Der angeforderte Artikel existiert nicht oder wurde entfernt."
       />
       <UButton to="/artikel" variant="ghost" class="mt-4 rounded-[8px]" icon="i-lucide-arrow-left">
         Zurück zur Liste
@@ -165,7 +157,7 @@ const archivierteVarianten = computed(
     </div>
 
     <div v-else-if="data">
-      <SeitenKopf :titel="data.name" :hinweis="data.kategorie ?? undefined">
+      <SeitenKopf :titel="data.name" :hinweis="data.category ?? undefined">
         <template #aktionen>
           <UButton
             to="/artikel"
@@ -182,11 +174,12 @@ const archivierteVarianten = computed(
 
       <div class="space-y-6 px-6 py-4">
         <UAlert
-          v-if="meldung"
+          v-if="message && !variantDialog"
           color="error"
           variant="subtle"
+          icon="i-lucide-circle-alert"
           class="rounded-[12px]"
-          :description="meldung"
+          :description="message"
         />
 
         <!-- Stammdaten -->
@@ -197,38 +190,38 @@ const archivierteVarianten = computed(
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold">Stammdaten</h2>
             <UButton
-              v-if="!bearbeitet"
+              v-if="!editing"
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-lucide-pencil"
               class="rounded-[8px]"
-              @click="bearbeitet = true"
+              @click="editing = true"
             >
               Bearbeiten
             </UButton>
           </div>
 
-          <form v-if="bearbeitet" class="space-y-3" @submit.prevent="stammdatenSpeichern">
-            <UFormField label="Name" required :error="formularFehler.name">
+          <form v-if="editing" class="space-y-3" @submit.prevent="saveProduct">
+            <UFormField label="Name" required :error="fieldErrors.name">
               <UInput v-model="form.name" class="w-full" />
             </UFormField>
             <UFormField label="Kategorie">
-              <UInput v-model="form.kategorie" class="w-full" />
+              <UInput v-model="form.category" class="w-full" />
             </UFormField>
             <UFormField label="Beschreibung">
-              <UTextarea v-model="form.beschreibung" :rows="3" class="w-full" />
+              <UTextarea v-model="form.description" :rows="3" class="w-full" />
             </UFormField>
             <div class="flex justify-end gap-2">
               <UButton
                 color="neutral"
                 variant="ghost"
                 class="rounded-[8px]"
-                @click="bearbeitet = false"
+                @click="editing = false"
               >
                 Abbrechen
               </UButton>
-              <UButton type="submit" :loading="speichert" class="rounded-[8px]">
+              <UButton type="submit" :loading="saving" class="rounded-[8px]">
                 Speichern
               </UButton>
             </div>
@@ -237,15 +230,15 @@ const archivierteVarianten = computed(
           <dl v-else class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div>
               <dt class="text-xs text-zinc-500">Kategorie</dt>
-              <dd>{{ data.kategorie ?? '–' }}</dd>
+              <dd>{{ data.category ?? '–' }}</dd>
             </div>
             <div>
               <dt class="text-xs text-zinc-500">Angelegt</dt>
-              <dd>{{ formatDatum(data.erstelltAm) }}</dd>
+              <dd>{{ formatDate(data.createdAt) }}</dd>
             </div>
             <div class="sm:col-span-2">
               <dt class="text-xs text-zinc-500">Beschreibung</dt>
-              <dd>{{ data.beschreibung ?? '–' }}</dd>
+              <dd>{{ data.description ?? '–' }}</dd>
             </div>
           </dl>
         </section>
@@ -259,20 +252,20 @@ const archivierteVarianten = computed(
             <h2 class="text-sm font-semibold">
               Varianten
               <span class="ml-1 font-normal text-zinc-500">
-                {{ aktiveVarianten.length }}
+                {{ activeVariants.length }}
               </span>
             </h2>
             <UButton
               size="xs"
               icon="i-lucide-plus"
               class="rounded-[8px]"
-              @click="variantenDialogOeffnen()"
+              @click="openVariantDialog()"
             >
               Variante
             </UButton>
           </div>
 
-          <table class="trd-tabelle w-full min-w-[40rem] text-sm">
+          <table class="trd-tabelle w-full min-w-[44rem] text-sm">
             <thead
               class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
@@ -286,12 +279,12 @@ const archivierteVarianten = computed(
               </tr>
             </thead>
             <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
-              <tr v-for="v in aktiveVarianten" :key="v.id">
-                <td class="px-4 font-mono text-xs">{{ v.sku }}</td>
-                <td class="px-4">{{ v.bezeichnung }}</td>
-                <td class="zahl px-4">{{ formatGeld(v.basispreisNetto) }}</td>
-                <td class="zahl px-4 text-zinc-500">{{ formatProzent(v.ustSatz) }}</td>
-                <td class="zahl px-4 text-zinc-500">{{ v.mindestbestand }}</td>
+              <tr v-for="variant in activeVariants" :key="variant.id">
+                <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
+                <td class="px-4">{{ variant.label }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.basePriceNet) }}</td>
+                <td class="zahl px-4 text-zinc-500">{{ formatPercent(variant.vatRate) }}</td>
+                <td class="zahl px-4 text-zinc-500">{{ variant.minimumStock }}</td>
                 <td class="px-4">
                   <div class="flex justify-end gap-1">
                     <UButton
@@ -299,9 +292,9 @@ const archivierteVarianten = computed(
                       variant="ghost"
                       color="neutral"
                       icon="i-lucide-pencil"
-                      :aria-label="`${v.sku} bearbeiten`"
+                      :aria-label="`${variant.sku} bearbeiten`"
                       class="rounded-[8px]"
-                      @click="variantenDialogOeffnen(v)"
+                      @click="openVariantDialog(variant)"
                     >
                       Bearbeiten
                     </UButton>
@@ -310,26 +303,26 @@ const archivierteVarianten = computed(
                       variant="ghost"
                       color="neutral"
                       icon="i-lucide-archive"
-                      :aria-label="`${v.sku} archivieren`"
+                      :aria-label="`${variant.sku} archivieren`"
                       class="rounded-[8px]"
-                      @click="varianteArchivierung(v.id, true)"
+                      @click="archiveVariant(variant.id, true)"
                     >
                       Archivieren
                     </UButton>
                   </div>
                 </td>
               </tr>
-              <tr v-for="v in archivierteVarianten" :key="v.id" class="text-zinc-400">
-                <td class="px-4 font-mono text-xs">{{ v.sku }}</td>
+              <tr v-for="variant in archivedVariants" :key="variant.id" class="text-zinc-400">
+                <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
                 <td class="px-4">
-                  {{ v.bezeichnung }}
+                  {{ variant.label }}
                   <UBadge size="sm" color="neutral" variant="subtle" class="ml-2 rounded-[8px]">
                     archiviert
                   </UBadge>
                 </td>
-                <td class="zahl px-4">{{ formatGeld(v.basispreisNetto) }}</td>
-                <td class="zahl px-4">{{ formatProzent(v.ustSatz) }}</td>
-                <td class="zahl px-4">{{ v.mindestbestand }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.basePriceNet) }}</td>
+                <td class="zahl px-4">{{ formatPercent(variant.vatRate) }}</td>
+                <td class="zahl px-4">{{ variant.minimumStock }}</td>
                 <td class="px-4">
                   <div class="flex justify-end">
                     <UButton
@@ -337,9 +330,9 @@ const archivierteVarianten = computed(
                       variant="ghost"
                       color="neutral"
                       icon="i-lucide-archive-restore"
-                      :aria-label="`${v.sku} zurückholen`"
+                      :aria-label="`${variant.sku} zurückholen`"
                       class="rounded-[8px]"
-                      @click="varianteArchivierung(v.id, false)"
+                      @click="archiveVariant(variant.id, false)"
                     >
                       Zurückholen
                     </UButton>
@@ -365,7 +358,7 @@ const archivierteVarianten = computed(
           </div>
 
           <p
-            v-if="!data.kostenpositionen.length"
+            v-if="!data.costItems.length"
             class="border-t border-zinc-200/70 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800"
           >
             Keine Kostenpositionen hinterlegt.
@@ -377,7 +370,7 @@ const archivierteVarianten = computed(
             </NuxtLink>
           </p>
 
-          <table v-else class="trd-tabelle w-full min-w-[40rem] text-sm">
+          <table v-else class="trd-tabelle w-full min-w-[44rem] text-sm">
             <thead
               class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
@@ -391,14 +384,14 @@ const archivierteVarianten = computed(
             </thead>
             <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
               <tr
-                v-for="k in data.kostenpositionen"
-                :key="k.id"
-                :class="{ 'text-zinc-400': !k.aktiv }"
+                v-for="item in data.costItems"
+                :key="item.id"
+                :class="{ 'text-zinc-400': !item.active }"
               >
                 <td class="px-4">
-                  {{ k.bezeichnung }}
+                  {{ item.label }}
                   <UBadge
-                    v-if="!k.aktiv"
+                    v-if="!item.active"
                     size="sm"
                     color="neutral"
                     variant="subtle"
@@ -408,14 +401,14 @@ const archivierteVarianten = computed(
                   </UBadge>
                 </td>
                 <td class="px-4 text-zinc-500">
-                  {{ k.varianteId ? 'Variante' : 'übergreifend' }}
+                  {{ item.variantId ? 'Variante' : 'übergreifend' }}
                 </td>
                 <td class="zahl px-4">
-                  {{ k.art === 'fix' ? formatGeld(k.wert) : formatProzent(k.wert) }}
+                  {{ item.kind === 'fix' ? formatMoney(item.value) : formatPercent(item.value) }}
                 </td>
                 <td class="px-4">
                   <UBadge
-                    v-if="k.vorsteuerabzugsfaehig"
+                    v-if="item.inputTaxDeductible"
                     size="sm"
                     color="success"
                     variant="subtle"
@@ -426,7 +419,7 @@ const archivierteVarianten = computed(
                   <span v-else class="text-zinc-400">–</span>
                 </td>
                 <td class="px-4 text-right text-zinc-500">
-                  {{ k.verteilmethode === 'wert' ? 'Warenwert' : 'Stückzahl' }}
+                  {{ item.distributionMethod === 'value' ? 'Warenwert' : 'Stückzahl' }}
                 </td>
               </tr>
             </tbody>
@@ -435,35 +428,35 @@ const archivierteVarianten = computed(
       </div>
 
       <UModal
-        v-model:open="variantenDialog"
-        :title="bearbeiteVarianteId ? 'Variante bearbeiten' : 'Variante anlegen'"
+        v-model:open="variantDialog"
+        :title="editingVariantId ? 'Variante bearbeiten' : 'Variante anlegen'"
       >
         <template #body>
-          <form class="space-y-4" @submit.prevent="varianteSpeichern">
+          <form class="space-y-4" @submit.prevent="saveVariant">
             <UAlert
-              v-if="meldung"
+              v-if="message"
               color="error"
               variant="subtle"
               icon="i-lucide-circle-alert"
               class="rounded-[12px]"
-              :description="meldung"
+              :description="message"
             />
-            <UFormField label="Artikelnummer" required :error="formularFehler.sku">
-              <UInput v-model="variantenForm.sku" autofocus class="w-full font-mono" />
+            <UFormField label="Artikelnummer" required :error="fieldErrors.sku">
+              <UInput v-model="variantForm.sku" autofocus class="w-full font-mono" />
             </UFormField>
-            <UFormField label="Bezeichnung" required :error="formularFehler.bezeichnung">
-              <UInput v-model="variantenForm.bezeichnung" class="w-full" />
+            <UFormField label="Bezeichnung" required :error="fieldErrors.label">
+              <UInput v-model="variantForm.label" class="w-full" />
             </UFormField>
             <UFormField
               label="Basispreis netto"
-              :error="formularFehler.basispreisNetto"
+              :error="fieldErrors.basePriceNet"
               help="Optional. Zum Beispiel 24,90"
             >
-              <UInput v-model="variantenForm.basispreisNetto" class="w-full" />
+              <UInput v-model="variantForm.basePriceNet" class="w-full" />
             </UFormField>
-            <UFormField label="Mindestbestand" :error="formularFehler.mindestbestand">
+            <UFormField label="Mindestbestand" :error="fieldErrors.minimumStock">
               <UInput
-                v-model.number="variantenForm.mindestbestand"
+                v-model.number="variantForm.minimumStock"
                 type="number"
                 min="0"
                 class="w-full"
@@ -474,12 +467,12 @@ const archivierteVarianten = computed(
                 color="neutral"
                 variant="ghost"
                 class="rounded-[8px]"
-                @click="variantenDialog = false"
+                @click="variantDialog = false"
               >
                 Abbrechen
               </UButton>
-              <UButton type="submit" :loading="speichert" class="rounded-[8px]">
-                {{ bearbeiteVarianteId ? 'Speichern' : 'Anlegen' }}
+              <UButton type="submit" :loading="saving" class="rounded-[8px]">
+                {{ editingVariantId ? 'Speichern' : 'Anlegen' }}
               </UButton>
             </div>
           </form>

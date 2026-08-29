@@ -1,8 +1,8 @@
 /**
  * Oeffentliche Schnittstelle der Kalkulations-Engine.
  *
- * Dieses Paket ist reines TypeScript ohne Abhaengigkeiten. Es kennt weder Vue
- * noch eine Datenbank und laesst sich deshalb vollstaendig ohne laufende
+ * Dieses Paket ist reines TypeScript ohne Abhaengigkeiten. Es kennt weder
+ * Vue noch eine Datenbank und laesst sich deshalb vollstaendig ohne laufende
  * Infrastruktur testen.
  */
 

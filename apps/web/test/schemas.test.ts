@@ -10,27 +10,27 @@
 import { describe, expect, it } from 'vitest';
 import {
   flagSchema,
-  geldSchema,
-  listenAbfrageSchema,
-  optionalerText,
-  pflichttext,
-  prozentSchema,
-} from '../shared/schemas/gemeinsam.js';
-import { skuSchema, produktAnlegenSchema } from '../shared/schemas/artikel.js';
+  moneySchema,
+  listQuerySchema,
+  optionalText,
+  requiredText,
+  percentSchema,
+} from '../shared/schemas/common.js';
+import { skuSchema, createProductSchema } from '../shared/schemas/product.js';
 import {
-  kostenpositionAendernSchema,
-  kostenpositionAnlegenSchema,
-} from '../shared/schemas/kostenposition.js';
+  updateCostItemSchema,
+  createCostItemSchema,
+} from '../shared/schemas/cost-item.js';
 import {
-  kanalAendernSchema,
-  kanalAnlegenSchema,
-} from '../shared/schemas/kanal.js';
+  updateChannelSchema,
+  createChannelSchema,
+} from '../shared/schemas/channel.js';
 import {
-  centZuNumeric,
-  numericZuCent,
-  numericZuSatz,
-  satzZuNumeric,
-} from '../server/utils/geld.js';
+  centsToNumeric,
+  numericToCents,
+  numericToRate,
+  rateToNumeric,
+} from '../server/utils/money.js';
 
 describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
   const schema = flagSchema();
@@ -63,33 +63,33 @@ describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
   });
 });
 
-describe('listenAbfrageSchema', () => {
+describe('listQuerySchema', () => {
   it('blendet Archivierte standardmaessig aus', () => {
-    expect(listenAbfrageSchema.parse({}).mitArchivierten).toBe(false);
+    expect(listQuerySchema.parse({}).includeArchived).toBe(false);
   });
 
-  it('respektiert mitArchivierten=false aus der Abfragezeichenkette', () => {
+  it('respektiert includeArchived=false aus der Abfragezeichenkette', () => {
     // Genau der Weg, den die Oberflaeche nimmt.
-    const ergebnis = listenAbfrageSchema.parse({ mitArchivierten: 'false' });
-    expect(ergebnis.mitArchivierten).toBe(false);
+    const result = listQuerySchema.parse({ includeArchived: 'false' });
+    expect(result.includeArchived).toBe(false);
   });
 
-  it('respektiert mitArchivierten=true', () => {
+  it('respektiert includeArchived=true', () => {
     expect(
-      listenAbfrageSchema.parse({ mitArchivierten: 'true' }).mitArchivierten,
+      listQuerySchema.parse({ includeArchived: 'true' }).includeArchived,
     ).toBe(true);
   });
 
   it('setzt sinnvolle Grenzen', () => {
-    expect(listenAbfrageSchema.parse({}).limit).toBe(100);
-    expect(listenAbfrageSchema.safeParse({ limit: '9999' }).success).toBe(false);
-    expect(listenAbfrageSchema.safeParse({ limit: '0' }).success).toBe(false);
-    expect(listenAbfrageSchema.safeParse({ offset: '-1' }).success).toBe(false);
+    expect(listQuerySchema.parse({}).limit).toBe(100);
+    expect(listQuerySchema.safeParse({ limit: '9999' }).success).toBe(false);
+    expect(listQuerySchema.safeParse({ limit: '0' }).success).toBe(false);
+    expect(listQuerySchema.safeParse({ offset: '-1' }).success).toBe(false);
   });
 });
 
-describe('geldSchema – Eingabe zu ganzzahligen Cent (Regel 1)', () => {
-  const schema = geldSchema('Betrag');
+describe('moneySchema – Eingabe zu ganzzahligen Cent (Regel 1)', () => {
+  const schema = moneySchema('Betrag');
 
   it('liest deutsche Schreibweise', () => {
     expect(schema.parse('24,90')).toBe(2490);
@@ -129,16 +129,16 @@ describe('geldSchema – Eingabe zu ganzzahligen Cent (Regel 1)', () => {
   });
 
   it('lehnt Unsinn mit einer verstaendlichen Meldung ab', () => {
-    const ergebnis = schema.safeParse('abc');
-    expect(ergebnis.success).toBe(false);
-    if (!ergebnis.success) {
-      expect(ergebnis.error.issues[0]?.message).toContain('Betrag');
+    const result = schema.safeParse('abc');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toContain('Betrag');
     }
   });
 });
 
-describe('prozentSchema – Eingabe zu Dezimalsatz', () => {
-  const schema = prozentSchema('Satz');
+describe('percentSchema – Eingabe zu Dezimalsatz', () => {
+  const schema = percentSchema('Satz');
 
   it('rechnet Prozentangaben in Dezimalsaetze um', () => {
     expect(schema.parse('6,5')).toBeCloseTo(0.065, 10);
@@ -161,23 +161,23 @@ describe('prozentSchema – Eingabe zu Dezimalsatz', () => {
   });
 });
 
-describe('pflichttext und optionalerText', () => {
+describe('requiredText und optionalText', () => {
   it('lehnt leere Pflichtfelder ab und nennt das Feld', () => {
-    const ergebnis = pflichttext('Name').safeParse('   ');
-    expect(ergebnis.success).toBe(false);
-    if (!ergebnis.success) {
-      expect(ergebnis.error.issues[0]?.message).toContain('Name');
+    const result = requiredText('Name').safeParse('   ');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toContain('Name');
     }
   });
 
   it('entfernt umgebende Leerzeichen', () => {
-    expect(pflichttext('Name').parse('  Vase  ')).toBe('Vase');
+    expect(requiredText('Name').parse('  Vase  ')).toBe('Vase');
   });
 
   it('macht aus leerem Freitext null', () => {
-    expect(optionalerText().parse('')).toBeNull();
-    expect(optionalerText().parse('  ')).toBeNull();
-    expect(optionalerText().parse('Notiz')).toBe('Notiz');
+    expect(optionalText().parse('')).toBeNull();
+    expect(optionalText().parse('  ')).toBeNull();
+    expect(optionalText().parse('Notiz')).toBe('Notiz');
   });
 });
 
@@ -195,64 +195,64 @@ describe('skuSchema', () => {
   });
 });
 
-describe('kostenpositionAnlegenSchema – Art bestimmt die Bedeutung des Werts', () => {
+describe('createCostItemSchema – Art bestimmt die Bedeutung des Werts', () => {
   it('liest den Wert bei "fix" als Cent-Betrag', () => {
-    const e = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'Verpackung',
-      art: 'fix',
-      wert: '0,85',
+    const e = createCostItemSchema.parse({
+      label: 'Verpackung',
+      kind: 'fix',
+      value: '0,85',
     });
-    expect(e.wert).toBe(85);
+    expect(e.value).toBe(85);
   });
 
   it('liest den Wert bei "prozent" als Dezimalsatz', () => {
-    const e = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'Zoll',
-      art: 'prozent',
-      wert: '4,7',
+    const e = createCostItemSchema.parse({
+      label: 'Zoll',
+      kind: 'percent',
+      value: '4,7',
     });
-    expect(e.wert).toBeCloseTo(0.047, 10);
+    expect(e.value).toBeCloseTo(0.047, 10);
   });
 
   it('haelt Betrag und Satz auseinander', () => {
     // Derselbe Eingabetext ergibt je nach Art voellig unterschiedliche Werte.
-    const alsBetrag = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'X',
-      art: 'fix',
-      wert: '2,5',
+    const alsBetrag = createCostItemSchema.parse({
+      label: 'X',
+      kind: 'fix',
+      value: '2,5',
     });
-    const alsSatz = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'X',
-      art: 'prozent',
-      wert: '2,5',
+    const alsSatz = createCostItemSchema.parse({
+      label: 'X',
+      kind: 'percent',
+      value: '2,5',
     });
-    expect(alsBetrag.wert).toBe(250);
-    expect(alsSatz.wert).toBeCloseTo(0.025, 10);
+    expect(alsBetrag.value).toBe(250);
+    expect(alsSatz.value).toBeCloseTo(0.025, 10);
   });
 
   it('setzt die Verteilmethode standardmaessig auf Warenwert (Regel 7)', () => {
-    const e = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'Fracht',
-      art: 'fix',
-      wert: '10,00',
+    const e = createCostItemSchema.parse({
+      label: 'Fracht',
+      kind: 'fix',
+      value: '10,00',
     });
-    expect(e.verteilmethode).toBe('wert');
+    expect(e.distributionMethod).toBe('value');
   });
 
   it('merkt sich die Vorsteuerabzugsfaehigkeit (Regel 3)', () => {
-    const eust = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'Einfuhrumsatzsteuer',
-      art: 'prozent',
-      wert: '19',
-      vorsteuerabzugsfaehig: true,
+    const eust = createCostItemSchema.parse({
+      label: 'Einfuhrumsatzsteuer',
+      kind: 'percent',
+      value: '19',
+      inputTaxDeductible: true,
     });
-    const zoll = kostenpositionAnlegenSchema.parse({
-      bezeichnung: 'Zoll',
-      art: 'prozent',
-      wert: '4,7',
+    const zoll = createCostItemSchema.parse({
+      label: 'Zoll',
+      kind: 'percent',
+      value: '4,7',
     });
-    expect(eust.vorsteuerabzugsfaehig).toBe(true);
-    expect(zoll.vorsteuerabzugsfaehig).toBe(false);
+    expect(eust.inputTaxDeductible).toBe(true);
+    expect(zoll.inputTaxDeductible).toBe(false);
   });
 });
 
@@ -266,118 +266,118 @@ describe('Aendern-Schemas setzen keine Standardwerte', () => {
    */
 
   it('Kanal: leerer Rumpf ergibt keine Felder', () => {
-    expect(kanalAendernSchema.parse({})).toEqual({});
+    expect(updateChannelSchema.parse({})).toEqual({});
   });
 
   it('Kanal: nur der Name laesst die Gebuehren unberuehrt', () => {
-    const e = kanalAendernSchema.parse({ name: 'Etsy' });
+    const e = updateChannelSchema.parse({ name: 'Etsy' });
     expect(e).toEqual({ name: 'Etsy' });
-    expect(e.gebuehrProzent).toBeUndefined();
-    expect(e.gebuehrFix).toBeUndefined();
-    expect(e.aktiv).toBeUndefined();
+    expect(e.feePercent).toBeUndefined();
+    expect(e.feeFixed).toBeUndefined();
+    expect(e.active).toBeUndefined();
   });
 
-  it('Kanal: aktiv=false bleibt false', () => {
-    expect(kanalAendernSchema.parse({ aktiv: false })).toEqual({ aktiv: false });
+  it('Kanal: active=false bleibt false', () => {
+    expect(updateChannelSchema.parse({ active: false })).toEqual({ active: false });
   });
 
   it('Kostenposition: nur die Art laesst die uebrigen Felder unberuehrt', () => {
-    const e = kostenpositionAendernSchema.parse({ art: 'fix' });
-    expect(e).toEqual({ art: 'fix' });
-    expect(e.aktiv).toBeUndefined();
-    expect(e.vorsteuerabzugsfaehig).toBeUndefined();
+    const e = updateCostItemSchema.parse({ kind: 'fix' });
+    expect(e).toEqual({ kind: 'fix' });
+    expect(e.active).toBeUndefined();
+    expect(e.inputTaxDeductible).toBeUndefined();
   });
 
   it('Kostenposition: eine deaktivierte Position bleibt deaktiviert', () => {
     // Sonst wuerde jede Bearbeitung sie stillschweigend wieder einschalten.
-    const e = kostenpositionAendernSchema.parse({
-      art: 'prozent',
-      bezeichnung: 'Zoll',
+    const e = updateCostItemSchema.parse({
+      kind: 'percent',
+      label: 'Zoll',
     });
-    expect(e.aktiv).toBeUndefined();
+    expect(e.active).toBeUndefined();
   });
 
   it('Anlege-Schemas behalten ihre Standardwerte', () => {
-    const k = kanalAnlegenSchema.parse({ name: 'Neu' });
-    expect(k.gebuehrProzent).toBe(0);
-    expect(k.gebuehrFix).toBe(0);
-    expect(k.aktiv).toBe(true);
-    expect(k.preisregel).toBe('gleiche_marge');
+    const k = createChannelSchema.parse({ name: 'Neu' });
+    expect(k.feePercent).toBe(0);
+    expect(k.feeFixed).toBe(0);
+    expect(k.active).toBe(true);
+    expect(k.pricingRule).toBe('same_margin');
   });
 });
 
-describe('kanalAnlegenSchema', () => {
+describe('createChannelSchema', () => {
   it('trennt prozentuale und fixe Gebuehr', () => {
-    const e = kanalAnlegenSchema.parse({
+    const e = createChannelSchema.parse({
       name: 'Etsy',
-      gebuehrProzent: '6,5',
-      gebuehrFix: '0,20',
+      feePercent: '6,5',
+      feeFixed: '0,20',
     });
-    expect(e.gebuehrProzent).toBeCloseTo(0.065, 10);
-    expect(e.gebuehrFix).toBe(20);
+    expect(e.feePercent).toBeCloseTo(0.065, 10);
+    expect(e.feeFixed).toBe(20);
   });
 
   it('setzt vernuenftige Standardwerte', () => {
-    const e = kanalAnlegenSchema.parse({ name: 'Ladenverkauf' });
-    expect(e.gebuehrProzent).toBe(0);
-    expect(e.gebuehrFix).toBe(0);
-    expect(e.preisregel).toBe('gleiche_marge');
-    expect(e.aktiv).toBe(true);
+    const e = createChannelSchema.parse({ name: 'Ladenverkauf' });
+    expect(e.feePercent).toBe(0);
+    expect(e.feeFixed).toBe(0);
+    expect(e.pricingRule).toBe('same_margin');
+    expect(e.active).toBe(true);
   });
 });
 
-describe('produktAnlegenSchema', () => {
+describe('createProductSchema', () => {
   it('nimmt ein Produkt ohne Varianten entgegen', () => {
-    const e = produktAnlegenSchema.parse({ name: 'Vase', sku: 'VASE-1' });
-    expect(e.varianten).toBeUndefined();
+    const e = createProductSchema.parse({ name: 'Vase', sku: 'VASE-1' });
+    expect(e.variants).toBeUndefined();
     expect(e.sku).toBe('VASE-1');
   });
 
   it('nimmt ein Produkt mit mehreren Varianten entgegen', () => {
-    const e = produktAnlegenSchema.parse({
+    const e = createProductSchema.parse({
       name: 'Kissen',
-      varianten: [
-        { sku: 'K-50', bezeichnung: '50x50', basispreisNetto: '24,90' },
-        { sku: 'K-60', bezeichnung: '60x60' },
+      variants: [
+        { sku: 'K-50', label: '50x50', basePriceNet: '24,90' },
+        { sku: 'K-60', label: '60x60' },
       ],
     });
-    expect(e.varianten).toHaveLength(2);
-    expect(e.varianten?.[0]?.basispreisNetto).toBe(2490);
-    expect(e.varianten?.[1]?.ustSatz).toBeCloseTo(0.19, 10);
+    expect(e.variants).toHaveLength(2);
+    expect(e.variants?.[0]?.basePriceNet).toBe(2490);
+    expect(e.variants?.[1]?.vatRate).toBeCloseTo(0.19, 10);
   });
 });
 
 describe('Umrechnung an der Datenbankgrenze', () => {
   it('faehrt Cent verlustfrei hin und zurueck', () => {
     for (const cent of [0, 1, 85, 2490, 123456, -340, 999999]) {
-      expect(numericZuCent(centZuNumeric(cent))).toBe(cent);
+      expect(numericToCents(centsToNumeric(cent))).toBe(cent);
     }
   });
 
   it('faehrt Dezimalsaetze verlustfrei hin und zurueck', () => {
     for (const satz of [0, 0.19, 0.065, 0.047, 0.0025]) {
-      expect(numericZuSatz(satzZuNumeric(satz))).toBeCloseTo(satz, 10);
+      expect(numericToRate(rateToNumeric(satz))).toBeCloseTo(satz, 10);
     }
   });
 
   it('schreibt vier Nachkommastellen, wie es die Spalte verlangt', () => {
-    expect(centZuNumeric(85)).toBe('0.8500');
-    expect(centZuNumeric(2490)).toBe('24.9000');
-    expect(satzZuNumeric(0.065)).toBe('0.0650');
+    expect(centsToNumeric(85)).toBe('0.8500');
+    expect(centsToNumeric(2490)).toBe('24.9000');
+    expect(rateToNumeric(0.065)).toBe('0.0650');
   });
 
   it('behandelt null durchgehend als null', () => {
-    expect(centZuNumeric(null)).toBeNull();
-    expect(centZuNumeric(undefined)).toBeNull();
-    expect(numericZuCent(null)).toBeNull();
-    expect(satzZuNumeric(null)).toBeNull();
-    expect(numericZuSatz(null)).toBeNull();
+    expect(centsToNumeric(null)).toBeNull();
+    expect(centsToNumeric(undefined)).toBeNull();
+    expect(numericToCents(null)).toBeNull();
+    expect(rateToNumeric(null)).toBeNull();
+    expect(numericToRate(null)).toBeNull();
   });
 
   it('liest den rohen Spaltenwert richtig', () => {
     // So kommen die Werte tatsaechlich aus Postgres zurueck.
-    expect(numericZuCent('0.8500')).toBe(85);
-    expect(numericZuCent('24.9000')).toBe(2490);
-    expect(numericZuSatz('0.0470')).toBeCloseTo(0.047, 10);
+    expect(numericToCents('0.8500')).toBe(85);
+    expect(numericToCents('24.9000')).toBe(2490);
+    expect(numericToRate('0.0470')).toBeCloseTo(0.047, 10);
   });
 });

@@ -6,19 +6,19 @@
  * ersatzlos auszublenden – dann kaeme man von einer Unterseite nicht mehr
  * weiter – klappt hier eine Liste auf.
  */
-const offen = ref(false);
+const open = ref(false);
 const route = useRoute();
 
-const punkte = [
-  { name: 'Übersicht', pfad: '/' },
-  { name: 'Artikel', pfad: '/artikel' },
-  { name: 'Lieferanten', pfad: '/einstellungen/lieferanten' },
-  { name: 'Kostenpositionen', pfad: '/einstellungen/kostenpositionen' },
-  { name: 'Kanäle', pfad: '/einstellungen/kanaele' },
+const links = [
+  { name: 'Übersicht', path: '/' },
+  { name: 'Artikel', path: '/artikel' },
+  { name: 'Lieferanten', path: '/einstellungen/lieferanten' },
+  { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen' },
+  { name: 'Kanäle', path: '/einstellungen/kanaele' },
 ];
 
 // Beim Seitenwechsel schliessen, sonst bleibt die Liste ueber dem Inhalt stehen.
-watch(() => route.path, () => { offen.value = false; });
+watch(() => route.path, () => { open.value = false; });
 </script>
 
 <template>
@@ -35,27 +35,27 @@ watch(() => route.path, () => { offen.value = false; });
         size="sm"
         variant="ghost"
         color="neutral"
-        :icon="offen ? 'i-lucide-x' : 'i-lucide-menu'"
-        :aria-label="offen ? 'Navigation schließen' : 'Navigation öffnen'"
-        :aria-expanded="offen"
+        :icon="open ? 'i-lucide-x' : 'i-lucide-menu'"
+        :aria-label="open ? 'Navigation schließen' : 'Navigation öffnen'"
+        :aria-expanded="open"
         class="rounded-[8px]"
-        @click="offen = !offen"
+        @click="open = !open"
       />
     </div>
 
-    <nav v-if="offen" class="mt-2 space-y-0.5 pb-2" aria-label="Hauptnavigation">
+    <nav v-if="open" class="mt-2 space-y-0.5 pb-2" aria-label="Hauptnavigation">
       <NuxtLink
-        v-for="punkt in punkte"
-        :key="punkt.pfad"
-        :to="punkt.pfad"
+        v-for="link in links"
+        :key="link.path"
+        :to="link.path"
         class="block rounded-[8px] px-2 py-2 text-sm"
         :class="
-          route.path === punkt.pfad
+          route.path === link.path
             ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
             : 'text-zinc-600 dark:text-zinc-400'
         "
       >
-        {{ punkt.name }}
+        {{ link.name }}
       </NuxtLink>
     </nav>
   </div>

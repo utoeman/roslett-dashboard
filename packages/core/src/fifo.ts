@@ -8,18 +8,18 @@
  *
  * Alle Funktionen hier sind rein: die uebergebenen Chargen werden nie
  * veraendert, es entsteht stets eine neue Liste. Das macht die Vorschau im
- * Kalkulator gefahrlos – man kann einen Abgang durchrechnen, ohne etwas
- * zu buchen.
+ * Kalkulator gefahrlos – man kann einen Abgang durchrechnen, ohne etwas zu
+ * buchen.
  */
 
-import type { Cent } from './money.js';
-import { runde } from './money.js';
-import type { Charge, Chargenzuordnung, FifoErgebnis } from './types.js';
+import type { Cents } from './money.js';
+import { round } from './money.js';
+import type { Batch, BatchAllocation, FifoResult } from './types.js';
 
-export class FifoFehler extends Error {
-  constructor(nachricht: string) {
-    super(nachricht);
-    this.name = 'FifoFehler';
+export class FifoError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FifoError';
   }
 }
 
@@ -29,135 +29,139 @@ export class FifoFehler extends Error {
  * stabil und damit reproduzierbar ist – zwei Chargen aus derselben Lieferung
  * duerfen nicht je nach Datenbankreihenfolge unterschiedlich verbraucht werden.
  */
-export function sortiereFifo(chargen: readonly Charge[]): Charge[] {
-  return [...chargen].sort((a, b) => {
-    const diff = a.wareneingangAm.getTime() - b.wareneingangAm.getTime();
+export function sortFifo(batches: readonly Batch[]): Batch[] {
+  return [...batches].sort((a, b) => {
+    const diff = a.receivedAt.getTime() - b.receivedAt.getTime();
     if (diff !== 0) return diff;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 }
 
 /** Summe der Restmengen. */
-export function verfuegbareMenge(chargen: readonly Charge[]): number {
-  return chargen.reduce((s, c) => s + c.mengeRest, 0);
+export function availableQuantity(batches: readonly Batch[]): number {
+  return batches.reduce((total, batch) => total + batch.quantityRemaining, 0);
 }
 
 /**
  * Ordnet einen Abgang nach FIFO den vorhandenen Chargen zu.
  *
  * Reicht der Bestand nicht aus, wirft die Funktion nicht, sondern weist die
- * Fehlmenge als `ungedeckteMenge` aus. Ob ein Abgang ins Minus laufen darf,
+ * Fehlmenge als `uncoveredQuantity` aus. Ob ein Abgang ins Minus laufen darf,
  * ist eine fachliche Entscheidung der aufrufenden Ebene – Schwund und
- * Inventurdifferenzen erfordern gelegentlich genau das. Die Engine bleibt
- * an dieser Stelle bewusst wertfrei.
+ * Inventurdifferenzen erfordern gelegentlich genau das. Die Engine bleibt an
+ * dieser Stelle bewusst wertfrei.
  *
  * Der Wareneinsatz wird ueber die Einzelzuordnungen summiert. Da jeder
  * Chargen-Einstandspreis bereits ein gerundeter Cent-Wert ist, ist die Summe
- * ganzzahlig; `runde` ist hier reine Absicherung.
+ * ganzzahlig; `round` ist hier reine Absicherung.
  */
-export function ordneAbgangZu(
-  chargen: readonly Charge[],
-  menge: number,
-): FifoErgebnis {
-  if (!Number.isInteger(menge) || menge <= 0) {
-    throw new FifoFehler(
-      `Abgangsmenge muss eine positive Ganzzahl sein, erhalten: ${String(menge)}`,
+export function allocateIssue(
+  batches: readonly Batch[],
+  quantity: number,
+): FifoResult {
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new FifoError(
+      `Abgangsmenge muss eine positive Ganzzahl sein, erhalten: ${String(quantity)}`,
     );
   }
 
-  const sortiert = sortiereFifo(chargen);
-  const zuordnungen: Chargenzuordnung[] = [];
-  const nachher: Charge[] = [];
-  let offen = menge;
-  let wareneinsatz = 0;
+  const sorted = sortFifo(batches);
+  const allocations: BatchAllocation[] = [];
+  const after: Batch[] = [];
+  let open = quantity;
+  let costOfGoodsSold = 0;
 
-  for (const charge of sortiert) {
-    if (offen === 0 || charge.mengeRest <= 0) {
-      nachher.push(charge);
+  for (const batch of sorted) {
+    if (open === 0 || batch.quantityRemaining <= 0) {
+      after.push(batch);
       continue;
     }
-    const entnahme = Math.min(charge.mengeRest, offen);
-    zuordnungen.push({
-      chargeId: charge.id,
-      menge: entnahme,
-      einstandspreisEur: charge.einstandspreisEur,
+    const taken = Math.min(batch.quantityRemaining, open);
+    allocations.push({
+      batchId: batch.id,
+      quantity: taken,
+      landedCostEur: batch.landedCostEur,
     });
-    wareneinsatz += entnahme * charge.einstandspreisEur;
-    offen -= entnahme;
-    nachher.push({ ...charge, mengeRest: charge.mengeRest - entnahme });
+    costOfGoodsSold += taken * batch.landedCostEur;
+    open -= taken;
+    after.push({ ...batch, quantityRemaining: batch.quantityRemaining - taken });
   }
 
   return {
-    zuordnungen,
-    chargenNachher: nachher,
-    wareneinsatzEur: runde(wareneinsatz),
-    ungedeckteMenge: offen,
+    allocations,
+    batchesAfter: after,
+    costOfGoodsSoldEur: round(costOfGoodsSold),
+    uncoveredQuantity: open,
   };
 }
 
 /**
  * Bucht Zuordnungen zurueck – fuer Retouren und Stornos.
  *
- * Die Ware landet exakt in der Charge, aus der sie stammt. Genau dafuer werden
- * die Zuordnungen ueberhaupt persistiert: eine Retoure zum Tagespreis oder
- * zum Durchschnitt wuerde den Wareneinsatz vergangener Perioden verfaelschen.
+ * Die Ware landet exakt in der Charge, aus der sie stammt. Genau dafuer
+ * werden die Zuordnungen ueberhaupt persistiert: eine Retoure zum Tagespreis
+ * oder zum Durchschnitt wuerde den Wareneinsatz vergangener Perioden
+ * verfaelschen.
  *
  * Eine Rueckbuchung ueber die urspruengliche Eingangsmenge hinaus wird
  * abgelehnt, weil sie bedeuten wuerde, dass mehr zurueckkommt als je
  * geliefert wurde.
  */
-export function bucheZurueck(
-  chargen: readonly Charge[],
-  zuordnungen: readonly Chargenzuordnung[],
-): Charge[] {
-  const nachId = new Map(chargen.map((c) => [c.id, c]));
+export function returnToBatches(
+  batches: readonly Batch[],
+  allocations: readonly BatchAllocation[],
+): Batch[] {
+  const byId = new Map(batches.map((batch) => [batch.id, batch]));
 
-  for (const z of zuordnungen) {
-    if (!Number.isInteger(z.menge) || z.menge <= 0) {
-      throw new FifoFehler(
-        `Rueckbuchungsmenge muss eine positive Ganzzahl sein, erhalten: ${String(z.menge)}`,
+  for (const allocation of allocations) {
+    if (!Number.isInteger(allocation.quantity) || allocation.quantity <= 0) {
+      throw new FifoError(
+        `Rueckbuchungsmenge muss eine positive Ganzzahl sein, erhalten: ${String(allocation.quantity)}`,
       );
     }
-    const charge = nachId.get(z.chargeId);
-    if (charge === undefined) {
-      throw new FifoFehler(
-        `Charge ${z.chargeId} ist nicht bekannt und kann nichts zurueckerhalten.`,
+    const batch = byId.get(allocation.batchId);
+    if (batch === undefined) {
+      throw new FifoError(
+        `Charge ${allocation.batchId} ist nicht bekannt und kann nichts zurueckerhalten.`,
       );
     }
-    const neu = charge.mengeRest + z.menge;
-    if (neu > charge.mengeEingang) {
-      throw new FifoFehler(
-        `Charge ${z.chargeId}: Rueckbuchung von ${z.menge} ueberschreitet die Eingangsmenge ` +
-          `(Rest ${charge.mengeRest}, Eingang ${charge.mengeEingang}).`,
+    const updated = batch.quantityRemaining + allocation.quantity;
+    if (updated > batch.quantityReceived) {
+      throw new FifoError(
+        `Charge ${allocation.batchId}: Rueckbuchung von ${allocation.quantity} ueberschreitet die Eingangsmenge ` +
+          `(Rest ${batch.quantityRemaining}, Eingang ${batch.quantityReceived}).`,
       );
     }
-    nachId.set(z.chargeId, { ...charge, mengeRest: neu });
+    byId.set(allocation.batchId, { ...batch, quantityRemaining: updated });
   }
 
-  return chargen.map((c) => nachId.get(c.id) ?? c);
+  return batches.map((batch) => byId.get(batch.id) ?? batch);
 }
 
 /**
  * Wert des Bestands zu Einstandspreisen.
  *
- * Nicht zu verwechseln mit dem Wareneinsatz: dieser Wert bezieht sich auf das,
- * was noch liegt, nicht auf das, was abgegangen ist.
+ * Nicht zu verwechseln mit dem Wareneinsatz: dieser Wert bezieht sich auf
+ * das, was noch liegt, nicht auf das, was abgegangen ist.
  */
-export function bestandswert(chargen: readonly Charge[]): Cent {
-  return runde(
-    chargen.reduce((s, c) => s + c.mengeRest * c.einstandspreisEur, 0),
+export function stockValue(batches: readonly Batch[]): Cents {
+  return round(
+    batches.reduce(
+      (total, batch) => total + batch.quantityRemaining * batch.landedCostEur,
+      0,
+    ),
   );
 }
 
 /**
  * Gewichteter durchschnittlicher Einstandspreis des Restbestands.
  *
- * Dient nur der Anzeige. Bewertet und gebucht wird ausschliesslich nach FIFO;
- * ein Durchschnittspreis wuerde die Chargenzuordnung aufweichen.
+ * Dient nur der Anzeige. Bewertet und gebucht wird ausschliesslich nach
+ * FIFO; ein Durchschnittspreis wuerde die Chargenzuordnung aufweichen.
  * Ohne Restbestand ist das Ergebnis 0.
  */
-export function durchschnittlicherEinstand(chargen: readonly Charge[]): Cent {
-  const menge = verfuegbareMenge(chargen);
-  if (menge <= 0) return 0;
-  return runde(bestandswert(chargen) / menge);
+export function averageLandedCost(batches: readonly Batch[]): Cents {
+  const quantity = availableQuantity(batches);
+  if (quantity <= 0) return 0;
+  return round(stockValue(batches) / quantity);
 }

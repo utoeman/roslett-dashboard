@@ -1,77 +1,74 @@
 <script setup lang="ts">
-import type { Liste, Lieferant } from '~~/shared/typen/api';
+import type { List, Supplier } from '~~/shared/types/api';
 
 useHead({ title: 'Lieferanten' });
 
-const { leseFehler } = useApiFehler();
+const { readError } = useApiError();
 
-const mitArchivierten = ref(false);
-const { data, pending, refresh } = await useFetch<Liste<Lieferant>>(
-  '/api/lieferanten',
-  { query: { mitArchivierten } },
+const includeArchived = ref(false);
+const { data, pending, refresh } = await useFetch<List<Supplier>>(
+  '/api/suppliers',
+  { query: { includeArchived } },
 );
 
-const dialogOffen = ref(false);
-const speichert = ref(false);
-const meldung = ref<string | null>(null);
-const formularFehler = ref<Record<string, string>>({});
+const dialogOpen = ref(false);
+const saving = ref(false);
+const message = ref<string | null>(null);
+const fieldErrors = ref<Record<string, string>>({});
 
 /**
- * Derselbe Dialog legt an und bearbeitet. Ist `bearbeiteId` gesetzt, wird
+ * Derselbe Dialog legt an und bearbeitet. Ist `editingId` gesetzt, wird
  * gespeichert statt angelegt – so gibt es nur ein Formular zu pflegen und
  * beide Wege koennen nicht auseinanderlaufen.
  */
-const bearbeiteId = ref<string | null>(null);
-const form = reactive({ name: '', land: '', notiz: '' });
+const editingId = ref<string | null>(null);
+const form = reactive({ name: '', country: '', note: '' });
 
-function dialogOeffnen(lieferant?: Lieferant) {
-  meldung.value = null;
-  formularFehler.value = {};
-  bearbeiteId.value = lieferant?.id ?? null;
-  form.name = lieferant?.name ?? '';
-  form.land = lieferant?.land ?? '';
-  form.notiz = lieferant?.notiz ?? '';
-  dialogOffen.value = true;
+function openDialog(supplier?: Supplier) {
+  message.value = null;
+  fieldErrors.value = {};
+  editingId.value = supplier?.id ?? null;
+  form.name = supplier?.name ?? '';
+  form.country = supplier?.country ?? '';
+  form.note = supplier?.note ?? '';
+  dialogOpen.value = true;
 }
 
-async function speichern() {
-  speichert.value = true;
-  meldung.value = null;
-  formularFehler.value = {};
-  const rumpf = {
+async function save() {
+  saving.value = true;
+  message.value = null;
+  fieldErrors.value = {};
+  const body = {
     name: form.name,
-    land: form.land || null,
-    notiz: form.notiz || null,
+    country: form.country || null,
+    note: form.note || null,
   };
   try {
-    if (bearbeiteId.value) {
-      await $fetch(`/api/lieferanten/${bearbeiteId.value}`, {
-        method: 'PATCH',
-        body: rumpf,
-      });
+    if (editingId.value) {
+      await $fetch(`/api/suppliers/${editingId.value}`, { method: 'PATCH', body });
     } else {
-      await $fetch('/api/lieferanten', { method: 'POST', body: rumpf });
+      await $fetch('/api/suppliers', { method: 'POST', body });
     }
-    dialogOffen.value = false;
+    dialogOpen.value = false;
     await refresh();
-  } catch (fehler) {
-    const { meldung: text, felder } = leseFehler(fehler);
-    meldung.value = text;
-    formularFehler.value = felder;
+  } catch (err) {
+    const { message: text, fields } = readError(err);
+    message.value = text;
+    fieldErrors.value = fields;
   } finally {
-    speichert.value = false;
+    saving.value = false;
   }
 }
 
-async function archivierung(lieferant: Lieferant) {
+async function toggleArchived(supplier: Supplier) {
   try {
-    await $fetch(`/api/lieferanten/${lieferant.id}`, {
+    await $fetch(`/api/suppliers/${supplier.id}`, {
       method: 'PATCH',
-      body: { archiviertAm: lieferant.archiviertAm ? null : new Date().toISOString() },
+      body: { archivedAt: supplier.archivedAt ? null : new Date().toISOString() },
     });
     await refresh();
-  } catch (fehler) {
-    meldung.value = leseFehler(fehler).meldung;
+  } catch (err) {
+    message.value = readError(err).message;
   }
 }
 </script>
@@ -83,7 +80,7 @@ async function archivierung(lieferant: Lieferant) {
       hinweis="Herkunft der Chargen. Archivierte Lieferanten bleiben in bestehenden Chargen erhalten."
     >
       <template #aktionen>
-        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOeffnen()">
+        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog()">
           Lieferant anlegen
         </UButton>
       </template>
@@ -91,22 +88,22 @@ async function archivierung(lieferant: Lieferant) {
 
     <div class="px-6 py-4">
       <UAlert
-        v-if="meldung && !dialogOffen"
+        v-if="message && !dialogOpen"
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
         class="mb-4 rounded-[12px]"
-        :description="meldung"
+        :description="message"
       />
 
-      <UCheckbox v-model="mitArchivierten" label="Archivierte anzeigen" size="sm" class="mb-4" />
+      <UCheckbox v-model="includeArchived" label="Archivierte anzeigen" size="sm" class="mb-4" />
 
       <div v-if="pending && !data" class="py-12 text-center text-sm text-zinc-500">
         Wird geladen …
       </div>
 
       <div
-        v-else-if="!data?.eintraege.length"
+        v-else-if="!data?.items.length"
         class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
         style="border-width: 0.5px"
       >
@@ -134,14 +131,14 @@ async function archivierung(lieferant: Lieferant) {
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
             <tr
-              v-for="l in data.eintraege"
-              :key="l.id"
-              :class="{ 'text-zinc-400': l.archiviertAm }"
+              v-for="supplier in data.items"
+              :key="supplier.id"
+              :class="{ 'text-zinc-400': supplier.archivedAt }"
             >
               <td class="px-4 font-medium">
-                {{ l.name }}
+                {{ supplier.name }}
                 <UBadge
-                  v-if="l.archiviertAm"
+                  v-if="supplier.archivedAt"
                   size="sm"
                   color="neutral"
                   variant="subtle"
@@ -150,8 +147,8 @@ async function archivierung(lieferant: Lieferant) {
                   archiviert
                 </UBadge>
               </td>
-              <td class="px-4 text-zinc-500">{{ l.land ?? '–' }}</td>
-              <td class="max-w-md truncate px-4 text-zinc-500">{{ l.notiz ?? '–' }}</td>
+              <td class="px-4 text-zinc-500">{{ supplier.country ?? '–' }}</td>
+              <td class="max-w-md truncate px-4 text-zinc-500">{{ supplier.note ?? '–' }}</td>
               <td class="px-4">
                 <div class="flex justify-end gap-1">
                   <UButton
@@ -159,9 +156,9 @@ async function archivierung(lieferant: Lieferant) {
                     variant="ghost"
                     color="neutral"
                     icon="i-lucide-pencil"
-                    :aria-label="`${l.name} bearbeiten`"
+                    :aria-label="`${supplier.name} bearbeiten`"
                     class="rounded-[8px]"
-                    @click="dialogOeffnen(l)"
+                    @click="openDialog(supplier)"
                   >
                     Bearbeiten
                   </UButton>
@@ -169,12 +166,16 @@ async function archivierung(lieferant: Lieferant) {
                     size="xs"
                     variant="ghost"
                     color="neutral"
-                    :icon="l.archiviertAm ? 'i-lucide-archive-restore' : 'i-lucide-archive'"
-                    :aria-label="l.archiviertAm ? `${l.name} zurückholen` : `${l.name} archivieren`"
+                    :icon="supplier.archivedAt ? 'i-lucide-archive-restore' : 'i-lucide-archive'"
+                    :aria-label="
+                      supplier.archivedAt
+                        ? `${supplier.name} zurückholen`
+                        : `${supplier.name} archivieren`
+                    "
                     class="rounded-[8px]"
-                    @click="archivierung(l)"
+                    @click="toggleArchived(supplier)"
                   >
-                    {{ l.archiviertAm ? 'Zurückholen' : 'Archivieren' }}
+                    {{ supplier.archivedAt ? 'Zurückholen' : 'Archivieren' }}
                   </UButton>
                 </div>
               </td>
@@ -185,43 +186,43 @@ async function archivierung(lieferant: Lieferant) {
     </div>
 
     <UModal
-      v-model:open="dialogOffen"
-      :title="bearbeiteId ? 'Lieferant bearbeiten' : 'Lieferant anlegen'"
+      v-model:open="dialogOpen"
+      :title="editingId ? 'Lieferant bearbeiten' : 'Lieferant anlegen'"
     >
       <template #body>
-        <form class="space-y-4" @submit.prevent="speichern">
+        <form class="space-y-4" @submit.prevent="save">
           <UAlert
-            v-if="meldung"
+            v-if="message"
             color="error"
             variant="subtle"
             icon="i-lucide-circle-alert"
             class="rounded-[12px]"
-            :description="meldung"
+            :description="message"
           />
-          <UFormField label="Name" required :error="formularFehler.name">
+          <UFormField label="Name" required :error="fieldErrors.name">
             <UInput v-model="form.name" autofocus class="w-full" />
           </UFormField>
           <UFormField
             label="Land"
-            :error="formularFehler.land"
+            :error="fieldErrors.country"
             help="Zweistelliger Ländercode, etwa DE oder IT."
           >
-            <UInput v-model="form.land" maxlength="2" class="w-full uppercase" />
+            <UInput v-model="form.country" maxlength="2" class="w-full uppercase" />
           </UFormField>
-          <UFormField label="Notiz" :error="formularFehler.notiz">
-            <UTextarea v-model="form.notiz" :rows="2" class="w-full" />
+          <UFormField label="Notiz" :error="fieldErrors.note">
+            <UTextarea v-model="form.note" :rows="2" class="w-full" />
           </UFormField>
           <div class="flex justify-end gap-2 pt-2">
             <UButton
               color="neutral"
               variant="ghost"
               class="rounded-[8px]"
-              @click="dialogOffen = false"
+              @click="dialogOpen = false"
             >
               Abbrechen
             </UButton>
-            <UButton type="submit" :loading="speichert" class="rounded-[8px]">
-              {{ bearbeiteId ? 'Speichern' : 'Anlegen' }}
+            <UButton type="submit" :loading="saving" class="rounded-[8px]">
+              {{ editingId ? 'Speichern' : 'Anlegen' }}
             </UButton>
           </div>
         </form>

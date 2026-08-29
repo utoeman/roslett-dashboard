@@ -6,21 +6,21 @@
  * Marge nicht. Sie taucht in diesem Modul deshalb gar nicht auf.
  */
 
-import type { Cent, Satz } from './money.js';
-import { anteil, formatProzent, pruefeCent, runde } from './money.js';
+import type { Cents, Rate } from './money.js';
+import { assertCents, formatPercent, round, share } from './money.js';
 import type {
-  Kanal,
-  KanalpreisErgebnis,
-  Kostenposition,
-  Kostenzeile,
-  MargenErgebnis,
-  SelbstkostenErgebnis,
+  Channel,
+  ChannelPriceResult,
+  CostItem,
+  CostRow,
+  MarginResult,
+  TotalCostResult,
 } from './types.js';
 
-export class PreisFehler extends Error {
-  constructor(nachricht: string) {
-    super(nachricht);
-    this.name = 'PreisFehler';
+export class PricingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PricingError';
   }
 }
 
@@ -28,17 +28,19 @@ export class PreisFehler extends Error {
  * Waehlt die Kostenpositionen aus, die fuer eine Variante gelten:
  * alle aktiven globalen plus alle aktiven der Variante selbst.
  */
-export function positionenFuerVariante(
-  positionen: readonly Kostenposition[],
-  varianteId: string,
-): Kostenposition[] {
-  return positionen.filter(
-    (p) => p.aktiv && (p.varianteId === null || p.varianteId === varianteId),
+export function costItemsForVariant(
+  items: readonly CostItem[],
+  variantId: string,
+): CostItem[] {
+  return items.filter(
+    (item) =>
+      item.active && (item.variantId === null || item.variantId === variantId),
   );
 }
 
 /**
- * Berechnet die Selbstkosten je Stueck aus Einstandspreis und Kostenpositionen.
+ * Berechnet die Selbstkosten je Stueck aus Einstandspreis und
+ * Kostenpositionen.
  *
  * Prozentuale Positionen beziehen sich hier auf den Einstandspreis, nicht auf
  * den Verkaufspreis. Kosten, die am Verkaufspreis haengen – Kanalgebuehren
@@ -46,48 +48,48 @@ export function positionenFuerVariante(
  * ein, weil sie den gesuchten Preis voraussetzen.
  *
  * Vorsteuerabzugsfaehige Positionen werden zwar ausgewiesen, aber nicht
- * eingerechnet (Regel 3). Die Einfuhrumsatzsteuer ist der Standardfall:
- * sie wird gezahlt, aber zurueckgeholt und belastet die Marge nicht. Zoll
+ * eingerechnet (Regel 3). Die Einfuhrumsatzsteuer ist der Standardfall: sie
+ * wird gezahlt, aber zurueckgeholt und belastet die Marge nicht. Zoll
  * hingegen ist nicht abzugsfaehig und zaehlt voll mit.
  *
  * Gerundet wird erst am Schluss (Regel 10): die prozentualen Anteile bleiben
  * bis zur Summenbildung Fliesskomma.
  */
-export function berechneSelbstkosten(
-  einstandspreisEur: Cent,
-  positionen: readonly Kostenposition[],
-): SelbstkostenErgebnis {
-  pruefeCent(einstandspreisEur, 'Einstandspreis');
+export function calculateTotalCost(
+  landedCostEur: Cents,
+  items: readonly CostItem[],
+): TotalCostResult {
+  assertCents(landedCostEur, 'Einstandspreis');
 
-  const zeilen: Kostenzeile[] = [];
-  let aufschlagend = 0;
-  let vorsteuer = 0;
+  const rows: CostRow[] = [];
+  let chargeable = 0;
+  let inputTax = 0;
 
-  for (const p of positionen) {
-    if (!p.aktiv) continue;
-    const roh =
-      p.art === 'prozent'
-        ? anteil(einstandspreisEur, p.wert)
-        : pruefeCent(p.wert, `Kostenposition "${p.bezeichnung}"`);
+  for (const item of items) {
+    if (!item.active) continue;
+    const raw =
+      item.kind === 'percent'
+        ? share(landedCostEur, item.value)
+        : assertCents(item.value, `Kostenposition "${item.label}"`);
 
-    if (p.vorsteuerabzugsfaehig) {
-      vorsteuer += roh;
+    if (item.inputTaxDeductible) {
+      inputTax += raw;
     } else {
-      aufschlagend += roh;
+      chargeable += raw;
     }
 
-    zeilen.push({
-      bezeichnung: p.bezeichnung,
-      betragEur: runde(roh),
-      ausgenommen: p.vorsteuerabzugsfaehig,
+    rows.push({
+      label: item.label,
+      amountEur: round(raw),
+      excluded: item.inputTaxDeductible,
     });
   }
 
   return {
-    einstandspreisEur,
-    zeilen,
-    selbstkostenEur: runde(einstandspreisEur + aufschlagend),
-    vorsteuerEur: runde(vorsteuer),
+    landedCostEur,
+    rows,
+    totalCostEur: round(landedCostEur + chargeable),
+    inputTaxEur: round(inputTax),
   };
 }
 
@@ -109,24 +111,21 @@ export function berechneSelbstkosten(
  * den Aufschlag. Ein Fehler waere hier unangebracht, weil der Kalkulator
  * waehrend der Eingabe zwangslaeufig durch solche Zwischenzustaende laeuft.
  */
-export function berechneMarge(
-  verkaufspreisNettoEur: Cent,
-  selbstkostenEur: Cent,
-): MargenErgebnis {
-  pruefeCent(verkaufspreisNettoEur, 'Verkaufspreis');
-  pruefeCent(selbstkostenEur, 'Selbstkosten');
+export function calculateMargin(
+  salesPriceNetEur: Cents,
+  totalCostEur: Cents,
+): MarginResult {
+  assertCents(salesPriceNetEur, 'Verkaufspreis');
+  assertCents(totalCostEur, 'Selbstkosten');
 
-  const deckungsbeitrag = verkaufspreisNettoEur - selbstkostenEur;
+  const contributionMargin = salesPriceNetEur - totalCostEur;
 
   return {
-    verkaufspreisNettoEur,
-    selbstkostenEur,
-    deckungsbeitragEur: deckungsbeitrag,
-    marge:
-      verkaufspreisNettoEur === 0
-        ? 0
-        : deckungsbeitrag / verkaufspreisNettoEur,
-    aufschlag: selbstkostenEur === 0 ? 0 : deckungsbeitrag / selbstkostenEur,
+    salesPriceNetEur,
+    totalCostEur,
+    contributionMarginEur: contributionMargin,
+    margin: salesPriceNetEur === 0 ? 0 : contributionMargin / salesPriceNetEur,
+    markup: totalCostEur === 0 ? 0 : contributionMargin / totalCostEur,
   };
 }
 
@@ -145,104 +144,104 @@ export function berechneMarge(
  * frisst zusammen mit den Gebuehren bereits den gesamten Erloes. Ein hoeherer
  * Preis hilft dann nicht, weil Marge und Gebuehr proportional mitwachsen.
  */
-export function berechneVerkaufspreis(parameter: {
-  selbstkostenEur: Cent;
-  zielmarge: Satz;
-  gebuehrProzent?: Satz;
-  gebuehrFixEur?: Cent;
-}): Cent {
+export function calculateSalesPrice(parameters: {
+  totalCostEur: Cents;
+  targetMargin: Rate;
+  feePercent?: Rate;
+  feeFixedEur?: Cents;
+}): Cents {
   const {
-    selbstkostenEur,
-    zielmarge,
-    gebuehrProzent = 0,
-    gebuehrFixEur = 0,
-  } = parameter;
+    totalCostEur,
+    targetMargin,
+    feePercent = 0,
+    feeFixedEur = 0,
+  } = parameters;
 
-  pruefeCent(selbstkostenEur, 'Selbstkosten');
-  pruefeCent(gebuehrFixEur, 'Fixgebuehr');
+  assertCents(totalCostEur, 'Selbstkosten');
+  assertCents(feeFixedEur, 'Fixgebuehr');
 
-  if (!Number.isFinite(zielmarge)) {
-    throw new PreisFehler(`Zielmarge ist keine gueltige Zahl: ${String(zielmarge)}`);
-  }
-  if (!Number.isFinite(gebuehrProzent) || gebuehrProzent < 0) {
-    throw new PreisFehler(
-      `Gebuehrensatz muss endlich und nicht negativ sein, erhalten: ${String(gebuehrProzent)}`,
+  if (!Number.isFinite(targetMargin)) {
+    throw new PricingError(
+      `Zielmarge ist keine gueltige Zahl: ${String(targetMargin)}`,
     );
   }
-  if (zielmarge >= 1) {
-    throw new PreisFehler(
-      `Eine Zielmarge von ${formatProzent(zielmarge)} ist nicht erreichbar: ` +
+  if (!Number.isFinite(feePercent) || feePercent < 0) {
+    throw new PricingError(
+      `Gebuehrensatz muss endlich und nicht negativ sein, erhalten: ${String(feePercent)}`,
+    );
+  }
+  if (targetMargin >= 1) {
+    throw new PricingError(
+      `Eine Zielmarge von ${formatPercent(targetMargin)} ist nicht erreichbar: ` +
         'die Marge muss unter 100 % liegen, weil der Deckungsbeitrag Teil des Verkaufspreises ist.',
     );
   }
 
-  const nenner = 1 - zielmarge - gebuehrProzent;
-  if (nenner <= 0) {
+  const denominator = 1 - targetMargin - feePercent;
+  if (denominator <= 0) {
     // Fehlermeldungen werden dem Nutzer im Kalkulator angezeigt und muessen
     // deshalb deutsch formatiert sein, also mit Komma als Dezimaltrenner.
-    throw new PreisFehler(
-      `Zielmarge ${formatProzent(zielmarge)} und Gebuehren ` +
-        `${formatProzent(gebuehrProzent)} ergeben zusammen ` +
-        `${formatProzent(zielmarge + gebuehrProzent)} und lassen damit nichts ` +
+    throw new PricingError(
+      `Zielmarge ${formatPercent(targetMargin)} und Gebuehren ` +
+        `${formatPercent(feePercent)} ergeben zusammen ` +
+        `${formatPercent(targetMargin + feePercent)} und lassen damit nichts ` +
         'fuer die Selbstkosten uebrig. Es gibt keinen Verkaufspreis, der diese Vorgabe erfuellt. ' +
         'Zielmarge senken oder einen guenstigeren Kanal waehlen.',
     );
   }
 
-  return runde((selbstkostenEur + gebuehrFixEur) / nenner);
+  return round((totalCostEur + feeFixedEur) / denominator);
 }
 
 /**
  * Kanalpreis fuer eine Variante.
  *
- * Bei `preisregel: 'gleiche_marge'` wird der Preis so zurueckgerechnet, dass
+ * Bei `pricingRule: 'same_margin'` wird der Preis so zurueckgerechnet, dass
  * nach Abzug der Kanalgebuehren die Zielmarge stehen bleibt. Bei
- * `preisregel: 'fest'` gilt der uebergebene Preis, und berechnet wird nur,
+ * `pricingRule: 'fixed'` gilt der uebergebene Preis, und berechnet wird nur,
  * was davon uebrig bleibt – dann kann die tatsaechliche Marge unter der
  * Zielmarge liegen, was der Kalkulator so auch anzeigen soll.
  */
-export function berechneKanalpreis(parameter: {
-  kanal: Kanal;
-  selbstkostenEur: Cent;
-  zielmarge: Satz;
-  festpreisEur?: Cent;
-}): KanalpreisErgebnis {
-  const { kanal, selbstkostenEur, zielmarge, festpreisEur } = parameter;
-  pruefeCent(selbstkostenEur, 'Selbstkosten');
+export function calculateChannelPrice(parameters: {
+  channel: Channel;
+  totalCostEur: Cents;
+  targetMargin: Rate;
+  fixedPriceEur?: Cents;
+}): ChannelPriceResult {
+  const { channel, totalCostEur, targetMargin, fixedPriceEur } = parameters;
+  assertCents(totalCostEur, 'Selbstkosten');
 
-  let verkaufspreis: Cent;
-  if (kanal.preisregel === 'fest') {
-    if (festpreisEur === undefined) {
-      throw new PreisFehler(
-        `Kanal "${kanal.name}" hat die Preisregel "fest", es wurde aber kein Festpreis uebergeben.`,
+  let salesPrice: Cents;
+  if (channel.pricingRule === 'fixed') {
+    if (fixedPriceEur === undefined) {
+      throw new PricingError(
+        `Kanal "${channel.name}" hat die Preisregel "fest", es wurde aber kein Festpreis uebergeben.`,
       );
     }
-    verkaufspreis = pruefeCent(festpreisEur, 'Festpreis');
+    salesPrice = assertCents(fixedPriceEur, 'Festpreis');
   } else {
-    verkaufspreis = berechneVerkaufspreis({
-      selbstkostenEur,
-      zielmarge,
-      gebuehrProzent: kanal.gebuehrProzent,
-      gebuehrFixEur: kanal.gebuehrFix,
+    salesPrice = calculateSalesPrice({
+      totalCostEur,
+      targetMargin,
+      feePercent: channel.feePercent,
+      feeFixedEur: channel.feeFixed,
     });
   }
 
   // Erst hier runden: der prozentuale Gebuehrenanteil bleibt bis zur
   // Summenbildung mit der Fixgebuehr ungerundet (Regel 10).
-  const gebuehren = runde(
-    anteil(verkaufspreis, kanal.gebuehrProzent) + kanal.gebuehrFix,
-  );
-  const deckungsbeitrag = verkaufspreis - selbstkostenEur - gebuehren;
+  const fees = round(share(salesPrice, channel.feePercent) + channel.feeFixed);
+  const contributionMargin = salesPrice - totalCostEur - fees;
 
   return {
-    kanalId: kanal.id,
-    kanalName: kanal.name,
-    verkaufspreisNettoEur: verkaufspreis,
-    gebuehrenEur: gebuehren,
-    selbstkostenEur,
-    deckungsbeitragEur: deckungsbeitrag,
-    marge: verkaufspreis === 0 ? 0 : deckungsbeitrag / verkaufspreis,
-    aufschlag: selbstkostenEur === 0 ? 0 : deckungsbeitrag / selbstkostenEur,
+    channelId: channel.id,
+    channelName: channel.name,
+    salesPriceNetEur: salesPrice,
+    feesEur: fees,
+    totalCostEur,
+    contributionMarginEur: contributionMargin,
+    margin: salesPrice === 0 ? 0 : contributionMargin / salesPrice,
+    markup: totalCostEur === 0 ? 0 : contributionMargin / totalCostEur,
   };
 }
 
@@ -250,15 +249,14 @@ export function berechneKanalpreis(parameter: {
  * Zielmarge, die noetig ist, um bei gegebenem Verkaufspreis und Kanal
  * kostendeckend zu bleiben. Nuetzlich fuer die Warnschwelle im Regler.
  */
-export function mindestmarge(
-  selbstkostenEur: Cent,
-  kanal: Pick<Kanal, 'gebuehrProzent' | 'gebuehrFix'>,
-  verkaufspreisNettoEur: Cent,
-): Satz {
-  pruefeCent(selbstkostenEur, 'Selbstkosten');
-  pruefeCent(verkaufspreisNettoEur, 'Verkaufspreis');
-  if (verkaufspreisNettoEur === 0) return 0;
-  const gebuehren =
-    anteil(verkaufspreisNettoEur, kanal.gebuehrProzent) + kanal.gebuehrFix;
-  return (verkaufspreisNettoEur - selbstkostenEur - gebuehren) / verkaufspreisNettoEur;
+export function minimumMargin(
+  totalCostEur: Cents,
+  channel: Pick<Channel, 'feePercent' | 'feeFixed'>,
+  salesPriceNetEur: Cents,
+): Rate {
+  assertCents(totalCostEur, 'Selbstkosten');
+  assertCents(salesPriceNetEur, 'Verkaufspreis');
+  if (salesPriceNetEur === 0) return 0;
+  const fees = share(salesPriceNetEur, channel.feePercent) + channel.feeFixed;
+  return (salesPriceNetEur - totalCostEur - fees) / salesPriceNetEur;
 }

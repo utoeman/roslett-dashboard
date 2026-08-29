@@ -1,85 +1,87 @@
 /**
- * Geldarithmetik.
+ * Money arithmetic.
  *
- * Grundregel des gesamten Systems: Betraege leben intern ausschliesslich als
- * ganzzahlige Cent vom Typ `number`. Fliesskomma wird nur an der Systemgrenze
- * beruehrt – beim Parsen einer Nutzereingabe, beim Formatieren fuer die
- * Anzeige und beim Lesen aus der Datenbank. Alles dazwischen ist Ganzzahl.
+ * Kernregel des Systems: Betraege leben intern ausschliesslich als
+ * ganzzahlige Cent vom Typ `number`. Fliesskomma wird nur an der
+ * Systemgrenze beruehrt – beim Parsen einer Nutzereingabe, beim Formatieren
+ * fuer die Anzeige und beim Lesen aus der Datenbank. Alles dazwischen ist
+ * Ganzzahl.
  *
  * `number` traegt Ganzzahlen exakt bis 2^53-1. Das entspricht rund
- * 90 Billionen Euro in Cent und ist fuer diesen Anwendungsfall reichlich.
+ * 90 Billionen Euro in Cent und reicht fuer diesen Anwendungsfall.
  */
 
-/** Ganzzahlige Cent. Nominaler Typ, damit blanke Zahlen nicht versehentlich durchrutschen. */
-export type Cent = number;
+/** Integer cents. */
+export type Cents = number;
 
 /**
  * Ein Verhaeltnis als Dezimalzahl: 0.35 bedeutet 35 Prozent.
- * Prozentsaetze sind bewusst kein Cent-Typ – sie sind kein Geld und
- * duerfen zwischendrin volle Fliesskommagenauigkeit behalten (Regel 10).
+ * Raten sind bewusst kein Cent-Typ – sie sind kein Geld und duerfen
+ * zwischendrin volle Fliesskommagenauigkeit behalten (Regel 10).
  */
-export type Satz = number;
+export type Rate = number;
 
-export class GeldFehler extends Error {
-  constructor(nachricht: string) {
-    super(nachricht);
-    this.name = 'GeldFehler';
+export class MoneyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MoneyError';
   }
 }
 
-const ZWEI_HOCH_53 = Number.MAX_SAFE_INTEGER;
+const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
-/** Prueft, ob ein Wert ein gueltiger Cent-Betrag ist (ganzzahlig, endlich, im sicheren Bereich). */
-export function istCent(wert: unknown): wert is Cent {
+/** Prueft, ob ein Wert ein gueltiger Cent-Betrag ist. */
+export function isCents(value: unknown): value is Cents {
   return (
-    typeof wert === 'number' &&
-    Number.isInteger(wert) &&
-    Math.abs(wert) <= ZWEI_HOCH_53
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    Math.abs(value) <= MAX_SAFE
   );
 }
 
-/** Wirft, wenn `wert` kein gueltiger Cent-Betrag ist. Gibt ihn andernfalls zurueck. */
-export function pruefeCent(wert: number, feld = 'Betrag'): Cent {
-  if (!istCent(wert)) {
-    throw new GeldFehler(
-      `${feld} muss ein ganzzahliger Cent-Wert sein, erhalten: ${String(wert)}`,
+/** Wirft, wenn `value` kein gueltiger Cent-Betrag ist. */
+export function assertCents(value: number, field = 'Betrag'): Cents {
+  if (!isCents(value)) {
+    throw new MoneyError(
+      `${field} muss ein ganzzahliger Cent-Wert sein, erhalten: ${String(value)}`,
     );
   }
-  return wert;
+  return value;
 }
 
 /**
  * Kaufmaennische Rundung auf die Ganzzahl, symmetrisch um null.
  *
  * `Math.round` rundet -0.5 auf -0, also zur Null hin, waehrend +0.5 von der
- * Null weg gerundet wird. Diese Asymmetrie ist bei Gutschriften und
- * Retouren falsch, deshalb der eigene Weg ueber den Betrag.
+ * Null weg gerundet wird. Diese Asymmetrie ist bei Gutschriften und Retouren
+ * falsch, deshalb der eigene Weg ueber den Betrag.
  */
-export function runde(wert: number): Cent {
-  if (!Number.isFinite(wert)) {
-    throw new GeldFehler(`Nicht rundbarer Wert: ${String(wert)}`);
+export function round(value: number): Cents {
+  if (!Number.isFinite(value)) {
+    throw new MoneyError(`Nicht rundbarer Wert: ${String(value)}`);
   }
-  const vorzeichen = wert < 0 ? -1 : 1;
-  return vorzeichen * Math.round(Math.abs(wert));
+  const sign = value < 0 ? -1 : 1;
+  return sign * Math.round(Math.abs(value));
 }
 
 /**
- * Wandelt Euro (Fliesskomma) in Cent. Nur an der Systemgrenze verwenden.
+ * Wandelt Euro in Cent. Nur an der Systemgrenze verwenden.
  *
- * Der Umweg ueber `toFixed` faengt Faelle wie 19.99 * 100 = 1998.9999999999998 ab,
- * die bei direkter Multiplikation einen Cent verlieren wuerden.
+ * Der Umweg ueber `toFixed` faengt Faelle wie 19.99 * 100 =
+ * 1998.9999999999998 ab, die bei direkter Multiplikation einen Cent
+ * verlieren wuerden.
  */
-export function euroZuCent(euro: number): Cent {
-  if (!Number.isFinite(euro)) {
-    throw new GeldFehler(`Kein gueltiger Euro-Betrag: ${String(euro)}`);
+export function eurosToCents(euros: number): Cents {
+  if (!Number.isFinite(euros)) {
+    throw new MoneyError(`Kein gueltiger Euro-Betrag: ${String(euros)}`);
   }
-  return runde(Number.parseFloat((euro * 100).toFixed(4)));
+  return round(Number.parseFloat((euros * 100).toFixed(4)));
 }
 
-/** Wandelt Cent in Euro als Fliesskomma. Nur fuer Anzeige und Systemgrenze. */
-export function centZuEuro(cent: Cent): number {
-  pruefeCent(cent);
-  return cent / 100;
+/** Wandelt Cent in Euro. Nur fuer Anzeige und Systemgrenze. */
+export function centsToEuros(cents: Cents): number {
+  assertCents(cents);
+  return cents / 100;
 }
 
 /**
@@ -89,140 +91,141 @@ export function centZuEuro(cent: Cent): number {
  * "1234,56", "1234.56", "12", "-3,40", "€ 9,99". Die Unterscheidung laeuft
  * ueber das *letzte* auftretende Trennzeichen: es gilt als Dezimaltrenner,
  * alle uebrigen als Tausenderpunkte. Bei einem einzelnen Trennzeichen mit
- * genau drei Nachkommastellen ("1.234") wird es als Tausendertrenner gelesen,
- * weil das im deutschen Sprachraum die weit haeufigere Absicht ist.
+ * genau drei Nachkommastellen ("1.234") wird es als Tausendertrenner
+ * gelesen, weil das im deutschen Sprachraum die haeufigere Absicht ist.
  */
-export function parseGeld(eingabe: string): Cent {
-  const roh = eingabe.trim();
-  if (roh === '') {
-    throw new GeldFehler('Leere Eingabe ist kein Betrag.');
+export function parseMoney(input: string): Cents {
+  const raw = input.trim();
+  if (raw === '') {
+    throw new MoneyError('Leere Eingabe ist kein Betrag.');
   }
 
-  // Waehrungssymbole, Codes und Leerzeichen entfernen.
-  let text = roh.replace(/[€$£\s]/g, '').replace(/(EUR|USD|GBP)/gi, '');
+  let text = raw.replace(/[€$£\s]/g, '').replace(/(EUR|USD|GBP)/gi, '');
 
-  let negativ = false;
+  let negative = false;
   if (text.startsWith('-')) {
-    negativ = true;
+    negative = true;
     text = text.slice(1);
   } else if (text.startsWith('+')) {
     text = text.slice(1);
   }
   // Buchhalterische Klammerschreibweise: (12,50) bedeutet -12,50.
   if (text.startsWith('(') && text.endsWith(')')) {
-    negativ = true;
+    negative = true;
     text = text.slice(1, -1);
   }
 
   if (!/^[\d.,]+$/.test(text)) {
-    throw new GeldFehler(`Kein gueltiger Betrag: "${eingabe}"`);
+    throw new MoneyError(`Kein gueltiger Betrag: "${input}"`);
   }
 
-  const letzterPunkt = text.lastIndexOf('.');
-  const letztesKomma = text.lastIndexOf(',');
-  const trennerPos = Math.max(letzterPunkt, letztesKomma);
+  const lastDot = text.lastIndexOf('.');
+  const lastComma = text.lastIndexOf(',');
+  const separatorAt = Math.max(lastDot, lastComma);
 
-  let ganz: string;
-  let bruch: string;
+  let whole: string;
+  let fraction: string;
 
-  if (trennerPos === -1) {
-    ganz = text;
-    bruch = '';
+  if (separatorAt === -1) {
+    whole = text;
+    fraction = '';
   } else {
-    const nachTrenner = text.slice(trennerPos + 1);
-    // trennerPos stammt aus lastIndexOf und liegt damit im gueltigen Bereich;
-    // der Fallback befriedigt nur noUncheckedIndexedAccess.
-    const trenner = text.charAt(trennerPos);
+    const afterSeparator = text.slice(separatorAt + 1);
+    const separator = text.charAt(separatorAt);
     // Genau drei Ziffern hinter einem einzelnen Punkt oder Komma:
     // Tausendertrenner, nicht Dezimaltrenner.
-    const nurEinTrenner =
-      text.indexOf(trenner) === trennerPos &&
-      (trenner === '.' ? letztesKomma : letzterPunkt) === -1;
-    if (nachTrenner.length === 3 && nurEinTrenner) {
-      ganz = text.replace(/[.,]/g, '');
-      bruch = '';
+    const singleSeparator =
+      text.indexOf(separator) === separatorAt &&
+      (separator === '.' ? lastComma : lastDot) === -1;
+    if (afterSeparator.length === 3 && singleSeparator) {
+      whole = text.replace(/[.,]/g, '');
+      fraction = '';
     } else {
-      ganz = text.slice(0, trennerPos).replace(/[.,]/g, '');
-      bruch = nachTrenner;
+      whole = text.slice(0, separatorAt).replace(/[.,]/g, '');
+      fraction = afterSeparator;
     }
   }
 
-  if (!/^\d*$/.test(bruch)) {
-    throw new GeldFehler(`Kein gueltiger Betrag: "${eingabe}"`);
+  if (!/^\d*$/.test(fraction)) {
+    throw new MoneyError(`Kein gueltiger Betrag: "${input}"`);
   }
 
-  const ganzZahl = ganz === '' ? 0 : Number.parseInt(ganz, 10);
-  if (!Number.isFinite(ganzZahl)) {
-    throw new GeldFehler(`Kein gueltiger Betrag: "${eingabe}"`);
+  const wholeNumber = whole === '' ? 0 : Number.parseInt(whole, 10);
+  if (!Number.isFinite(wholeNumber)) {
+    throw new MoneyError(`Kein gueltiger Betrag: "${input}"`);
   }
 
   // Nachkommastellen jenseits der zweiten werden gerundet, nicht abgeschnitten.
-  const bruchGefuellt = (bruch + '00').slice(0, 2);
-  const bruchCent = Number.parseInt(bruchGefuellt, 10);
-  const rest = bruch.length > 2 ? Number.parseFloat('0.' + bruch.slice(2)) : 0;
+  const paddedFraction = (fraction + '00').slice(0, 2);
+  const fractionCents = Number.parseInt(paddedFraction, 10);
+  const rest =
+    fraction.length > 2 ? Number.parseFloat('0.' + fraction.slice(2)) : 0;
 
-  const cent = runde(ganzZahl * 100 + bruchCent + rest);
-  return negativ ? -cent : cent;
+  const cents = round(wholeNumber * 100 + fractionCents + rest);
+  return negative ? -cents : cents;
 }
 
-/** Formatiert Cent als deutschen Geldstring, standardmaessig mit Euro-Zeichen. */
-export function formatGeld(
-  cent: Cent,
-  optionen: { waehrung?: string; mitSymbol?: boolean } = {},
+/** Formatiert Cent als deutschen Geldstring. */
+export function formatMoney(
+  cents: Cents,
+  options: { currency?: string; withSymbol?: boolean } = {},
 ): string {
-  pruefeCent(cent);
-  const { waehrung = 'EUR', mitSymbol = true } = optionen;
+  assertCents(cents);
+  const { currency = 'EUR', withSymbol = true } = options;
   return new Intl.NumberFormat('de-DE', {
-    style: mitSymbol ? 'currency' : 'decimal',
-    currency: waehrung,
+    style: withSymbol ? 'currency' : 'decimal',
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(cent / 100);
+  }).format(cents / 100);
 }
 
-/** Formatiert einen Satz (0.35) als Prozentangabe ("35,0 %"). */
-export function formatProzent(satz: Satz, nachkommastellen = 1): string {
+/** Formatiert eine Rate (0.35) als Prozentangabe ("35,0 %"). */
+export function formatPercent(rate: Rate, fractionDigits = 1): string {
   return new Intl.NumberFormat('de-DE', {
     style: 'percent',
-    minimumFractionDigits: nachkommastellen,
-    maximumFractionDigits: nachkommastellen,
-  }).format(satz);
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(rate);
 }
 
 /**
  * Rechnet einen Fremdwaehrungsbetrag mit eingefrorenem Kurs in Euro-Cent um.
  *
- * `kurs` ist der Wert einer Einheit Fremdwaehrung in Euro: bei 1 USD = 0,92 EUR
- * lautet der Kurs 0.92. Das Ergebnis wird sofort gerundet, weil es persistiert
- * wird und damit das Ende einer Rechenkette bildet (Regel 6 und 10).
+ * `rate` ist der Wert einer Einheit Fremdwaehrung in Euro: bei
+ * 1 USD = 0,92 EUR lautet der Kurs 0.92. Das Ergebnis wird sofort gerundet,
+ * weil es persistiert wird und damit das Ende einer Rechenkette bildet
+ * (Regel 6 und 10).
  */
-export function fremdZuEur(betragFremd: Cent, kurs: number): Cent {
-  pruefeCent(betragFremd, 'Fremdwaehrungsbetrag');
-  if (!Number.isFinite(kurs) || kurs <= 0) {
-    throw new GeldFehler(`Wechselkurs muss groesser als null sein, erhalten: ${String(kurs)}`);
+export function foreignToEur(foreignAmount: Cents, rate: number): Cents {
+  assertCents(foreignAmount, 'Fremdwaehrungsbetrag');
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new MoneyError(
+      `Wechselkurs muss groesser als null sein, erhalten: ${String(rate)}`,
+    );
   }
-  return runde(betragFremd * kurs);
+  return round(foreignAmount * rate);
 }
 
 /** Summiert Cent-Betraege. Leere Liste ergibt 0. */
-export function summe(betraege: readonly Cent[]): Cent {
-  let s = 0;
-  for (const b of betraege) {
-    s += pruefeCent(b);
+export function sum(amounts: readonly Cents[]): Cents {
+  let total = 0;
+  for (const amount of amounts) {
+    total += assertCents(amount);
   }
-  return s;
+  return total;
 }
 
 /**
- * Wendet einen Prozentsatz auf einen Betrag an, ohne zu runden.
+ * Wendet eine Rate auf einen Betrag an, ohne zu runden.
  * Das Runden gehoert ans Ende der Kette, nicht hierher (Regel 10).
  */
-export function anteil(betrag: Cent, satz: Satz): number {
-  pruefeCent(betrag);
-  if (!Number.isFinite(satz)) {
-    throw new GeldFehler(`Kein gueltiger Satz: ${String(satz)}`);
+export function share(amount: Cents, rate: Rate): number {
+  assertCents(amount);
+  if (!Number.isFinite(rate)) {
+    throw new MoneyError(`Keine gueltige Rate: ${String(rate)}`);
   }
-  return betrag * satz;
+  return amount * rate;
 }
 
 /**
@@ -240,47 +243,48 @@ export function anteil(betrag: Cent, satz: Satz): number {
  * Sind alle Gewichte null, wird gleichmaessig verteilt – sonst waere das
  * Ergebnis undefiniert und der Betrag ginge verloren.
  */
-export function verteileNachGewicht(
-  betrag: Cent,
-  gewichte: readonly number[],
-): Cent[] {
-  pruefeCent(betrag, 'Zu verteilender Betrag');
-  if (gewichte.length === 0) {
-    throw new GeldFehler('Ohne Positionen laesst sich kein Betrag verteilen.');
+export function distributeByWeight(
+  amount: Cents,
+  weights: readonly number[],
+): Cents[] {
+  assertCents(amount, 'Zu verteilender Betrag');
+  if (weights.length === 0) {
+    throw new MoneyError('Ohne Positionen laesst sich kein Betrag verteilen.');
   }
-  for (const g of gewichte) {
-    if (!Number.isFinite(g) || g < 0) {
-      throw new GeldFehler(`Gewicht muss endlich und nicht negativ sein, erhalten: ${String(g)}`);
+  for (const weight of weights) {
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new MoneyError(
+        `Gewicht muss endlich und nicht negativ sein, erhalten: ${String(weight)}`,
+      );
     }
   }
 
-  const gesamtgewicht = gewichte.reduce((a, b) => a + b, 0);
-  const effektiv =
-    gesamtgewicht === 0 ? gewichte.map(() => 1) : (gewichte as number[]);
-  const effektivGesamt = gesamtgewicht === 0 ? gewichte.length : gesamtgewicht;
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const effective = totalWeight === 0 ? weights.map(() => 1) : (weights as number[]);
+  const effectiveTotal = totalWeight === 0 ? weights.length : totalWeight;
 
-  const exakt = effektiv.map((g) => (betrag * g) / effektivGesamt);
+  const exact = effective.map((w) => (amount * w) / effectiveTotal);
   // Zur Null hin abschneiden, damit die Verteilung bei negativen Betraegen
   // (Korrekturen, Gutschriften) spiegelbildlich zur positiven laeuft.
-  const abgerundet = exakt.map((w) => Math.trunc(w));
-  const verteilt = abgerundet.reduce((a, b) => a + b, 0);
-  let rest = betrag - verteilt;
+  const floored = exact.map((v) => Math.trunc(v));
+  const distributed = floored.reduce((a, b) => a + b, 0);
+  let rest = amount - distributed;
 
-  const nachIndex = exakt
-    .map((w, i) => ({ i, bruch: Math.abs(w - Math.trunc(w)) }))
-    .sort((a, b) => b.bruch - a.bruch || a.i - b.i);
+  const byFraction = exact
+    .map((v, i) => ({ i, fraction: Math.abs(v - Math.trunc(v)) }))
+    .sort((a, b) => b.fraction - a.fraction || a.i - b.i);
 
-  const ergebnis = [...abgerundet];
-  const schritt = rest < 0 ? -1 : 1;
-  let pos = 0;
+  const result = [...floored];
+  const step = rest < 0 ? -1 : 1;
+  let position = 0;
   while (rest !== 0) {
-    const eintrag = nachIndex[pos % nachIndex.length];
+    const entry = byFraction[position % byFraction.length];
     /* c8 ignore next */
-    if (eintrag === undefined) break;
-    ergebnis[eintrag.i] = (ergebnis[eintrag.i] ?? 0) + schritt;
-    rest -= schritt;
-    pos += 1;
+    if (entry === undefined) break;
+    result[entry.i] = (result[entry.i] ?? 0) + step;
+    rest -= step;
+    position += 1;
   }
 
-  return ergebnis;
+  return result;
 }

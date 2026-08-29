@@ -1,11 +1,11 @@
 {
-  "id": "8a29f798-4b58-4575-8269-9491bd6183d1",
+  "id": "9a1c4888-e5be-40db-9084-f6b4343615e9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.bestandsbuchungen": {
-      "name": "bestandsbuchungen",
+    "public.batch_allocations": {
+      "name": "batch_allocations",
       "schema": "",
       "columns": {
         "id": {
@@ -15,71 +15,37 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "variante_id": {
-          "name": "variante_id",
+        "stock_entry_id": {
+          "name": "stock_entry_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "art": {
-          "name": "art",
-          "type": "buchungsart",
-          "typeSchema": "public",
+        "batch_id": {
+          "name": "batch_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "menge": {
-          "name": "menge",
+        "quantity": {
+          "name": "quantity",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "gebucht_am": {
-          "name": "gebucht_am",
-          "type": "timestamp with time zone",
+        "landed_cost_eur": {
+          "name": "landed_cost_eur",
+          "type": "numeric(14, 4)",
           "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "notiz": {
-          "name": "notiz",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quelle": {
-          "name": "quelle",
-          "type": "buchungsquelle",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'manuell'"
-        },
-        "externe_referenz": {
-          "name": "externe_referenz",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "storniert_von_id": {
-          "name": "storniert_von_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {
-        "buchungen_variante_idx": {
-          "name": "buchungen_variante_idx",
+        "batch_allocations_stock_entry_idx": {
+          "name": "batch_allocations_stock_entry_idx",
           "columns": [
             {
-              "expression": "variante_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "gebucht_am",
+              "expression": "stock_entry_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -90,30 +56,42 @@
           "method": "btree",
           "with": {}
         },
-        "buchungen_externe_referenz_idx": {
-          "name": "buchungen_externe_referenz_idx",
+        "batch_allocations_batch_idx": {
+          "name": "batch_allocations_batch_idx",
           "columns": [
             {
-              "expression": "externe_referenz",
+              "expression": "batch_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
-          "where": "\"bestandsbuchungen\".\"externe_referenz\" is not null",
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "bestandsbuchungen_variante_id_varianten_id_fk": {
-          "name": "bestandsbuchungen_variante_id_varianten_id_fk",
-          "tableFrom": "bestandsbuchungen",
-          "tableTo": "varianten",
+        "batch_allocations_stock_entry_id_stock_entries_id_fk": {
+          "name": "batch_allocations_stock_entry_id_stock_entries_id_fk",
+          "tableFrom": "batch_allocations",
+          "tableTo": "stock_entries",
           "columnsFrom": [
-            "variante_id"
+            "stock_entry_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "batch_allocations_batch_id_batches_id_fk": {
+          "name": "batch_allocations_batch_id_batches_id_fk",
+          "tableFrom": "batch_allocations",
+          "tableTo": "batches",
+          "columnsFrom": [
+            "batch_id"
           ],
           "columnsTo": [
             "id"
@@ -128,8 +106,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.chargen": {
-      "name": "chargen",
+    "public.batches": {
+      "name": "batches",
       "schema": "",
       "columns": {
         "id": {
@@ -139,95 +117,95 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "variante_id": {
-          "name": "variante_id",
+        "variant_id": {
+          "name": "variant_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "lieferant_id": {
-          "name": "lieferant_id",
+        "supplier_id": {
+          "name": "supplier_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "wareneingang_am": {
-          "name": "wareneingang_am",
+        "received_at": {
+          "name": "received_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "menge_eingang": {
-          "name": "menge_eingang",
+        "quantity_received": {
+          "name": "quantity_received",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "menge_rest": {
-          "name": "menge_rest",
+        "quantity_remaining": {
+          "name": "quantity_remaining",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "einkaufspreis_fremd": {
-          "name": "einkaufspreis_fremd",
+        "purchase_price_foreign": {
+          "name": "purchase_price_foreign",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": true
         },
-        "waehrung": {
-          "name": "waehrung",
+        "currency": {
+          "name": "currency",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "'EUR'"
         },
-        "wechselkurs": {
-          "name": "wechselkurs",
+        "exchange_rate": {
+          "name": "exchange_rate",
           "type": "numeric(14, 6)",
           "primaryKey": false,
           "notNull": true,
           "default": "'1.000000'"
         },
-        "einkaufspreis_eur": {
-          "name": "einkaufspreis_eur",
+        "purchase_price_eur": {
+          "name": "purchase_price_eur",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": true
         },
-        "nebenkosten_eur": {
-          "name": "nebenkosten_eur",
+        "additional_costs_eur": {
+          "name": "additional_costs_eur",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": true,
           "default": "'0'"
         },
-        "einstandspreis_eur": {
-          "name": "einstandspreis_eur",
+        "landed_cost_eur": {
+          "name": "landed_cost_eur",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": true
         },
-        "notiz": {
-          "name": "notiz",
+        "note": {
+          "name": "note",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         }
       },
       "indexes": {
-        "chargen_fifo_idx": {
-          "name": "chargen_fifo_idx",
+        "batches_fifo_idx": {
+          "name": "batches_fifo_idx",
           "columns": [
             {
-              "expression": "variante_id",
+              "expression": "variant_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "wareneingang_am",
+              "expression": "received_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -240,12 +218,12 @@
         }
       },
       "foreignKeys": {
-        "chargen_variante_id_varianten_id_fk": {
-          "name": "chargen_variante_id_varianten_id_fk",
-          "tableFrom": "chargen",
-          "tableTo": "varianten",
+        "batches_variant_id_variants_id_fk": {
+          "name": "batches_variant_id_variants_id_fk",
+          "tableFrom": "batches",
+          "tableTo": "variants",
           "columnsFrom": [
-            "variante_id"
+            "variant_id"
           ],
           "columnsTo": [
             "id"
@@ -253,114 +231,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "chargen_lieferant_id_lieferanten_id_fk": {
-          "name": "chargen_lieferant_id_lieferanten_id_fk",
-          "tableFrom": "chargen",
-          "tableTo": "lieferanten",
+        "batches_supplier_id_suppliers_id_fk": {
+          "name": "batches_supplier_id_suppliers_id_fk",
+          "tableFrom": "batches",
+          "tableTo": "suppliers",
           "columnsFrom": [
-            "lieferant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.chargenzuordnungen": {
-      "name": "chargenzuordnungen",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "buchung_id": {
-          "name": "buchung_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "charge_id": {
-          "name": "charge_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "menge": {
-          "name": "menge",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "einstandspreis_eur": {
-          "name": "einstandspreis_eur",
-          "type": "numeric(14, 4)",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "chargenzuordnungen_buchung_idx": {
-          "name": "chargenzuordnungen_buchung_idx",
-          "columns": [
-            {
-              "expression": "buchung_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chargenzuordnungen_charge_idx": {
-          "name": "chargenzuordnungen_charge_idx",
-          "columns": [
-            {
-              "expression": "charge_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "chargenzuordnungen_buchung_id_bestandsbuchungen_id_fk": {
-          "name": "chargenzuordnungen_buchung_id_bestandsbuchungen_id_fk",
-          "tableFrom": "chargenzuordnungen",
-          "tableTo": "bestandsbuchungen",
-          "columnsFrom": [
-            "buchung_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "chargenzuordnungen_charge_id_chargen_id_fk": {
-          "name": "chargenzuordnungen_charge_id_chargen_id_fk",
-          "tableFrom": "chargenzuordnungen",
-          "tableTo": "chargen",
-          "columnsFrom": [
-            "charge_id"
+            "supplier_id"
           ],
           "columnsTo": [
             "id"
@@ -375,8 +251,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.kanaele": {
-      "name": "kanaele",
+    "public.channel_prices": {
+      "name": "channel_prices",
       "schema": "",
       "columns": {
         "id": {
@@ -386,87 +262,32 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "gebuehr_prozent": {
-          "name": "gebuehr_prozent",
-          "type": "numeric(6, 4)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0'"
-        },
-        "gebuehr_fix": {
-          "name": "gebuehr_fix",
-          "type": "numeric(14, 4)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0'"
-        },
-        "preisregel": {
-          "name": "preisregel",
-          "type": "preisregel",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'gleiche_marge'"
-        },
-        "aktiv": {
-          "name": "aktiv",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.kanalpreise": {
-      "name": "kanalpreise",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "variante_id": {
-          "name": "variante_id",
+        "variant_id": {
+          "name": "variant_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "kanal_id": {
-          "name": "kanal_id",
+        "channel_id": {
+          "name": "channel_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "vorgeschlagener_preis": {
-          "name": "vorgeschlagener_preis",
+        "suggested_price": {
+          "name": "suggested_price",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": false
         },
-        "gelisteter_preis": {
-          "name": "gelisteter_preis",
+        "listed_price": {
+          "name": "listed_price",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": false
         },
-        "aktualisiert_am": {
-          "name": "aktualisiert_am",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -474,17 +295,17 @@
         }
       },
       "indexes": {
-        "kanalpreise_variante_kanal_idx": {
-          "name": "kanalpreise_variante_kanal_idx",
+        "channel_prices_variant_channel_idx": {
+          "name": "channel_prices_variant_channel_idx",
           "columns": [
             {
-              "expression": "variante_id",
+              "expression": "variant_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "kanal_id",
+              "expression": "channel_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -497,12 +318,12 @@
         }
       },
       "foreignKeys": {
-        "kanalpreise_variante_id_varianten_id_fk": {
-          "name": "kanalpreise_variante_id_varianten_id_fk",
-          "tableFrom": "kanalpreise",
-          "tableTo": "varianten",
+        "channel_prices_variant_id_variants_id_fk": {
+          "name": "channel_prices_variant_id_variants_id_fk",
+          "tableFrom": "channel_prices",
+          "tableTo": "variants",
           "columnsFrom": [
-            "variante_id"
+            "variant_id"
           ],
           "columnsTo": [
             "id"
@@ -510,12 +331,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "kanalpreise_kanal_id_kanaele_id_fk": {
-          "name": "kanalpreise_kanal_id_kanaele_id_fk",
-          "tableFrom": "kanalpreise",
-          "tableTo": "kanaele",
+        "channel_prices_channel_id_channels_id_fk": {
+          "name": "channel_prices_channel_id_channels_id_fk",
+          "tableFrom": "channel_prices",
+          "tableTo": "channels",
           "columnsFrom": [
-            "kanal_id"
+            "channel_id"
           ],
           "columnsTo": [
             "id"
@@ -530,8 +351,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.kostenpositionen": {
-      "name": "kostenpositionen",
+    "public.channels": {
+      "name": "channels",
       "schema": "",
       "columns": {
         "id": {
@@ -541,60 +362,115 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "variante_id": {
-          "name": "variante_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bezeichnung": {
-          "name": "bezeichnung",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "art": {
-          "name": "art",
-          "type": "kostenposition_art",
+        "fee_percent": {
+          "name": "fee_percent",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "fee_fixed": {
+          "name": "fee_fixed",
+          "type": "numeric(14, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "pricing_rule": {
+          "name": "pricing_rule",
+          "type": "pricing_rule",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'same_margin'"
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cost_items": {
+      "name": "cost_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "variant_id": {
+          "name": "variant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "cost_item_kind",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "wert": {
-          "name": "wert",
+        "value": {
+          "name": "value",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": true
         },
-        "vorsteuerabzugsfaehig": {
-          "name": "vorsteuerabzugsfaehig",
+        "input_tax_deductible": {
+          "name": "input_tax_deductible",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
           "default": false
         },
-        "aktiv": {
-          "name": "aktiv",
+        "active": {
+          "name": "active",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
           "default": true
         },
-        "verteilmethode": {
-          "name": "verteilmethode",
-          "type": "verteilmethode",
+        "distribution_method": {
+          "name": "distribution_method",
+          "type": "distribution_method",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'wert'"
+          "default": "'value'"
         }
       },
       "indexes": {
-        "kostenpositionen_variante_idx": {
-          "name": "kostenpositionen_variante_idx",
+        "cost_items_variant_idx": {
+          "name": "cost_items_variant_idx",
           "columns": [
             {
-              "expression": "variante_id",
+              "expression": "variant_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -607,12 +483,12 @@
         }
       },
       "foreignKeys": {
-        "kostenpositionen_variante_id_varianten_id_fk": {
-          "name": "kostenpositionen_variante_id_varianten_id_fk",
-          "tableFrom": "kostenpositionen",
-          "tableTo": "varianten",
+        "cost_items_variant_id_variants_id_fk": {
+          "name": "cost_items_variant_id_variants_id_fk",
+          "tableFrom": "cost_items",
+          "tableTo": "variants",
           "columnsFrom": [
-            "variante_id"
+            "variant_id"
           ],
           "columnsTo": [
             "id"
@@ -627,8 +503,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.lieferanten": {
-      "name": "lieferanten",
+    "public.products": {
+      "name": "products",
       "schema": "",
       "columns": {
         "id": {
@@ -644,20 +520,26 @@
           "primaryKey": false,
           "notNull": true
         },
-        "land": {
-          "name": "land",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "notiz": {
-          "name": "notiz",
+        "category": {
+          "name": "category",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "erstellt_am": {
-          "name": "erstellt_am",
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -672,8 +554,132 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.produkte": {
-      "name": "produkte",
+    "public.stock_entries": {
+      "name": "stock_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "variant_id": {
+          "name": "variant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "stock_entry_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "posted_at": {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "stock_entry_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "external_reference": {
+          "name": "external_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reversed_by_id": {
+          "name": "reversed_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "stock_entries_variant_idx": {
+          "name": "stock_entries_variant_idx",
+          "columns": [
+            {
+              "expression": "variant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "posted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "stock_entries_external_reference_idx": {
+          "name": "stock_entries_external_reference_idx",
+          "columns": [
+            {
+              "expression": "external_reference",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"stock_entries\".\"external_reference\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "stock_entries_variant_id_variants_id_fk": {
+          "name": "stock_entries_variant_id_variants_id_fk",
+          "tableFrom": "stock_entries",
+          "tableTo": "variants",
+          "columnsFrom": [
+            "variant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.suppliers": {
+      "name": "suppliers",
       "schema": "",
       "columns": {
         "id": {
@@ -689,26 +695,26 @@
           "primaryKey": false,
           "notNull": true
         },
-        "beschreibung": {
-          "name": "beschreibung",
+        "country": {
+          "name": "country",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "kategorie": {
-          "name": "kategorie",
+        "note": {
+          "name": "note",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "archiviert_am": {
-          "name": "archiviert_am",
+        "archived_at": {
+          "name": "archived_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "erstellt_am": {
-          "name": "erstellt_am",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -723,8 +729,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.varianten": {
-      "name": "varianten",
+    "public.variants": {
+      "name": "variants",
       "schema": "",
       "columns": {
         "id": {
@@ -734,8 +740,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "produkt_id": {
-          "name": "produkt_id",
+        "product_id": {
+          "name": "product_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -746,40 +752,40 @@
           "primaryKey": false,
           "notNull": true
         },
-        "bezeichnung": {
-          "name": "bezeichnung",
+        "label": {
+          "name": "label",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "mindestbestand": {
-          "name": "mindestbestand",
+        "minimum_stock": {
+          "name": "minimum_stock",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
-        "basispreis_netto": {
-          "name": "basispreis_netto",
+        "base_price_net": {
+          "name": "base_price_net",
           "type": "numeric(14, 4)",
           "primaryKey": false,
           "notNull": false
         },
-        "ust_satz": {
-          "name": "ust_satz",
+        "vat_rate": {
+          "name": "vat_rate",
           "type": "numeric(5, 4)",
           "primaryKey": false,
           "notNull": true,
           "default": "'0.1900'"
         },
-        "archiviert_am": {
-          "name": "archiviert_am",
+        "archived_at": {
+          "name": "archived_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "erstellt_am": {
-          "name": "erstellt_am",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -787,8 +793,8 @@
         }
       },
       "indexes": {
-        "varianten_sku_idx": {
-          "name": "varianten_sku_idx",
+        "variants_sku_idx": {
+          "name": "variants_sku_idx",
           "columns": [
             {
               "expression": "sku",
@@ -802,11 +808,11 @@
           "method": "btree",
           "with": {}
         },
-        "varianten_produkt_idx": {
-          "name": "varianten_produkt_idx",
+        "variants_product_idx": {
+          "name": "variants_product_idx",
           "columns": [
             {
-              "expression": "produkt_id",
+              "expression": "product_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -819,12 +825,12 @@
         }
       },
       "foreignKeys": {
-        "varianten_produkt_id_produkte_id_fk": {
-          "name": "varianten_produkt_id_produkte_id_fk",
-          "tableFrom": "varianten",
-          "tableTo": "produkte",
+        "variants_product_id_products_id_fk": {
+          "name": "variants_product_id_products_id_fk",
+          "tableFrom": "variants",
+          "tableTo": "products",
           "columnsFrom": [
-            "produkt_id"
+            "product_id"
           ],
           "columnsTo": [
             "id"
@@ -841,49 +847,49 @@
     }
   },
   "enums": {
-    "public.buchungsart": {
-      "name": "buchungsart",
-      "schema": "public",
-      "values": [
-        "wareneingang",
-        "verkauf",
-        "retoure",
-        "korrektur",
-        "inventur",
-        "schwund"
-      ]
-    },
-    "public.buchungsquelle": {
-      "name": "buchungsquelle",
-      "schema": "public",
-      "values": [
-        "manuell",
-        "etsy",
-        "korrektur"
-      ]
-    },
-    "public.kostenposition_art": {
-      "name": "kostenposition_art",
+    "public.cost_item_kind": {
+      "name": "cost_item_kind",
       "schema": "public",
       "values": [
         "fix",
-        "prozent"
+        "percent"
       ]
     },
-    "public.preisregel": {
-      "name": "preisregel",
+    "public.distribution_method": {
+      "name": "distribution_method",
       "schema": "public",
       "values": [
-        "gleiche_marge",
-        "fest"
+        "value",
+        "quantity"
       ]
     },
-    "public.verteilmethode": {
-      "name": "verteilmethode",
+    "public.pricing_rule": {
+      "name": "pricing_rule",
       "schema": "public",
       "values": [
-        "wert",
-        "stueckzahl"
+        "same_margin",
+        "fixed"
+      ]
+    },
+    "public.stock_entry_kind": {
+      "name": "stock_entry_kind",
+      "schema": "public",
+      "values": [
+        "goods_receipt",
+        "sale",
+        "return",
+        "correction",
+        "stocktake",
+        "shrinkage"
+      ]
+    },
+    "public.stock_entry_source": {
+      "name": "stock_entry_source",
+      "schema": "public",
+      "values": [
+        "manual",
+        "etsy",
+        "correction"
       ]
     }
   },

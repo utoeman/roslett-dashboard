@@ -17,18 +17,18 @@ export default defineEventHandler(async (event) => {
     await useDb().execute(sql`select 1`);
     return {
       status: 'ok' as const,
-      datenbank: 'erreichbar' as const,
-      dauerMs: Date.now() - start,
-      zeit: new Date().toISOString(),
+      database: 'reachable' as const,
+      durationMs: Date.now() - start,
+      checkedAt: new Date().toISOString(),
     };
-  } catch (fehler) {
+  } catch (error) {
     setResponseStatus(event, 503);
     return {
       status: 'fehler' as const,
-      datenbank: 'nicht erreichbar' as const,
-      dauerMs: Date.now() - start,
-      zeit: new Date().toISOString(),
-      meldung: fehler instanceof Error ? fehler.message : String(fehler),
+      database: 'unreachable' as const,
+      durationMs: Date.now() - start,
+      checkedAt: new Date().toISOString(),
+      message: error instanceof Error ? error.message : String(error),
     };
   }
 });

@@ -1,87 +1,78 @@
 <script setup lang="ts">
-import type { Kanal, Liste } from '~~/shared/typen/api';
+import type { Channel, List } from '~~/shared/types/api';
 
 useHead({ title: 'Kanäle' });
 
-const { formatGeld, formatProzent } = useGeld();
-const { leseFehler } = useApiFehler();
+const { formatMoney, formatPercent, toInput, rateToInput } = useMoney();
+const { readError } = useApiError();
 
-const { data, pending, refresh } = await useFetch<Liste<Kanal>>('/api/kanaele');
+const { data, pending, refresh } = await useFetch<List<Channel>>('/api/channels');
 
-const dialogOffen = ref(false);
-const speichert = ref(false);
-const meldung = ref<string | null>(null);
-const formularFehler = ref<Record<string, string>>({});
+const dialogOpen = ref(false);
+const saving = ref(false);
+const message = ref<string | null>(null);
+const fieldErrors = ref<Record<string, string>>({});
 
-const bearbeiteId = ref<string | null>(null);
+const editingId = ref<string | null>(null);
 const form = reactive({
   name: '',
-  gebuehrProzent: '',
-  gebuehrFix: '',
-  preisregel: 'gleiche_marge' as 'gleiche_marge' | 'fest',
+  feePercent: '',
+  feeFixed: '',
+  pricingRule: 'same_margin' as 'same_margin' | 'fixed',
 });
 
-const regelOptionen = [
-  { label: 'Preis aus Zielmarge zurückrechnen', value: 'gleiche_marge' },
-  { label: 'Preis fest vorgeben', value: 'fest' },
+const ruleOptions = [
+  { label: 'Preis aus Zielmarge zurückrechnen', value: 'same_margin' },
+  { label: 'Preis fest vorgeben', value: 'fixed' },
 ];
 
-/** Dezimalsatz zurueck in die Prozentzahl, die der Nutzer getippt hat. */
-function satzFuerFormular(satz: number | null): string {
-  if (satz === null || satz === 0) return '';
-  return String(Number((satz * 100).toFixed(4))).replace('.', ',');
+function openDialog(channel?: Channel) {
+  message.value = null;
+  fieldErrors.value = {};
+  editingId.value = channel?.id ?? null;
+  form.name = channel?.name ?? '';
+  form.feePercent = channel ? rateToInput(channel.feePercent) : '';
+  form.feeFixed = channel && channel.feeFixed ? toInput(channel.feeFixed) : '';
+  form.pricingRule = channel?.pricingRule ?? 'same_margin';
+  dialogOpen.value = true;
 }
 
-/** Cent zurueck in den Euro-Betrag mit Komma. */
-function betragFuerFormular(cent: number | null): string {
-  if (cent === null || cent === 0) return '';
-  return (cent / 100).toFixed(2).replace('.', ',');
-}
-
-function dialogOeffnen(kanal?: Kanal) {
-  meldung.value = null;
-  formularFehler.value = {};
-  bearbeiteId.value = kanal?.id ?? null;
-  form.name = kanal?.name ?? '';
-  form.gebuehrProzent = kanal ? satzFuerFormular(kanal.gebuehrProzent) : '';
-  form.gebuehrFix = kanal ? betragFuerFormular(kanal.gebuehrFix) : '';
-  form.preisregel = kanal?.preisregel ?? 'gleiche_marge';
-  dialogOffen.value = true;
-}
-
-async function speichern() {
-  speichert.value = true;
-  meldung.value = null;
-  formularFehler.value = {};
-  const rumpf = {
+async function save() {
+  saving.value = true;
+  message.value = null;
+  fieldErrors.value = {};
+  const body = {
     name: form.name,
-    gebuehrProzent: form.gebuehrProzent || 0,
-    gebuehrFix: form.gebuehrFix || 0,
-    preisregel: form.preisregel,
+    feePercent: form.feePercent || 0,
+    feeFixed: form.feeFixed || 0,
+    pricingRule: form.pricingRule,
   };
   try {
-    if (bearbeiteId.value) {
-      await $fetch(`/api/kanaele/${bearbeiteId.value}`, { method: 'PATCH', body: rumpf });
+    if (editingId.value) {
+      await $fetch(`/api/channels/${editingId.value}`, { method: 'PATCH', body });
     } else {
-      await $fetch('/api/kanaele', { method: 'POST', body: rumpf });
+      await $fetch('/api/channels', { method: 'POST', body });
     }
-    dialogOffen.value = false;
+    dialogOpen.value = false;
     await refresh();
-  } catch (fehler) {
-    const { meldung: text, felder } = leseFehler(fehler);
-    meldung.value = text;
-    formularFehler.value = felder;
+  } catch (err) {
+    const { message: text, fields } = readError(err);
+    message.value = text;
+    fieldErrors.value = fields;
   } finally {
-    speichert.value = false;
+    saving.value = false;
   }
 }
 
-async function umschalten(k: Kanal) {
+async function toggleActive(channel: Channel) {
   try {
-    await $fetch(`/api/kanaele/${k.id}`, { method: 'PATCH', body: { aktiv: !k.aktiv } });
+    await $fetch(`/api/channels/${channel.id}`, {
+      method: 'PATCH',
+      body: { active: !channel.active },
+    });
     await refresh();
-  } catch (fehler) {
-    meldung.value = leseFehler(fehler).meldung;
+  } catch (err) {
+    message.value = readError(err).message;
   }
 }
 </script>
@@ -93,7 +84,7 @@ async function umschalten(k: Kanal) {
       hinweis="Verkaufswege mit ihren Gebühren. Grundlage für die Preisrückrechnung."
     >
       <template #aktionen>
-        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOeffnen()">
+        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog()">
           Kanal anlegen
         </UButton>
       </template>
@@ -101,12 +92,12 @@ async function umschalten(k: Kanal) {
 
     <div class="px-6 py-4">
       <UAlert
-        v-if="meldung && !dialogOffen"
+        v-if="message && !dialogOpen"
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
         class="mb-4 rounded-[12px]"
-        :description="meldung"
+        :description="message"
       />
 
       <div v-if="pending && !data" class="py-12 text-center text-sm text-zinc-500">
@@ -114,7 +105,7 @@ async function umschalten(k: Kanal) {
       </div>
 
       <div
-        v-else-if="!data?.eintraege.length"
+        v-else-if="!data?.items.length"
         class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
         style="border-width: 0.5px"
       >
@@ -143,28 +134,32 @@ async function umschalten(k: Kanal) {
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
-            <tr v-for="k in data.eintraege" :key="k.id" :class="{ 'text-zinc-400': !k.aktiv }">
-              <td class="px-4 font-medium">{{ k.name }}</td>
-              <td class="zahl px-4">{{ formatProzent(k.gebuehrProzent) }}</td>
-              <td class="zahl px-4">{{ formatGeld(k.gebuehrFix) }}</td>
+            <tr
+              v-for="channel in data.items"
+              :key="channel.id"
+              :class="{ 'text-zinc-400': !channel.active }"
+            >
+              <td class="px-4 font-medium">{{ channel.name }}</td>
+              <td class="zahl px-4">{{ formatPercent(channel.feePercent) }}</td>
+              <td class="zahl px-4">{{ formatMoney(channel.feeFixed) }}</td>
               <td class="px-4 text-zinc-500">
-                {{ k.preisregel === 'gleiche_marge' ? 'aus Zielmarge' : 'fest' }}
+                {{ channel.pricingRule === 'same_margin' ? 'aus Zielmarge' : 'fest' }}
               </td>
               <td class="px-4">
                 <UButton
                   size="xs"
                   variant="ghost"
-                  :color="k.aktiv ? 'success' : 'neutral'"
-                  :icon="k.aktiv ? 'i-lucide-check' : 'i-lucide-minus'"
+                  :color="channel.active ? 'success' : 'neutral'"
+                  :icon="channel.active ? 'i-lucide-check' : 'i-lucide-minus'"
                   class="rounded-[8px]"
                   :title="
-                    k.aktiv
+                    channel.active
                       ? 'Steht zur Preisberechnung zur Verfügung. Klicken zum Deaktivieren.'
                       : 'Steht nicht zur Verfügung. Klicken zum Aktivieren.'
                   "
-                  @click="umschalten(k)"
+                  @click="toggleActive(channel)"
                 >
-                  {{ k.aktiv ? 'aktiv' : 'inaktiv' }}
+                  {{ channel.active ? 'aktiv' : 'inaktiv' }}
                 </UButton>
               </td>
               <td class="px-4 text-right">
@@ -173,9 +168,9 @@ async function umschalten(k: Kanal) {
                   variant="ghost"
                   color="neutral"
                   icon="i-lucide-pencil"
-                  :aria-label="`${k.name} bearbeiten`"
+                  :aria-label="`${channel.name} bearbeiten`"
                   class="rounded-[8px]"
-                  @click="dialogOeffnen(k)"
+                  @click="openDialog(channel)"
                 >
                   Bearbeiten
                 </UButton>
@@ -187,40 +182,40 @@ async function umschalten(k: Kanal) {
     </div>
 
     <UModal
-      v-model:open="dialogOffen"
-      :title="bearbeiteId ? 'Kanal bearbeiten' : 'Kanal anlegen'"
+      v-model:open="dialogOpen"
+      :title="editingId ? 'Kanal bearbeiten' : 'Kanal anlegen'"
     >
       <template #body>
-        <form class="space-y-4" @submit.prevent="speichern">
+        <form class="space-y-4" @submit.prevent="save">
           <UAlert
-            v-if="meldung"
+            v-if="message"
             color="error"
             variant="subtle"
             icon="i-lucide-circle-alert"
             class="rounded-[12px]"
-            :description="meldung"
+            :description="message"
           />
-          <UFormField label="Name" required :error="formularFehler.name">
+          <UFormField label="Name" required :error="fieldErrors.name">
             <UInput v-model="form.name" autofocus class="w-full" />
           </UFormField>
           <UFormField
             label="Gebühr prozentual"
-            :error="formularFehler.gebuehrProzent"
+            :error="fieldErrors.feePercent"
             help="Anteil vom Verkaufspreis. Zum Beispiel 6,5"
           >
-            <UInput v-model="form.gebuehrProzent" class="w-full" placeholder="0" />
+            <UInput v-model="form.feePercent" class="w-full" placeholder="0" />
           </UFormField>
           <UFormField
             label="Gebühr fix"
-            :error="formularFehler.gebuehrFix"
+            :error="fieldErrors.feeFixed"
             help="Betrag je Verkauf. Zum Beispiel 0,20"
           >
-            <UInput v-model="form.gebuehrFix" class="w-full" placeholder="0,00" />
+            <UInput v-model="form.feeFixed" class="w-full" placeholder="0,00" />
           </UFormField>
           <UFormField label="Preisregel">
             <USelectMenu
-              v-model="form.preisregel"
-              :items="regelOptionen"
+              v-model="form.pricingRule"
+              :items="ruleOptions"
               value-key="value"
               class="w-full"
             />
@@ -230,12 +225,12 @@ async function umschalten(k: Kanal) {
               color="neutral"
               variant="ghost"
               class="rounded-[8px]"
-              @click="dialogOffen = false"
+              @click="dialogOpen = false"
             >
               Abbrechen
             </UButton>
-            <UButton type="submit" :loading="speichert" class="rounded-[8px]">
-              {{ bearbeiteId ? 'Speichern' : 'Anlegen' }}
+            <UButton type="submit" :loading="saving" class="rounded-[8px]">
+              {{ editingId ? 'Speichern' : 'Anlegen' }}
             </UButton>
           </div>
         </form>

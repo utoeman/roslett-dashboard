@@ -8,6 +8,8 @@ const { leseFehler } = useApiFehler();
 
 const suche = ref('');
 const mitArchivierten = ref(false);
+const seite = ref(0);
+const proSeite = 100;
 
 // Die Suche wartet einen Moment, damit nicht jeder Tastendruck eine
 // Anfrage ausloest.
@@ -15,7 +17,24 @@ const sucheVerzoegert = useEntprellt(suche, 250);
 
 const { data, pending, error, refresh } = await useFetch<Liste<Artikel>>(
   '/api/artikel',
-  { query: { suche: sucheVerzoegert, mitArchivierten } },
+  {
+    query: {
+      suche: sucheVerzoegert,
+      mitArchivierten,
+      limit: proSeite,
+      offset: computed(() => seite.value * proSeite),
+    },
+  },
+);
+
+// Bei neuer Suche oder geaendertem Filter zurueck auf die erste Seite –
+// sonst landet man auf einer Seite, die es im neuen Ergebnis nicht gibt.
+watch([sucheVerzoegert, mitArchivierten], () => {
+  seite.value = 0;
+});
+
+const seitenGesamt = computed(() =>
+  data.value ? Math.max(1, Math.ceil(data.value.anzahl / proSeite)) : 1,
 );
 
 const dialogOffen = ref(false);
@@ -64,9 +83,11 @@ async function anlegen() {
 const listenHinweis = computed(() => {
   if (!data.value) return undefined;
   const { anzahl, eintraege } = data.value;
-  return eintraege.length < anzahl
-    ? `${eintraege.length} von ${anzahl} Artikeln`
-    : `${anzahl} ${anzahl === 1 ? 'Artikel' : 'Artikel'}`;
+  if (anzahl === 0) return 'Keine Artikel';
+  if (eintraege.length === anzahl) return `${anzahl} Artikel`;
+  const von = seite.value * proSeite + 1;
+  const bis = von + eintraege.length - 1;
+  return `Artikel ${von} bis ${bis} von ${anzahl}`;
 });
 
 /** Zeigt die Preisspanne eines Artikels über alle Varianten. */
@@ -174,12 +195,19 @@ function preisspanne(artikel: Artikel): string {
             <tr
               v-for="artikel in data.eintraege"
               :key="artikel.id"
-              class="transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
+              class="relative cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
             >
               <td class="px-4">
+                <!--
+                  Der Link spannt sich über die ganze Zeile: das Pseudo-Element
+                  liegt hinter allen Zellen, sodass auch ein Klick auf Kategorie
+                  oder Preis zum Artikel führt. Der Zeilen-Hover verspricht das
+                  ohnehin. Der Name bleibt ein echter Link und damit
+                  tastaturbedienbar.
+                -->
                 <NuxtLink
                   :to="`/artikel/${artikel.id}`"
-                  class="font-medium hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:hover:text-trd-400"
+                  class="font-medium after:absolute after:inset-0 hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:hover:text-trd-400"
                 >
                   {{ artikel.name }}
                 </NuxtLink>
@@ -203,6 +231,37 @@ function preisspanne(artikel: Artikel): string {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div
+        v-if="data && seitenGesamt > 1"
+        class="mt-3 flex items-center justify-between text-sm"
+      >
+        <p class="text-zinc-500">Seite {{ seite + 1 }} von {{ seitenGesamt }}</p>
+        <div class="flex gap-2">
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-chevron-left"
+            class="rounded-[8px]"
+            :disabled="seite === 0"
+            @click="seite -= 1"
+          >
+            Zurück
+          </UButton>
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            trailing-icon="i-lucide-chevron-right"
+            class="rounded-[8px]"
+            :disabled="seite + 1 >= seitenGesamt"
+            @click="seite += 1"
+          >
+            Weiter
+          </UButton>
+        </div>
       </div>
     </div>
 

@@ -24,8 +24,8 @@ export const verteilmethodeSchema = z.enum(['wert', 'stueckzahl']);
 const basis = z.object({
   varianteId: uuidSchema.nullable().optional(),
   bezeichnung: pflichttext('Bezeichnung'),
-  vorsteuerabzugsfaehig: flagSchema(false),
-  aktiv: flagSchema(true),
+  vorsteuerabzugsfaehig: flagSchema().default(false),
+  aktiv: flagSchema().default(true),
   /** Nur fuer Nebenkosten einer Sendung relevant (Regel 7). */
   verteilmethode: verteilmethodeSchema.default('wert'),
 });
@@ -57,8 +57,8 @@ export const kostenpositionAendernSchema = z.union([
     wert: geldSchema('Betrag').optional(),
     bezeichnung: pflichttext('Bezeichnung').optional(),
     varianteId: uuidSchema.nullable().optional(),
-    vorsteuerabzugsfaehig: flagSchema(false).optional(),
-    aktiv: flagSchema(true).optional(),
+    vorsteuerabzugsfaehig: flagSchema().optional(),
+    aktiv: flagSchema().optional(),
     verteilmethode: verteilmethodeSchema.optional(),
   }),
   z.object({
@@ -66,8 +66,8 @@ export const kostenpositionAendernSchema = z.union([
     wert: prozentSchema('Satz').optional(),
     bezeichnung: pflichttext('Bezeichnung').optional(),
     varianteId: uuidSchema.nullable().optional(),
-    vorsteuerabzugsfaehig: flagSchema(false).optional(),
-    aktiv: flagSchema(true).optional(),
+    vorsteuerabzugsfaehig: flagSchema().optional(),
+    aktiv: flagSchema().optional(),
     verteilmethode: verteilmethodeSchema.optional(),
   }),
 ]);

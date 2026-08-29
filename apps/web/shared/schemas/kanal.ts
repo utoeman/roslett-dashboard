@@ -17,10 +17,25 @@ export const kanalAnlegenSchema = z.object({
   /** Fixe Gebuehr je Verkauf in Cent. */
   gebuehrFix: geldSchema('Fixgebuehr').default(0),
   preisregel: preisregelSchema.default('gleiche_marge'),
-  aktiv: flagSchema(true),
+  aktiv: flagSchema().default(true),
 });
 
-export const kanalAendernSchema = kanalAnlegenSchema.partial();
+/**
+ * Beim Aendern gibt es keine Standardwerte.
+ *
+ * `.partial()` macht Felder zwar optional, entfernt ihre `.default()` aber
+ * nicht: ein nicht uebergebenes Feld faellt weiterhin auf den Standard
+ * zurueck. Bei einem PATCH bedeutet das Datenverlust – wer nur den Namen
+ * aendert, setzt damit die Gebuehren auf null. Deshalb ist dieses Schema
+ * eigenstaendig definiert und traegt nirgends einen Standardwert.
+ */
+export const kanalAendernSchema = z.object({
+  name: pflichttext('Name').optional(),
+  gebuehrProzent: prozentSchema('Gebuehr').optional(),
+  gebuehrFix: geldSchema('Fixgebuehr').optional(),
+  preisregel: preisregelSchema.optional(),
+  aktiv: flagSchema().optional(),
+});
 
 export type KanalAnlegen = z.infer<typeof kanalAnlegenSchema>;
 export type KanalAendern = z.infer<typeof kanalAendernSchema>;

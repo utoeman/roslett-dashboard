@@ -17,8 +17,14 @@ import {
   prozentSchema,
 } from '../shared/schemas/gemeinsam.js';
 import { skuSchema, produktAnlegenSchema } from '../shared/schemas/artikel.js';
-import { kostenpositionAnlegenSchema } from '../shared/schemas/kostenposition.js';
-import { kanalAnlegenSchema } from '../shared/schemas/kanal.js';
+import {
+  kostenpositionAendernSchema,
+  kostenpositionAnlegenSchema,
+} from '../shared/schemas/kostenposition.js';
+import {
+  kanalAendernSchema,
+  kanalAnlegenSchema,
+} from '../shared/schemas/kanal.js';
 import {
   centZuNumeric,
   numericZuCent,
@@ -27,7 +33,7 @@ import {
 } from '../server/utils/geld.js';
 
 describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
-  const schema = flagSchema(false);
+  const schema = flagSchema();
 
   it('liest "false" als falsch', () => {
     // Der eigentliche Grund fuer diesen Baustein: z.coerce.boolean() macht
@@ -47,9 +53,13 @@ describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
     expect(schema.parse(false)).toBe(false);
   });
 
-  it('faellt ohne Angabe auf den Standard zurueck', () => {
-    expect(schema.parse(undefined)).toBe(false);
-    expect(flagSchema(true).parse(undefined)).toBe(true);
+  it('traegt selbst keinen Standardwert', () => {
+    // Der Standard wird bewusst an der Aufrufstelle gesetzt: ein
+    // `.default()` im Baustein wuerde ein aeusseres `.optional()`
+    // aushebeln und bei PATCH Daten ueberschreiben.
+    expect(schema.safeParse(undefined).success).toBe(false);
+    expect(schema.default(true).parse(undefined)).toBe(true);
+    expect(schema.default(false).parse(undefined)).toBe(false);
   });
 });
 
@@ -243,6 +253,56 @@ describe('kostenpositionAnlegenSchema – Art bestimmt die Bedeutung des Werts',
     });
     expect(eust.vorsteuerabzugsfaehig).toBe(true);
     expect(zoll.vorsteuerabzugsfaehig).toBe(false);
+  });
+});
+
+describe('Aendern-Schemas setzen keine Standardwerte', () => {
+  /*
+   * Der Fall, der beinahe Daten gekostet haette: ein PATCH mit nur einem
+   * Feld darf die uebrigen nicht auf ihre Standardwerte zuruecksetzen.
+   * Weder `.optional()` noch `.partial()` entfernen ein `.default()`, das
+   * innerhalb eines Bausteins steckt – deshalb wird hier ausdruecklich
+   * geprueft, dass nichts hinzukommt, was nicht uebergeben wurde.
+   */
+
+  it('Kanal: leerer Rumpf ergibt keine Felder', () => {
+    expect(kanalAendernSchema.parse({})).toEqual({});
+  });
+
+  it('Kanal: nur der Name laesst die Gebuehren unberuehrt', () => {
+    const e = kanalAendernSchema.parse({ name: 'Etsy' });
+    expect(e).toEqual({ name: 'Etsy' });
+    expect(e.gebuehrProzent).toBeUndefined();
+    expect(e.gebuehrFix).toBeUndefined();
+    expect(e.aktiv).toBeUndefined();
+  });
+
+  it('Kanal: aktiv=false bleibt false', () => {
+    expect(kanalAendernSchema.parse({ aktiv: false })).toEqual({ aktiv: false });
+  });
+
+  it('Kostenposition: nur die Art laesst die uebrigen Felder unberuehrt', () => {
+    const e = kostenpositionAendernSchema.parse({ art: 'fix' });
+    expect(e).toEqual({ art: 'fix' });
+    expect(e.aktiv).toBeUndefined();
+    expect(e.vorsteuerabzugsfaehig).toBeUndefined();
+  });
+
+  it('Kostenposition: eine deaktivierte Position bleibt deaktiviert', () => {
+    // Sonst wuerde jede Bearbeitung sie stillschweigend wieder einschalten.
+    const e = kostenpositionAendernSchema.parse({
+      art: 'prozent',
+      bezeichnung: 'Zoll',
+    });
+    expect(e.aktiv).toBeUndefined();
+  });
+
+  it('Anlege-Schemas behalten ihre Standardwerte', () => {
+    const k = kanalAnlegenSchema.parse({ name: 'Neu' });
+    expect(k.gebuehrProzent).toBe(0);
+    expect(k.gebuehrFix).toBe(0);
+    expect(k.aktiv).toBe(true);
+    expect(k.preisregel).toBe('gleiche_marge');
   });
 });
 

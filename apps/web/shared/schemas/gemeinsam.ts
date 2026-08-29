@@ -144,10 +144,9 @@ export const prozentSchema = (feld = 'Prozentsatz', maxProzent = 100) =>
  * Zeichenkette tut das. In der Abfragezeichenkette steht aber genau dieses
  * "false", sodass ein Filter niemals greifen wuerde.
  */
-export const flagSchema = (standard = false) =>
+export const flagSchema = () =>
   z
     .union([z.boolean(), z.string()])
-    .default(standard)
     .transform((wert) =>
       typeof wert === 'boolean' ? wert : wert === 'true' || wert === '1',
     );
@@ -156,7 +155,7 @@ export const flagSchema = (standard = false) =>
 export const listenAbfrageSchema = z.object({
   suche: z.string().trim().max(200).optional(),
   /** Standardmaessig bleiben archivierte Eintraege ausgeblendet. */
-  mitArchivierten: flagSchema(false),
+  mitArchivierten: flagSchema().default(false),
   limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });

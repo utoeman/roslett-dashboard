@@ -8,7 +8,7 @@ import { bildeKostenpositionAb } from '../../utils/abbildung.js';
 const abfrageSchema = z.object({
   /** "global" liefert nur die uebergreifenden Positionen. */
   varianteId: z.union([z.uuid(), z.literal('global')]).optional(),
-  nurAktive: flagSchema(false),
+  nurAktive: flagSchema().default(false),
   // Wie bei den uebrigen Listen begrenzt: die Zahl der Positionen waechst
   // mit dem Artikelstamm, weil sie variantenspezifisch sein koennen.
   limit: z.coerce.number().int().min(1).max(500).default(100),

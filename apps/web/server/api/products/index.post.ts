@@ -1,6 +1,6 @@
 import { schema, useDb } from '../../db/client.js';
 import { createProductSchema } from '../../../shared/schemas/product.js';
-import { readBody } from '../../utils/validation.js';
+import { readJsonBody } from '../../utils/validation.js';
 import { badRequest, databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapVariant } from '../../utils/mapping.js';
@@ -19,7 +19,7 @@ import { mapVariant } from '../../utils/mapping.js';
  * Zustand, den die Regel ausschliesst.
  */
 export default defineEventHandler(async (event) => {
-  const input = await readBody(event, createProductSchema);
+  const input = await readJsonBody(event, createProductSchema);
   const db = useDb();
 
   const variants =

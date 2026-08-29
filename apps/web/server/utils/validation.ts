@@ -1,9 +1,12 @@
 /**
  * Validierungshilfen fuer API-Routen.
  *
- * Jede schreibende Route liest ihren Rumpf ueber `readBody`, jede Liste ihre
+ * Jede schreibende Route liest ihren Rumpf ueber `readJsonBody`, jede Liste ihre
  * Abfrageparameter ueber `readQuery`. So entsteht ueberall dieselbe
  * Fehlerform, ohne dass jede Route sie selbst zusammenbaut.
+ *
+ * Der Name lautet bewusst nicht `readBody`: Nitro stellt eine gleichnamige
+ * Funktion automatisch bereit, und die eigene wuerde sie ueberdecken.
  */
 
 import type { H3Event } from 'h3';
@@ -11,7 +14,7 @@ import { readBody as h3ReadBody, getQuery, getRouterParam } from 'h3';
 import type { ZodType } from 'zod';
 import { badRequest, notFound, validationError } from './errors.js';
 
-export async function readBody<T>(
+export async function readJsonBody<T>(
   event: H3Event,
   schema: ZodType<T>,
 ): Promise<T> {

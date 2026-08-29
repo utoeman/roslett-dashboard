@@ -1,14 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { schema, useDb } from '../../db/client.js';
 import { updateChannelSchema } from '../../../shared/schemas/channel.js';
-import { readBody, readId, requireFound } from '../../utils/validation.js';
+import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapChannel } from '../../utils/mapping.js';
 
 export default defineEventHandler(async (event) => {
   const id = readId(event);
-  const input = await readBody(event, updateChannelSchema);
+  const input = await readJsonBody(event, updateChannelSchema);
   const db = useDb();
 
   requireFound(

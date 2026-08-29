@@ -1,10 +1,10 @@
 import { schema, useDb } from '../../db/client.js';
 import { createSupplierSchema } from '../../../shared/schemas/supplier.js';
-import { readBody, requireFound } from '../../utils/validation.js';
+import { readJsonBody, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 
 export default defineEventHandler(async (event) => {
-  const input = await readBody(event, createSupplierSchema);
+  const input = await readJsonBody(event, createSupplierSchema);
   try {
     const [supplier] = await useDb()
       .insert(schema.suppliers)

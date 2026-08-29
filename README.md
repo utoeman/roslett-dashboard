@@ -50,6 +50,20 @@ npm run db:up             # Postgres starten
 npm run db:migrate        # Schema anlegen
 ```
 
+## Starten
+
+```bash
+npm start
+```
+
+Fährt Postgres hoch, wartet auf dessen Bereitschaft und startet den
+Entwicklungsserver auf http://localhost:3000. **Strg+C beendet beides** –
+Nuxt und die Datenbank. Das Datenvolume bleibt dabei erhalten.
+
+Wer die beiden Teile getrennt steuern möchte, nimmt weiterhin `npm run db:up`
+und `npm run dev`; dann läuft Postgres nach Strg+C weiter, bis
+`npm run db:down` folgt.
+
 `.env` ist die einzige Datei, die sich zwischen lokal und produktiv
 unterscheidet. Sie steht in `.gitignore` und darf niemals eingecheckt werden.
 
@@ -57,7 +71,8 @@ unterscheidet. Sie steht in `.gitignore` und darf niemals eingecheckt werden.
 
 | Befehl | Wirkung |
 |---|---|
-| `npm run dev` | Entwicklungsserver auf http://localhost:3000 mit Hot Reload |
+| `npm start` | Postgres und Entwicklungsserver zusammen; Strg+C beendet beides |
+| `npm run dev` | Nur der Entwicklungsserver, ohne Postgres zu starten |
 | `npm test` | Tests der Kalkulations-Engine einmalig ausführen |
 | `npm run test:watch` | Tests im Beobachtungsmodus |
 | `npm run typecheck` | TypeScript-Prüfung von `packages/core` |

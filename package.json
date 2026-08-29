@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "bash scripts/start.sh",
     "dev": "npm run dev --workspace @trd/web",
     "build": "npm run build --workspace @trd/web",
     "test": "vitest run",

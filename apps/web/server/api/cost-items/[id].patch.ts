@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { schema, useDb } from '../../db/client.js';
 import { updateCostItemSchema } from '../../../shared/schemas/cost-item.js';
-import { readBody, readId, requireFound } from '../../utils/validation.js';
+import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { badRequest, databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapCostItem } from '../../utils/mapping.js';
@@ -14,7 +14,7 @@ import { mapCostItem } from '../../utils/mapping.js';
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
-  const input = await readBody(event, updateCostItemSchema);
+  const input = await readJsonBody(event, updateCostItemSchema);
   const db = useDb();
 
   const existing = requireFound(

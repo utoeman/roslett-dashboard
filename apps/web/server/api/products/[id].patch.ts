@@ -6,7 +6,7 @@ import {
   updateProductSchema,
   updateVariantSchema,
 } from '../../../shared/schemas/product.js';
-import { readBody, readId, requireFound } from '../../utils/validation.js';
+import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { badRequest, databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapVariant } from '../../utils/mapping.js';
@@ -33,7 +33,7 @@ const bodySchema = updateProductSchema.extend({
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
-  const input = await readBody(event, bodySchema);
+  const input = await readJsonBody(event, bodySchema);
   const db = useDb();
 
   requireFound(

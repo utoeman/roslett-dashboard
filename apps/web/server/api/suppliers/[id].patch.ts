@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { schema, useDb } from '../../db/client.js';
 import { updateSupplierSchema } from '../../../shared/schemas/supplier.js';
-import { readBody, readId, requireFound } from '../../utils/validation.js';
+import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 
 /**
@@ -13,7 +13,7 @@ import { databaseError } from '../../utils/errors.js';
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
-  const input = await readBody(event, updateSupplierSchema);
+  const input = await readJsonBody(event, updateSupplierSchema);
   const db = useDb();
 
   requireFound(

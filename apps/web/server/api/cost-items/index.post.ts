@@ -1,6 +1,6 @@
 import { schema, useDb } from '../../db/client.js';
 import { createCostItemSchema } from '../../../shared/schemas/cost-item.js';
-import { readBody, requireFound } from '../../utils/validation.js';
+import { readJsonBody, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapCostItem } from '../../utils/mapping.js';
@@ -13,7 +13,7 @@ import { mapCostItem } from '../../utils/mapping.js';
  * entsprechend geparst, hier folgt nur noch die Umrechnung fuer die Spalte.
  */
 export default defineEventHandler(async (event) => {
-  const input = await readBody(event, createCostItemSchema);
+  const input = await readJsonBody(event, createCostItemSchema);
   try {
     const [item] = await useDb()
       .insert(schema.costItems)

@@ -15,3 +15,6 @@ coverage
 # Betriebssystem und Logs
 .DS_Store
 *.log
+
+# Artefakte fehlgeschlagener Skriptlaeufe
+undefined/

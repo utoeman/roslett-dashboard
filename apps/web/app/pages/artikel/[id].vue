@@ -232,7 +232,7 @@ const archivierteVarianten = computed(
 
         <!-- Varianten -->
         <section
-          class="overflow-hidden rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+          class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
           style="border-width: 0.5px"
         >
           <div class="flex items-center justify-between px-4 py-3">
@@ -252,7 +252,6 @@ const archivierteVarianten = computed(
             </UButton>
           </div>
 
-          <div class="overflow-x-auto">
           <table class="trd-tabelle w-full min-w-[40rem] text-sm">
             <thead
               class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
@@ -263,7 +262,7 @@ const archivierteVarianten = computed(
                 <th class="px-4 text-right">Basispreis netto</th>
                 <th class="px-4 text-right">USt</th>
                 <th class="px-4 text-right">Mindestbestand</th>
-                <th class="w-10 px-4"><span class="sr-only">Aktionen</span></th>
+                <th class="px-4 text-right">Archiv</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
@@ -310,12 +309,11 @@ const archivierteVarianten = computed(
               </tr>
             </tbody>
           </table>
-        </div>
         </section>
 
         <!-- Kostenpositionen -->
         <section
-          class="overflow-hidden rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+          class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
           style="border-width: 0.5px"
         >
           <div class="px-4 py-3">
@@ -340,7 +338,7 @@ const archivierteVarianten = computed(
             </NuxtLink>
           </p>
 
-          <table v-else class="trd-tabelle w-full text-sm">
+          <table v-else class="trd-tabelle w-full min-w-[40rem] text-sm">
             <thead
               class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
@@ -394,7 +392,6 @@ const archivierteVarianten = computed(
               </tr>
             </tbody>
           </table>
-        </div>
         </section>
       </div>
 

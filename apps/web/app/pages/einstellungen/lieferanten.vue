@@ -102,11 +102,10 @@ async function archivierung(id: string, archivieren: boolean) {
 
       <div
         v-else
-        class="overflow-hidden rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+        class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
         style="border-width: 0.5px"
       >
-        <div class="overflow-x-auto">
-          <table class="trd-tabelle w-full min-w-[40rem] text-sm">
+        <table class="trd-tabelle w-full min-w-[40rem] text-sm">
           <thead
             class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
@@ -114,7 +113,7 @@ async function archivierung(id: string, archivieren: boolean) {
               <th class="px-4">Name</th>
               <th class="px-4">Land</th>
               <th class="px-4">Notiz</th>
-              <th class="w-10 px-4"><span class="sr-only">Aktionen</span></th>
+              <th class="px-4 text-right">Archiv</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
@@ -151,7 +150,6 @@ async function archivierung(id: string, archivieren: boolean) {
             </tr>
           </tbody>
         </table>
-        </div>
       </div>
     </div>
 

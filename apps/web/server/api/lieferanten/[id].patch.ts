@@ -32,9 +32,13 @@ export default defineEventHandler(async (event) => {
     aenderung.archiviertAm = eingabe.archiviertAm;
 
   if (Object.keys(aenderung).length === 0) {
-    return db.query.lieferanten.findFirst({
-      where: eq(schema.lieferanten.id, id),
-    });
+    // Leerer Rumpf: unveraendert zurueckgeben statt einer leeren Antwort.
+    return musstExistieren(
+      await db.query.lieferanten.findFirst({
+        where: eq(schema.lieferanten.id, id),
+      }),
+      'Der Lieferant',
+    );
   }
 
   try {
@@ -43,7 +47,7 @@ export default defineEventHandler(async (event) => {
       .set(aenderung)
       .where(eq(schema.lieferanten.id, id))
       .returning();
-    return aktualisiert;
+    return musstExistieren(aktualisiert, 'Der Lieferant');
   } catch (fehler) {
     throw datenbankFehler(fehler, 'Lieferant aendern');
   }

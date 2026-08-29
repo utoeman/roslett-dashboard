@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { schema, useDb } from '../../db/client.js';
 import { kostenpositionAendernSchema } from '../../../shared/schemas/kostenposition.js';
 import { leseId, leseRumpf, musstExistieren } from '../../utils/validierung.js';
-import { datenbankFehler } from '../../utils/errors.js';
+import { datenbankFehler, ungueltig } from '../../utils/errors.js';
 import { centZuNumeric, satzZuNumeric } from '../../utils/geld.js';
 import { bildeKostenpositionAb } from '../../utils/abbildung.js';
 
@@ -17,13 +17,26 @@ export default defineEventHandler(async (event) => {
   const eingabe = await leseRumpf(event, kostenpositionAendernSchema);
   const db = useDb();
 
-  musstExistieren(
+  const bestehend = musstExistieren(
     await db.query.kostenpositionen.findFirst({
       where: eq(schema.kostenpositionen.id, id),
-      columns: { id: true },
+      columns: { id: true, art: true },
     }),
     'Die Kostenposition',
   );
+
+  /*
+   * Ein Wechsel der Art ohne neuen Wert wuerde die gespeicherte Zahl
+   * stillschweigend umdeuten: aus "prozent 0.0470" (4,7 Prozent) wuerde
+   * "fix 0.0470", gelesen als 5 Cent. Deshalb verlangen wir bei einem
+   * Artwechsel ausdruecklich einen neuen Wert.
+   */
+  if (eingabe.art !== bestehend.art && eingabe.wert === undefined) {
+    throw ungueltig(
+      'Beim Wechsel zwischen Fixbetrag und Prozentsatz muss der Wert neu angegeben werden.',
+      { wert: 'Wert erforderlich.' },
+    );
+  }
 
   const aenderung: Record<string, unknown> = { art: eingabe.art };
   if (eingabe.wert !== undefined) {
@@ -48,7 +61,9 @@ export default defineEventHandler(async (event) => {
       .set(aenderung)
       .where(eq(schema.kostenpositionen.id, id))
       .returning();
-    return bildeKostenpositionAb(aktualisiert!);
+    return bildeKostenpositionAb(
+      musstExistieren(aktualisiert, 'Die Kostenposition'),
+    );
   } catch (fehler) {
     throw datenbankFehler(fehler, 'Kostenposition aendern');
   }

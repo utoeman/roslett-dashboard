@@ -136,11 +136,27 @@ export const prozentSchema = (feld = 'Prozentsatz', maxProzent = 100) =>
     return zahl / 100;
   });
 
+/**
+ * Wahrheitswert aus einer Abfragezeichenkette.
+ *
+ * `z.coerce.boolean()` ist hier unbrauchbar: es wendet die Truthiness von
+ * JavaScript an, und damit wird auch "false" zu `true` – jede nicht leere
+ * Zeichenkette tut das. In der Abfragezeichenkette steht aber genau dieses
+ * "false", sodass ein Filter niemals greifen wuerde.
+ */
+export const flagSchema = (standard = false) =>
+  z
+    .union([z.boolean(), z.string()])
+    .default(standard)
+    .transform((wert) =>
+      typeof wert === 'boolean' ? wert : wert === 'true' || wert === '1',
+    );
+
 /** Seitenweise Abfrage fuer Listen. */
 export const listenAbfrageSchema = z.object({
   suche: z.string().trim().max(200).optional(),
   /** Standardmaessig bleiben archivierte Eintraege ausgeblendet. */
-  mitArchivierten: z.coerce.boolean().default(false),
+  mitArchivierten: flagSchema(false),
   limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });

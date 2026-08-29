@@ -1,6 +1,6 @@
 import { schema, useDb } from '../../db/client.js';
 import { kostenpositionAnlegenSchema } from '../../../shared/schemas/kostenposition.js';
-import { leseRumpf } from '../../utils/validierung.js';
+import { leseRumpf, musstExistieren } from '../../utils/validierung.js';
 import { datenbankFehler } from '../../utils/errors.js';
 import { centZuNumeric, satzZuNumeric } from '../../utils/geld.js';
 import { bildeKostenpositionAb } from '../../utils/abbildung.js';
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
     setResponseStatus(event, 201);
-    return bildeKostenpositionAb(position!);
+    return bildeKostenpositionAb(musstExistieren(position, 'Die Kostenposition'));
   } catch (fehler) {
     throw datenbankFehler(fehler, 'Kostenposition anlegen');
   }

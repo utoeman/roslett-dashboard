@@ -29,10 +29,13 @@ export default defineEventHandler(async (event) => {
   if (eingabe.aktiv !== undefined) aenderung.aktiv = eingabe.aktiv;
 
   if (Object.keys(aenderung).length === 0) {
+    // Ein leerer Rumpf ist kein Fehler: der Datensatz wird unveraendert
+    // zurueckgegeben. Ohne musstExistieren waere die Antwort ein leeres
+    // 200 statt einer 404, falls der Satz zwischenzeitlich verschwindet.
     const unveraendert = await db.query.kanaele.findFirst({
       where: eq(schema.kanaele.id, id),
     });
-    return unveraendert === undefined ? undefined : bildeKanalAb(unveraendert);
+    return bildeKanalAb(musstExistieren(unveraendert, 'Der Kanal'));
   }
 
   try {
@@ -41,7 +44,7 @@ export default defineEventHandler(async (event) => {
       .set(aenderung)
       .where(eq(schema.kanaele.id, id))
       .returning();
-    return bildeKanalAb(aktualisiert!);
+    return bildeKanalAb(musstExistieren(aktualisiert, 'Der Kanal'));
   } catch (fehler) {
     throw datenbankFehler(fehler, 'Kanal aendern');
   }

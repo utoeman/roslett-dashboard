@@ -1,9 +1,9 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { schema, useDb } from '../../db/client.js';
 import { listenAbfrageSchema } from '../../../shared/schemas/gemeinsam.js';
 import { leseAbfrage } from '../../utils/validierung.js';
-import { bildeKostenpositionAb, bildeVarianteAb } from '../../utils/abbildung.js';
+import { bildeVarianteAb } from '../../utils/abbildung.js';
 
 const abfrageSchema = listenAbfrageSchema.extend({
   kategorie: z.string().trim().max(100).optional(),

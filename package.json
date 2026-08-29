@@ -12,7 +12,7 @@
     "build": "npm run build --workspace @trd/web",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && npm run typecheck --workspace @trd/web",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:generate": "npm run db:generate --workspace @trd/web",

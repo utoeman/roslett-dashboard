@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { geldSchema, pflichttext, prozentSchema, uuidSchema } from './gemeinsam.js';
+import {
+  flagSchema,
+  geldSchema,
+  pflichttext,
+  prozentSchema,
+  uuidSchema,
+} from './gemeinsam.js';
 
 export const kostenpositionArtSchema = z.enum(['fix', 'prozent']);
 export const verteilmethodeSchema = z.enum(['wert', 'stueckzahl']);
@@ -18,8 +24,8 @@ export const verteilmethodeSchema = z.enum(['wert', 'stueckzahl']);
 const basis = z.object({
   varianteId: uuidSchema.nullable().optional(),
   bezeichnung: pflichttext('Bezeichnung'),
-  vorsteuerabzugsfaehig: z.coerce.boolean().default(false),
-  aktiv: z.coerce.boolean().default(true),
+  vorsteuerabzugsfaehig: flagSchema(false),
+  aktiv: flagSchema(true),
   /** Nur fuer Nebenkosten einer Sendung relevant (Regel 7). */
   verteilmethode: verteilmethodeSchema.default('wert'),
 });
@@ -51,8 +57,8 @@ export const kostenpositionAendernSchema = z.union([
     wert: geldSchema('Betrag').optional(),
     bezeichnung: pflichttext('Bezeichnung').optional(),
     varianteId: uuidSchema.nullable().optional(),
-    vorsteuerabzugsfaehig: z.coerce.boolean().optional(),
-    aktiv: z.coerce.boolean().optional(),
+    vorsteuerabzugsfaehig: flagSchema(false).optional(),
+    aktiv: flagSchema(true).optional(),
     verteilmethode: verteilmethodeSchema.optional(),
   }),
   z.object({
@@ -60,8 +66,8 @@ export const kostenpositionAendernSchema = z.union([
     wert: prozentSchema('Satz').optional(),
     bezeichnung: pflichttext('Bezeichnung').optional(),
     varianteId: uuidSchema.nullable().optional(),
-    vorsteuerabzugsfaehig: z.coerce.boolean().optional(),
-    aktiv: z.coerce.boolean().optional(),
+    vorsteuerabzugsfaehig: flagSchema(false).optional(),
+    aktiv: flagSchema(true).optional(),
     verteilmethode: verteilmethodeSchema.optional(),
   }),
 ]);

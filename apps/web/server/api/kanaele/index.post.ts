@@ -1,6 +1,6 @@
 import { schema, useDb } from '../../db/client.js';
 import { kanalAnlegenSchema } from '../../../shared/schemas/kanal.js';
-import { leseRumpf } from '../../utils/validierung.js';
+import { leseRumpf, musstExistieren } from '../../utils/validierung.js';
 import { datenbankFehler } from '../../utils/errors.js';
 import { centZuNumeric, satzZuNumeric } from '../../utils/geld.js';
 import { bildeKanalAb } from '../../utils/abbildung.js';
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
     setResponseStatus(event, 201);
-    return bildeKanalAb(kanal!);
+    return bildeKanalAb(musstExistieren(kanal, 'Der Kanal'));
   } catch (fehler) {
     throw datenbankFehler(fehler, 'Kanal anlegen');
   }

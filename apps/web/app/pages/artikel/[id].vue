@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ArtikelDetail } from '~/composables/useArtikel';
+import type { ArtikelDetail } from '~~/shared/typen/api';
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));

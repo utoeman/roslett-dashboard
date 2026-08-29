@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Artikel } from '~/composables/useArtikel';
+import type { Artikel, Liste } from '~~/shared/typen/api';
 
 useHead({ title: 'Artikel' });
 
@@ -13,12 +13,10 @@ const mitArchivierten = ref(false);
 // Anfrage ausloest.
 const sucheVerzoegert = useEntprellt(suche, 250);
 
-const { data, pending, error, refresh } = await useFetch<{
-  eintraege: Artikel[];
-  anzahl: number;
-}>('/api/artikel', {
-  query: { suche: sucheVerzoegert, mitArchivierten },
-});
+const { data, pending, error, refresh } = await useFetch<Liste<Artikel>>(
+  '/api/artikel',
+  { query: { suche: sucheVerzoegert, mitArchivierten } },
+);
 
 const dialogOffen = ref(false);
 const speichert = ref(false);
@@ -58,6 +56,19 @@ async function anlegen() {
   }
 }
 
+/**
+ * Hinweis im Seitenkopf. Weist ausdruecklich aus, wenn die Liste laenger
+ * ist als das, was angezeigt wird – sonst bricht sie ab dem 101. Artikel
+ * stillschweigend ab.
+ */
+const listenHinweis = computed(() => {
+  if (!data.value) return undefined;
+  const { anzahl, eintraege } = data.value;
+  return eintraege.length < anzahl
+    ? `${eintraege.length} von ${anzahl} Artikeln`
+    : `${anzahl} ${anzahl === 1 ? 'Artikel' : 'Artikel'}`;
+});
+
 /** Zeigt die Preisspanne eines Artikels über alle Varianten. */
 function preisspanne(artikel: Artikel): string {
   const preise = artikel.varianten
@@ -74,9 +85,7 @@ function preisspanne(artikel: Artikel): string {
   <div>
     <SeitenKopf
       titel="Artikel"
-      :hinweis="
-        data ? `${data.anzahl} ${data.anzahl === 1 ? 'Artikel' : 'Artikel'}` : undefined
-      "
+      :hinweis="listenHinweis"
     >
       <template #aktionen>
         <UButton

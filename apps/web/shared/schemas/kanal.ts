@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { geldSchema, pflichttext, prozentSchema } from './gemeinsam.js';
+import { flagSchema, geldSchema, pflichttext, prozentSchema } from './gemeinsam.js';
 
 export const preisregelSchema = z.enum(['gleiche_marge', 'fest']);
 
@@ -17,7 +17,7 @@ export const kanalAnlegenSchema = z.object({
   /** Fixe Gebuehr je Verkauf in Cent. */
   gebuehrFix: geldSchema('Fixgebuehr').default(0),
   preisregel: preisregelSchema.default('gleiche_marge'),
-  aktiv: z.coerce.boolean().default(true),
+  aktiv: flagSchema(true),
 });
 
 export const kanalAendernSchema = kanalAnlegenSchema.partial();

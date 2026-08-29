@@ -1,20 +1,40 @@
 <script setup lang="ts">
 useHead({ title: 'Übersicht' });
 
-const { data: artikel } = await useFetch<{ anzahl: number }>('/api/artikel');
-const { data: lieferanten } = await useFetch<{ anzahl: number }>('/api/lieferanten');
-const { data: kanaele } = await useFetch<{ eintraege: unknown[] }>('/api/kanaele');
-const { data: kosten } = await useFetch<{ eintraege: unknown[] }>('/api/kostenpositionen');
+/*
+ * Alle vier Zaehlwerte gemeinsam laden. Jede Liste liefert `anzahl` mit,
+ * sodass hier nur die Zahl gebraucht wird und nicht der gesamte Datensatz.
+ * `limit: 1` haelt die uebertragene Menge klein – gezaehlt wird in der
+ * Datenbank, nicht im Browser.
+ */
+const { data } = await useAsyncData('uebersicht-kennzahlen', async () => {
+  const [artikel, lieferanten, kostenpositionen, kanaele] = await Promise.all([
+    $fetch<{ anzahl: number }>('/api/artikel', { query: { limit: 1 } }),
+    $fetch<{ anzahl: number }>('/api/lieferanten', { query: { limit: 1 } }),
+    $fetch<{ anzahl: number }>('/api/kostenpositionen', { query: { limit: 1 } }),
+    $fetch<{ anzahl: number }>('/api/kanaele'),
+  ]);
+  return {
+    artikel: artikel.anzahl,
+    lieferanten: lieferanten.anzahl,
+    kostenpositionen: kostenpositionen.anzahl,
+    kanaele: kanaele.anzahl,
+  };
+});
 
 const kacheln = computed(() => [
-  { name: 'Artikel', wert: artikel.value?.anzahl ?? 0, pfad: '/artikel' },
-  { name: 'Lieferanten', wert: lieferanten.value?.anzahl ?? 0, pfad: '/einstellungen/lieferanten' },
+  { name: 'Artikel', wert: data.value?.artikel ?? 0, pfad: '/artikel' },
+  {
+    name: 'Lieferanten',
+    wert: data.value?.lieferanten ?? 0,
+    pfad: '/einstellungen/lieferanten',
+  },
   {
     name: 'Kostenpositionen',
-    wert: kosten.value?.eintraege.length ?? 0,
+    wert: data.value?.kostenpositionen ?? 0,
     pfad: '/einstellungen/kostenpositionen',
   },
-  { name: 'Kanäle', wert: kanaele.value?.eintraege.length ?? 0, pfad: '/einstellungen/kanaele' },
+  { name: 'Kanäle', wert: data.value?.kanaele ?? 0, pfad: '/einstellungen/kanaele' },
 ]);
 </script>
 

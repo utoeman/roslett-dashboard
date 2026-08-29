@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { Kostenposition } from '~/composables/useArtikel';
+import type { Kostenposition, Liste } from '~~/shared/typen/api';
 
 useHead({ title: 'Kostenpositionen' });
 
 const { formatGeld, formatProzent } = useGeld();
 const { leseFehler } = useApiFehler();
 
-const { data, pending, refresh } = await useFetch<{ eintraege: Kostenposition[] }>(
+const { data, pending, refresh } = await useFetch<Liste<Kostenposition>>(
   '/api/kostenpositionen',
 );
 

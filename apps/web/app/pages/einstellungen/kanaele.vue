@@ -1,19 +1,12 @@
 <script setup lang="ts">
-useHead({ title: 'Kanäle' });
+import type { Kanal, Liste } from '~~/shared/typen/api';
 
-interface Kanal {
-  id: string;
-  name: string;
-  gebuehrProzent: number | null;
-  gebuehrFix: number | null;
-  preisregel: 'gleiche_marge' | 'fest';
-  aktiv: boolean;
-}
+useHead({ title: 'Kanäle' });
 
 const { formatGeld, formatProzent } = useGeld();
 const { leseFehler } = useApiFehler();
 
-const { data, pending, refresh } = await useFetch<{ eintraege: Kanal[] }>('/api/kanaele');
+const { data, pending, refresh } = await useFetch<Liste<Kanal>>('/api/kanaele');
 
 const dialogOffen = ref(false);
 const speichert = ref(false);

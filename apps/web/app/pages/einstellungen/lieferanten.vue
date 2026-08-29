@@ -1,21 +1,15 @@
 <script setup lang="ts">
-useHead({ title: 'Lieferanten' });
+import type { Liste, Lieferant } from '~~/shared/typen/api';
 
-interface Lieferant {
-  id: string;
-  name: string;
-  land: string | null;
-  notiz: string | null;
-  archiviertAm: string | null;
-}
+useHead({ title: 'Lieferanten' });
 
 const { leseFehler } = useApiFehler();
 
 const mitArchivierten = ref(false);
-const { data, pending, refresh } = await useFetch<{
-  eintraege: Lieferant[];
-  anzahl: number;
-}>('/api/lieferanten', { query: { mitArchivierten } });
+const { data, pending, refresh } = await useFetch<Liste<Lieferant>>(
+  '/api/lieferanten',
+  { query: { mitArchivierten } },
+);
 
 const dialogOffen = ref(false);
 const speichert = ref(false);

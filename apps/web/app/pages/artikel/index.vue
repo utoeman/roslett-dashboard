@@ -90,6 +90,20 @@ const listenHinweis = computed(() => {
   return `Artikel ${von} bis ${bis} von ${anzahl}`;
 });
 
+/**
+ * Klick auf eine Tabellenzeile führt zum Artikel.
+ *
+ * Klicks auf den Namen übernimmt der Link selbst – sonst würde zweimal
+ * navigiert. Markiert der Nutzer gerade Text, wird nicht navigiert: sonst
+ * ließe sich eine Artikelnummer nicht herauskopieren.
+ */
+function zeileOeffnen(id: string, ereignis: MouseEvent) {
+  const ziel = ereignis.target as HTMLElement | null;
+  if (ziel?.closest('a, button, input, label')) return;
+  if ((window.getSelection()?.toString() ?? '') !== '') return;
+  navigateTo(`/artikel/${id}`);
+}
+
 /** Zeigt die Preisspanne eines Artikels über alle Varianten. */
 function preisspanne(artikel: Artikel): string {
   const preise = artikel.varianten
@@ -192,22 +206,25 @@ function preisspanne(artikel: Artikel): string {
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+            <!--
+              Die ganze Zeile führt zum Artikel, weil der Zeilen-Hover das
+              ohnehin verspricht. Umgesetzt über einen Klick-Handler statt
+              über ein absolut positioniertes Pseudo-Element: `position:
+              relative` ist auf einer Tabellenzeile nicht verlässlich
+              definiert, und die Klickfläche dehnte sich dadurch über die
+              Tabelle hinaus. Der Name bleibt ein echter Link und damit
+              tastaturbedienbar.
+            -->
             <tr
               v-for="artikel in data.eintraege"
               :key="artikel.id"
-              class="relative cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
+              class="cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
+              @click="zeileOeffnen(artikel.id, $event)"
             >
               <td class="px-4">
-                <!--
-                  Der Link spannt sich über die ganze Zeile: das Pseudo-Element
-                  liegt hinter allen Zellen, sodass auch ein Klick auf Kategorie
-                  oder Preis zum Artikel führt. Der Zeilen-Hover verspricht das
-                  ohnehin. Der Name bleibt ein echter Link und damit
-                  tastaturbedienbar.
-                -->
                 <NuxtLink
                   :to="`/artikel/${artikel.id}`"
-                  class="font-medium after:absolute after:inset-0 hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:hover:text-trd-400"
+                  class="font-medium hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:hover:text-trd-400"
                 >
                   {{ artikel.name }}
                 </NuxtLink>

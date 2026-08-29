@@ -9,7 +9,6 @@ interface Lieferant {
   archiviertAm: string | null;
 }
 
-const { formatDatum } = useGeld();
 const { leseFehler } = useApiFehler();
 
 const mitArchivierten = ref(false);
@@ -22,21 +21,44 @@ const dialogOffen = ref(false);
 const speichert = ref(false);
 const meldung = ref<string | null>(null);
 const formularFehler = ref<Record<string, string>>({});
-const neu = reactive({ name: '', land: '', notiz: '' });
 
-async function anlegen() {
+/**
+ * Derselbe Dialog legt an und bearbeitet. Ist `bearbeiteId` gesetzt, wird
+ * gespeichert statt angelegt – so gibt es nur ein Formular zu pflegen und
+ * beide Wege koennen nicht auseinanderlaufen.
+ */
+const bearbeiteId = ref<string | null>(null);
+const form = reactive({ name: '', land: '', notiz: '' });
+
+function dialogOeffnen(lieferant?: Lieferant) {
+  meldung.value = null;
+  formularFehler.value = {};
+  bearbeiteId.value = lieferant?.id ?? null;
+  form.name = lieferant?.name ?? '';
+  form.land = lieferant?.land ?? '';
+  form.notiz = lieferant?.notiz ?? '';
+  dialogOffen.value = true;
+}
+
+async function speichern() {
   speichert.value = true;
   meldung.value = null;
   formularFehler.value = {};
+  const rumpf = {
+    name: form.name,
+    land: form.land || null,
+    notiz: form.notiz || null,
+  };
   try {
-    await $fetch('/api/lieferanten', {
-      method: 'POST',
-      body: { name: neu.name, land: neu.land || null, notiz: neu.notiz || null },
-    });
+    if (bearbeiteId.value) {
+      await $fetch(`/api/lieferanten/${bearbeiteId.value}`, {
+        method: 'PATCH',
+        body: rumpf,
+      });
+    } else {
+      await $fetch('/api/lieferanten', { method: 'POST', body: rumpf });
+    }
     dialogOffen.value = false;
-    neu.name = '';
-    neu.land = '';
-    neu.notiz = '';
     await refresh();
   } catch (fehler) {
     const { meldung: text, felder } = leseFehler(fehler);
@@ -47,11 +69,11 @@ async function anlegen() {
   }
 }
 
-async function archivierung(id: string, archivieren: boolean) {
+async function archivierung(lieferant: Lieferant) {
   try {
-    await $fetch(`/api/lieferanten/${id}`, {
+    await $fetch(`/api/lieferanten/${lieferant.id}`, {
       method: 'PATCH',
-      body: { archiviertAm: archivieren ? new Date().toISOString() : null },
+      body: { archiviertAm: lieferant.archiviertAm ? null : new Date().toISOString() },
     });
     await refresh();
   } catch (fehler) {
@@ -67,7 +89,7 @@ async function archivierung(id: string, archivieren: boolean) {
       hinweis="Herkunft der Chargen. Archivierte Lieferanten bleiben in bestehenden Chargen erhalten."
     >
       <template #aktionen>
-        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOffen = true">
+        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOeffnen()">
           Lieferant anlegen
         </UButton>
       </template>
@@ -75,7 +97,7 @@ async function archivierung(id: string, archivieren: boolean) {
 
     <div class="px-6 py-4">
       <UAlert
-        v-if="meldung"
+        v-if="meldung && !dialogOffen"
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
@@ -113,7 +135,7 @@ async function archivierung(id: string, archivieren: boolean) {
               <th class="px-4">Name</th>
               <th class="px-4">Land</th>
               <th class="px-4">Notiz</th>
-              <th class="px-4 text-right">Archiv</th>
+              <th class="px-4 text-right">Aktionen</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
@@ -136,16 +158,31 @@ async function archivierung(id: string, archivieren: boolean) {
               </td>
               <td class="px-4 text-zinc-500">{{ l.land ?? '–' }}</td>
               <td class="max-w-md truncate px-4 text-zinc-500">{{ l.notiz ?? '–' }}</td>
-              <td class="px-4 text-right">
-                <UButton
-                  size="xs"
-                  variant="ghost"
-                  color="neutral"
-                  :icon="l.archiviertAm ? 'i-lucide-archive-restore' : 'i-lucide-archive'"
-                  :aria-label="l.archiviertAm ? `${l.name} zurückholen` : `${l.name} archivieren`"
-                  class="rounded-[8px]"
-                  @click="archivierung(l.id, !l.archiviertAm)"
-                />
+              <td class="px-4">
+                <div class="flex justify-end gap-1">
+                  <UButton
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    icon="i-lucide-pencil"
+                    :aria-label="`${l.name} bearbeiten`"
+                    class="rounded-[8px]"
+                    @click="dialogOeffnen(l)"
+                  >
+                    Bearbeiten
+                  </UButton>
+                  <UButton
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    :icon="l.archiviertAm ? 'i-lucide-archive-restore' : 'i-lucide-archive'"
+                    :aria-label="l.archiviertAm ? `${l.name} zurückholen` : `${l.name} archivieren`"
+                    class="rounded-[8px]"
+                    @click="archivierung(l)"
+                  >
+                    {{ l.archiviertAm ? 'Zurückholen' : 'Archivieren' }}
+                  </UButton>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -153,23 +190,45 @@ async function archivierung(id: string, archivieren: boolean) {
       </div>
     </div>
 
-    <UModal v-model:open="dialogOffen" title="Lieferant anlegen">
+    <UModal
+      v-model:open="dialogOffen"
+      :title="bearbeiteId ? 'Lieferant bearbeiten' : 'Lieferant anlegen'"
+    >
       <template #body>
-        <form class="space-y-4" @submit.prevent="anlegen">
+        <form class="space-y-4" @submit.prevent="speichern">
+          <UAlert
+            v-if="meldung"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-circle-alert"
+            class="rounded-[12px]"
+            :description="meldung"
+          />
           <UFormField label="Name" required :error="formularFehler.name">
-            <UInput v-model="neu.name" autofocus class="w-full" />
+            <UInput v-model="form.name" autofocus class="w-full" />
           </UFormField>
-          <UFormField label="Land" :error="formularFehler.land" help="Zweistelliger Ländercode, etwa DE oder IT.">
-            <UInput v-model="neu.land" maxlength="2" class="w-full uppercase" />
+          <UFormField
+            label="Land"
+            :error="formularFehler.land"
+            help="Zweistelliger Ländercode, etwa DE oder IT."
+          >
+            <UInput v-model="form.land" maxlength="2" class="w-full uppercase" />
           </UFormField>
           <UFormField label="Notiz" :error="formularFehler.notiz">
-            <UTextarea v-model="neu.notiz" :rows="2" class="w-full" />
+            <UTextarea v-model="form.notiz" :rows="2" class="w-full" />
           </UFormField>
           <div class="flex justify-end gap-2 pt-2">
-            <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="dialogOffen = false">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              class="rounded-[8px]"
+              @click="dialogOffen = false"
+            >
               Abbrechen
             </UButton>
-            <UButton type="submit" :loading="speichert" class="rounded-[8px]">Anlegen</UButton>
+            <UButton type="submit" :loading="speichert" class="rounded-[8px]">
+              {{ bearbeiteId ? 'Speichern' : 'Anlegen' }}
+            </UButton>
           </div>
         </form>
       </template>

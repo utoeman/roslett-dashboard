@@ -15,7 +15,8 @@ const speichert = ref(false);
 const meldung = ref<string | null>(null);
 const formularFehler = ref<Record<string, string>>({});
 
-const neu = reactive({
+const bearbeiteId = ref<string | null>(null);
+const form = reactive({
   bezeichnung: '',
   art: 'fix' as 'fix' | 'prozent',
   wert: '',
@@ -33,25 +34,55 @@ const verteilOptionen = [
   { label: 'nach Stückzahl', value: 'stueckzahl' },
 ];
 
-async function anlegen() {
+/**
+ * Gespeicherte Werte zurueck ins Eingabeformat bringen.
+ *
+ * Cent werden als Euro mit Komma dargestellt, Dezimalsaetze als Prozentzahl.
+ * Das ist die Umkehrung dessen, was die Zod-Schemas beim Speichern tun –
+ * der Nutzer sieht im Formular wieder, was er urspruenglich getippt hat.
+ */
+function wertFuerFormular(k: Kostenposition): string {
+  if (k.wert === null) return '';
+  return k.art === 'fix'
+    ? (k.wert / 100).toFixed(2).replace('.', ',')
+    : String(Number((k.wert * 100).toFixed(4))).replace('.', ',');
+}
+
+function dialogOeffnen(position?: Kostenposition) {
+  meldung.value = null;
+  formularFehler.value = {};
+  bearbeiteId.value = position?.id ?? null;
+  form.bezeichnung = position?.bezeichnung ?? '';
+  form.art = position?.art ?? 'fix';
+  form.wert = position ? wertFuerFormular(position) : '';
+  form.vorsteuerabzugsfaehig = position?.vorsteuerabzugsfaehig ?? false;
+  form.verteilmethode = position?.verteilmethode ?? 'wert';
+  dialogOffen.value = true;
+}
+
+async function speichern() {
   speichert.value = true;
   meldung.value = null;
   formularFehler.value = {};
+  // Die Art gehoert immer in den Rumpf: sie entscheidet, ob der Wert als
+  // Betrag oder als Satz gelesen wird.
+  const rumpf = {
+    bezeichnung: form.bezeichnung,
+    art: form.art,
+    wert: form.wert,
+    vorsteuerabzugsfaehig: form.vorsteuerabzugsfaehig,
+    verteilmethode: form.verteilmethode,
+  };
   try {
-    await $fetch('/api/kostenpositionen', {
-      method: 'POST',
-      body: {
-        bezeichnung: neu.bezeichnung,
-        art: neu.art,
-        wert: neu.wert,
-        vorsteuerabzugsfaehig: neu.vorsteuerabzugsfaehig,
-        verteilmethode: neu.verteilmethode,
-      },
-    });
+    if (bearbeiteId.value) {
+      await $fetch(`/api/kostenpositionen/${bearbeiteId.value}`, {
+        method: 'PATCH',
+        body: rumpf,
+      });
+    } else {
+      await $fetch('/api/kostenpositionen', { method: 'POST', body: rumpf });
+    }
     dialogOffen.value = false;
-    neu.bezeichnung = '';
-    neu.wert = '';
-    neu.vorsteuerabzugsfaehig = false;
     await refresh();
   } catch (fehler) {
     const { meldung: text, felder } = leseFehler(fehler);
@@ -82,7 +113,7 @@ async function umschalten(k: Kostenposition) {
       hinweis="Zuschläge auf den Einstandspreis. Übergreifende Positionen gelten für alle Artikel."
     >
       <template #aktionen>
-        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOffen = true">
+        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="dialogOeffnen()">
           Position anlegen
         </UButton>
       </template>
@@ -90,7 +121,7 @@ async function umschalten(k: Kostenposition) {
 
     <div class="px-6 py-4">
       <UAlert
-        v-if="meldung"
+        v-if="meldung && !dialogOffen"
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
@@ -130,7 +161,7 @@ async function umschalten(k: Kostenposition) {
         class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[40rem] text-sm">
+        <table class="trd-tabelle w-full min-w-[48rem] text-sm">
           <thead
             class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
           >
@@ -141,13 +172,12 @@ async function umschalten(k: Kostenposition) {
               <th class="px-4">Vorsteuer</th>
               <th class="px-4">Verteilung</th>
               <th class="px-4">Status</th>
+              <th class="px-4 text-right">Aktion</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
             <tr v-for="k in data.eintraege" :key="k.id" :class="{ 'text-zinc-400': !k.aktiv }">
-              <td class="px-4 font-medium">
-                {{ k.bezeichnung }}
-              </td>
+              <td class="px-4 font-medium">{{ k.bezeichnung }}</td>
               <td class="px-4 text-zinc-500">
                 {{ k.varianteId ? 'Variante' : 'übergreifend' }}
               </td>
@@ -186,22 +216,47 @@ async function umschalten(k: Kostenposition) {
                   {{ k.aktiv ? 'aktiv' : 'inaktiv' }}
                 </UButton>
               </td>
+              <td class="px-4 text-right">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-pencil"
+                  :aria-label="`${k.bezeichnung} bearbeiten`"
+                  class="rounded-[8px]"
+                  @click="dialogOeffnen(k)"
+                >
+                  Bearbeiten
+                </UButton>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <UModal v-model:open="dialogOffen" title="Kostenposition anlegen">
+    <UModal
+      v-model:open="dialogOffen"
+      :title="bearbeiteId ? 'Kostenposition bearbeiten' : 'Kostenposition anlegen'"
+    >
       <template #body>
-        <form class="space-y-4" @submit.prevent="anlegen">
+        <form class="space-y-4" @submit.prevent="speichern">
+          <UAlert
+            v-if="meldung"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-circle-alert"
+            class="rounded-[12px]"
+            :description="meldung"
+          />
+
           <UFormField label="Bezeichnung" required :error="formularFehler.bezeichnung">
-            <UInput v-model="neu.bezeichnung" autofocus class="w-full" />
+            <UInput v-model="form.bezeichnung" autofocus class="w-full" />
           </UFormField>
 
           <UFormField label="Art" required>
             <USelectMenu
-              v-model="neu.art"
+              v-model="form.art"
               :items="artOptionen"
               value-key="value"
               class="w-full"
@@ -209,12 +264,12 @@ async function umschalten(k: Kostenposition) {
           </UFormField>
 
           <UFormField
-            :label="neu.art === 'fix' ? 'Betrag' : 'Satz'"
+            :label="form.art === 'fix' ? 'Betrag' : 'Satz'"
             required
             :error="formularFehler.wert"
-            :help="neu.art === 'fix' ? 'Zum Beispiel 0,85' : 'Zum Beispiel 4,7 für 4,7 Prozent'"
+            :help="form.art === 'fix' ? 'Zum Beispiel 0,85' : 'Zum Beispiel 4,7 für 4,7 Prozent'"
           >
-            <UInput v-model="neu.wert" class="w-full" />
+            <UInput v-model="form.wert" class="w-full" />
           </UFormField>
 
           <UFormField
@@ -222,27 +277,31 @@ async function umschalten(k: Kostenposition) {
             help="Gilt für Fracht und Zoll, wenn eine Sendung mehrere Chargen enthält."
           >
             <USelectMenu
-              v-model="neu.verteilmethode"
+              v-model="form.verteilmethode"
               :items="verteilOptionen"
               value-key="value"
               class="w-full"
             />
           </UFormField>
 
-          <UCheckbox
-            v-model="neu.vorsteuerabzugsfaehig"
-            label="Vorsteuerabzugsfähig"
-          />
+          <UCheckbox v-model="form.vorsteuerabzugsfaehig" label="Vorsteuerabzugsfähig" />
           <p class="-mt-2 text-xs text-zinc-500">
             Abziehbare Positionen belasten die Marge nicht. Trifft auf die
             Einfuhrumsatzsteuer zu, nicht auf Zoll.
           </p>
 
           <div class="flex justify-end gap-2 pt-2">
-            <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="dialogOffen = false">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              class="rounded-[8px]"
+              @click="dialogOffen = false"
+            >
               Abbrechen
             </UButton>
-            <UButton type="submit" :loading="speichert" class="rounded-[8px]">Anlegen</UButton>
+            <UButton type="submit" :loading="speichert" class="rounded-[8px]">
+              {{ bearbeiteId ? 'Speichern' : 'Anlegen' }}
+            </UButton>
           </div>
         </form>
       </template>

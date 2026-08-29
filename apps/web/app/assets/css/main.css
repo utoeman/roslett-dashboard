@@ -1,0 +1,12 @@
+/*
+ * Globale Grundlagen. Die eigentliche Gestaltung folgt ab Phase 2;
+ * hier steht nur, was jede Seite braucht.
+ */
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  /* Zahlenspalten laufen mit gleich breiten Ziffern, damit Betraege
+     in Tabellen buendig untereinander stehen. */
+  font-variant-numeric: tabular-nums;
+}

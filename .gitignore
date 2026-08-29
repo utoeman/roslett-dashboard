@@ -1,0 +1,17 @@
+# Abhängigkeiten
+node_modules
+
+# Nuxt-Buildartefakte
+.nuxt
+.output
+dist
+coverage
+
+# Umgebungsvariablen – niemals einchecken
+.env
+.env.*
+!.env.example
+
+# Betriebssystem und Logs
+.DS_Store
+*.log

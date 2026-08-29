@@ -9,9 +9,9 @@ export default defineAppConfig({
   ui: {
     colors: {
       primary: 'trd',
-      warning: 'trdWarning',
-      error: 'trdError',
-      success: 'trdSuccess',
+      warning: 'trdwarning',
+      error: 'trderror',
+      success: 'trdsuccess',
       neutral: 'zinc',
     },
   },

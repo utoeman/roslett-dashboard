@@ -7,6 +7,14 @@ export default defineNuxtConfig({
 
   modules: ['@nuxt/ui'],
 
+  /**
+   * Komponenten liegen nach Sachgebiet in Unterordnern (artikel/, layout/,
+   * kalkulator/ …). Ohne pathPrefix wuerde Nuxt den Ordnernamen voranstellen
+   * und aus SeitenKopf ein LayoutSeitenKopf machen. Die Ordner gliedern hier
+   * nur den Bestand, sie gehoeren nicht in den Namen.
+   */
+  components: [{ path: '~/components', pathPrefix: false }],
+
   css: ['~/assets/css/main.css'],
 
   typescript: {

@@ -1,0 +1,1 @@
+ALTER TABLE "lieferanten" ADD COLUMN "archiviert_am" timestamp with time zone;

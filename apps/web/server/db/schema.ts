@@ -121,6 +121,12 @@ export const lieferanten = pgTable('lieferanten', {
   name: text('name').notNull(),
   land: text('land'),
   notiz: text('notiz'),
+  /**
+   * Geloescht wird nicht. Ein Lieferant, mit dem nicht mehr gearbeitet wird,
+   * bekommt hier einen Zeitstempel und verschwindet aus den Auswahllisten.
+   * Seine Chargen bleiben unangetastet, sonst ginge die Historie verloren.
+   */
+  archiviertAm: timestamp('archiviert_am', { withTimezone: true }),
   erstelltAm,
 });
 

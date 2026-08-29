@@ -1,12 +1,119 @@
-/*
- * Globale Grundlagen. Die eigentliche Gestaltung folgt ab Phase 2;
- * hier steht nur, was jede Seite braucht.
- */
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/*
+ * Design-Tokens aus der Spezifikation.
+ *
+ * Nuxt UI erwartet Farben als Abstufungen 50 bis 950. Die vorgegebenen Werte
+ * bilden jeweils die Stufe 500; die uebrigen Stufen sind daraus abgeleitet,
+ * damit Zustaende wie Hover und Fokus dieselbe Farbfamilie behalten.
+ */
+@theme {
+  /* primary #B84C3E – gebranntes Terrakotta */
+  --color-trd-50:  #fdf4f2;
+  --color-trd-100: #fbe6e2;
+  --color-trd-200: #f7d0c9;
+  --color-trd-300: #eeb0a4;
+  --color-trd-400: #dd8070;
+  --color-trd-500: #b84c3e;
+  --color-trd-600: #a54234;
+  --color-trd-700: #8a362b;
+  --color-trd-800: #722f27;
+  --color-trd-900: #602b25;
+  --color-trd-950: #34130f;
+
+  /* warning #EF9F27 */
+  --color-trdwarning-50:  #fef8ec;
+  --color-trdwarning-100: #fbecc9;
+  --color-trdwarning-200: #f7d78e;
+  --color-trdwarning-300: #f3bd53;
+  --color-trdwarning-400: #ef9f27;
+  --color-trdwarning-500: #e98510;
+  --color-trdwarning-600: #ce640b;
+  --color-trdwarning-700: #ab460d;
+  --color-trdwarning-800: #8b3711;
+  --color-trdwarning-900: #722e11;
+  --color-trdwarning-950: #421604;
+
+  /* error #E24B4A */
+  --color-trderror-50:  #fef3f2;
+  --color-trderror-100: #fee5e3;
+  --color-trderror-200: #fecfcc;
+  --color-trderror-300: #fcaea9;
+  --color-trderror-400: #f77f78;
+  --color-trderror-500: #e24b4a;
+  --color-trderror-600: #cf3130;
+  --color-trderror-700: #ae2524;
+  --color-trderror-800: #902322;
+  --color-trderror-900: #782322;
+  --color-trderror-950: #410e0d;
+
+  /* success #639922 */
+  --color-trdsuccess-50:  #f5faeb;
+  --color-trdsuccess-100: #e8f4d3;
+  --color-trdsuccess-200: #d2eaac;
+  --color-trdsuccess-300: #b3db7b;
+  --color-trdsuccess-400: #94c952;
+  --color-trdsuccess-500: #639922;
+  --color-trdsuccess-600: #588719;
+  --color-trdsuccess-700: #446617;
+  --color-trdsuccess-800: #385218;
+  --color-trdsuccess-900: #314618;
+  --color-trdsuccess-950: #172607;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+
+  /* Radien: 8px fuer Bedienelemente, 12px fuer Karten. */
+  --radius-bedienelement: 8px;
+  --radius-karte: 12px;
+}
+
+/*
+ * Eigene Werte, die ausserhalb des Tailwind-Themes gebraucht werden.
+ * Die Haarlinie ist bewusst 0.5px: auf einem Bildschirm mit doppelter
+ * Aufloesung ergibt das eine echte Ein-Pixel-Linie, auf einfachen
+ * Bildschirmen die duennste darstellbare.
+ */
 :root {
-  /* Zahlenspalten laufen mit gleich breiten Ziffern, damit Betraege
-     in Tabellen buendig untereinander stehen. */
+  --trd-haarlinie: 0.5px;
+  --trd-zeilenhoehe: 36px;
+  --trd-rahmen: color-mix(in oklab, currentColor 14%, transparent);
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+/*
+ * Zahlen laufen mit gleich breiten Ziffern. In einer Preisspalte stehen
+ * die Betraege damit buendig untereinander, und ein Wechsel von 9 auf 10
+ * verschiebt die Spalte nicht.
+ */
+.zahl,
+.tabellenzelle-zahl,
+table td.zahl {
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Kompakte Dichte: Tabellenzeilen sind 36px hoch. */
+.trd-tabelle :where(td, th) {
+  height: var(--trd-zeilenhoehe);
+  padding-block: 0;
+}
+
+/* Haarlinien statt der uebrigen Rahmenstaerken. */
+.trd-haarlinie {
+  border-width: var(--trd-haarlinie);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

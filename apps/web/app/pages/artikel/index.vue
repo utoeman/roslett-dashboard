@@ -214,17 +214,21 @@ function preisspanne(artikel: Artikel): string {
               definiert, und die Klickfläche dehnte sich dadurch über die
               Tabelle hinaus. Der Name bleibt ein echter Link und damit
               tastaturbedienbar.
+
+              Die Zeile ist zugleich `group`: der Name färbt sich, sobald
+              irgendwo in der Zeile gehovert wird. Andernfalls sähe die Zeile
+              anklickbar aus, ohne dass sich das Ziel des Klicks zeigt.
             -->
             <tr
               v-for="artikel in data.eintraege"
               :key="artikel.id"
-              class="cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
+              class="group cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
               @click="zeileOeffnen(artikel.id, $event)"
             >
               <td class="px-4">
                 <NuxtLink
                   :to="`/artikel/${artikel.id}`"
-                  class="font-medium hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:hover:text-trd-400"
+                  class="font-medium transition-colors group-hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:group-hover:text-trd-400"
                 >
                   {{ artikel.name }}
                 </NuxtLink>

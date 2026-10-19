@@ -196,7 +196,7 @@ function openRow(id: string, event: MouseEvent) {
             :error="fieldErrors.currency"
             help="Vorbelegt vom Lieferanten. Der EZB-Kurs zum Rechnungsdatum wird automatisch geholt."
           >
-            <UInput v-model="form.currency" maxlength="3" class="w-full font-mono uppercase" placeholder="EUR" />
+            <WaehrungAuswahl v-model="form.currency" />
           </UFormField>
           <UFormField
             v-if="fieldErrors.exchangeRate || form.exchangeRate"

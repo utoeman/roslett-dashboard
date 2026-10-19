@@ -6,6 +6,7 @@ import {
   calculateTotalCost,
   calculateSalesPrice,
   minimumMargin,
+  marginBeforeFees,
   costItemsForVariant,
 } from '../src/pricing.js';
 import { MoneyError } from '../src/money.js';
@@ -367,5 +368,19 @@ describe('minimumMargin', () => {
     expect(() =>
       minimumMargin(1.5, { feePercent: 0, feeFixed: 0 }, 1000),
     ).toThrow(MoneyError);
+  });
+});
+
+describe('marginBeforeFees', () => {
+  it('rechnet vom Bruttopreis netto und zieht den Einstand ab', () => {
+    // 39.90 gross at 19 % = 33.53 net; 33.53 - 9.06 = 24.47
+    const m = marginBeforeFees(3990, 0.19, 906);
+    expect(m.salesPriceNetEur).toBe(3353);
+    expect(m.contributionMarginEur).toBe(2447);
+    expect(m.margin).toBeCloseTo(0.7298, 4);
+  });
+
+  it('wird negativ, wenn der Einstand ueber dem Nettopreis liegt', () => {
+    expect(marginBeforeFees(1070, 0.07, 1200).contributionMarginEur).toBe(-200);
   });
 });

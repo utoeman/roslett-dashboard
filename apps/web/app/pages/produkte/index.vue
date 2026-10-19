@@ -112,6 +112,18 @@ function priceRange(product: Product): string {
   const max = Math.max(...prices);
   return min === max ? formatMoney(min) : `${formatMoney(min)} – ${formatMoney(max)}`;
 }
+
+/** Units on hand and FIFO value over the variants; open shortfalls count as zero. */
+function stockOf(product: Product) {
+  return product.variants.reduce(
+    (total, v) => ({
+      stock: total.stock + Math.max(0, v.inventory?.stock ?? 0),
+      value: total.value + (v.inventory?.stockValueEur ?? 0),
+      low: total.low || (v.inventory?.belowMinimum ?? false),
+    }),
+    { stock: 0, value: 0, low: false },
+  );
+}
 </script>
 
 <template>
@@ -190,7 +202,7 @@ function priceRange(product: Product): string {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[40rem] text-sm">
+        <table class="trd-tabelle w-full min-w-[48rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
@@ -199,6 +211,8 @@ function priceRange(product: Product): string {
               <th class="px-4">Kategorie</th>
               <th class="px-4">Varianten</th>
               <th class="px-4 text-right">Preis brutto</th>
+              <th class="px-4 text-right">Bestand</th>
+              <th class="px-4 text-right">Lagerwert</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
@@ -236,6 +250,19 @@ function priceRange(product: Product): string {
                 </span>
               </td>
               <td class="zahl px-4">{{ priceRange(product) }}</td>
+              <td class="zahl px-4">
+                <UBadge
+                  v-if="stockOf(product).low"
+                  size="sm"
+                  color="warning"
+                  variant="subtle"
+                  class="mr-2 rounded-[8px] font-sans"
+                >
+                  unter Mindestbestand
+                </UBadge>
+                {{ stockOf(product).stock }}
+              </td>
+              <td class="zahl px-4">{{ formatMoney(stockOf(product).value) }}</td>
             </tr>
           </tbody>
         </table>

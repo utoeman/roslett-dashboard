@@ -107,6 +107,16 @@ function previewEur(input: string): string {
   return formatMoney(Math.round(cents / data.value.exchangeRate));
 }
 
+const fieldNames: Record<string, string> = { variantId: 'Variante', quantityOrdered: 'Menge', unitPrice: 'EK' };
+/** Per-row messages of the positions form, e.g. "Position 2 · EK: Pflichtfeld." */
+const positionErrors = computed(() =>
+  Object.entries(fieldErrors.value).flatMap(([key, text]) => {
+    const match = /^positions\.(\d+)\.(\w+)$/.exec(key);
+    if (!match) return [];
+    return [`Position ${Number(match[1]) + 1} · ${fieldNames[match[2] ?? ''] ?? match[2]}: ${text}`];
+  }),
+);
+
 function savePositions() {
   return run(() =>
     $fetch(api(), {
@@ -257,7 +267,7 @@ const positionBadge = (p: ReceiptPosition) =>
                   <UInput v-model="header.invoiceDate" type="date" class="w-full" />
                 </UFormField>
                 <UFormField label="Währung" :error="fieldErrors.currency">
-                  <UInput v-model="header.currency" maxlength="3" class="w-full font-mono uppercase" />
+                  <WaehrungAuswahl v-model="header.currency" />
                 </UFormField>
               </div>
               <UCheckbox v-model="header.manualRate" label="Kurs von Hand statt EZB-Referenzkurs" />
@@ -296,7 +306,7 @@ const positionBadge = (p: ReceiptPosition) =>
                 <dd v-else>
                   <span class="font-mono">1 EUR = {{ String(data.exchangeRate).replace('.', ',') }} {{ data.currency }}</span>
                   <span class="text-xs text-leinen-500">
-                    · {{ data.exchangeRateSource === 'ecb' ? 'EZB-Referenzkurs zum Rechnungsdatum' : 'von Hand' }}
+                    · {{ data.exchangeRateSource === 'ecb' ? 'EZB-Referenzkurs, letzter Handelstag bis Rechnungsdatum' : 'von Hand' }}
                   </span>
                 </dd>
               </div>
@@ -371,6 +381,9 @@ const positionBadge = (p: ReceiptPosition) =>
                   </tr>
                 </tbody>
               </table>
+              <ul v-if="positionErrors.length" class="space-y-0.5 px-4 pt-3 text-xs text-red-700">
+                <li v-for="text in positionErrors" :key="text">{{ text }}</li>
+              </ul>
               <div class="flex flex-wrap justify-between gap-2 px-4 py-3">
                 <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-plus" class="rounded-[8px]" @click="addRow">
                   Position hinzufügen

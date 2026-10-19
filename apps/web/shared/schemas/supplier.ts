@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalText, requiredText } from './common.js';
+import { currencyCodeSchema, optionalText, requiredText } from './common.js';
 
 /** Suppliers are archived, never deleted, so batches keep their origin. */
 export const createSupplierSchema = z.object({
@@ -14,12 +14,7 @@ export const createSupplierSchema = z.object({
     .optional()
     .or(z.literal('').transform(() => null)),
   /** ISO 4217, preset in goods receipts. */
-  defaultCurrency: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{3}$/, { message: 'Währung muss ein dreistelliger Code sein, etwa EUR.' })
-    .optional(),
+  defaultCurrency: currencyCodeSchema.optional(),
   note: optionalText(),
 });
 

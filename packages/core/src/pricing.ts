@@ -217,3 +217,15 @@ export function minimumMargin(
   const fees = share(salesPriceNetEur, channel.feePercent) + channel.feeFixed;
   return (salesPriceNetEur - totalCostEur - fees) / salesPriceNetEur;
 }
+
+/**
+ * Margin of a gross shelf price before channel fees and cost items: net price
+ * minus landed cost. Shows how much room a product leaves at all.
+ */
+export function marginBeforeFees(priceGrossEur: Cents, vatRate: Rate, landedCostEur: Cents): MarginResult {
+  assertCents(priceGrossEur, 'Verkaufspreis brutto');
+  if (!Number.isFinite(vatRate) || vatRate < 0) {
+    throw new PricingError(`Ungültiger MwSt-Satz: ${String(vatRate)}`);
+  }
+  return calculateMargin(round(priceGrossEur / (1 + vatRate)), landedCostEur);
+}

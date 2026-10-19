@@ -27,7 +27,7 @@ export interface PlannedAllocation {
   readonly quantity: number;
 }
 
-function fifoOrder(batches: readonly BatchStock[]): BatchStock[] {
+function fifoOrder<T extends BatchStock>(batches: readonly T[]): T[] {
   return [...batches].sort((a, b) =>
     a.invoiceDate !== b.invoiceDate ? (a.invoiceDate < b.invoiceDate ? -1 : 1) : a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   );
@@ -119,4 +119,33 @@ export function convertToEur(amountMinor: Cents, foreignPerEur: number): Cents {
     throw new MoneyError(`Wechselkurs muss größer als null sein, erhalten: ${String(foreignPerEur)}`);
   }
   return round(amountMinor / foreignPerEur);
+}
+
+export interface ValuedBatch extends BatchStock {
+  /** Landed cost per unit in EUR cents. */
+  readonly landedCostEur: Cents;
+}
+
+export interface StockValuation {
+  readonly units: number;
+  readonly valueEur: Cents;
+  /** Weighted average of remaining stock; without stock the newest batch's cost, without batches null. */
+  readonly averageCostEur: Cents | null;
+}
+
+/** FIFO valuation: each remaining unit keeps the landed cost of its batch. */
+export function valueStock(batches: readonly ValuedBatch[]): StockValuation {
+  let units = 0;
+  let value = 0;
+  for (const batch of batches) {
+    if (batch.remaining <= 0) continue;
+    units += batch.remaining;
+    value += batch.remaining * assertCents(batch.landedCostEur, 'Einstand');
+  }
+  const newest = fifoOrder(batches).at(-1);
+  return {
+    units,
+    valueEur: round(value),
+    averageCostEur: units > 0 ? round(value / units) : (newest?.landedCostEur ?? null),
+  };
 }

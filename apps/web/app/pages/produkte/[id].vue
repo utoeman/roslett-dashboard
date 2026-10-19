@@ -292,7 +292,7 @@ const archivedVariants = computed(
             </UButton>
           </div>
 
-          <table class="trd-tabelle w-full min-w-[44rem] text-sm">
+          <table class="trd-tabelle w-full min-w-[60rem] text-sm">
             <thead
               class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
             >
@@ -300,7 +300,12 @@ const archivedVariants = computed(
                 <th class="px-4">SKU</th>
                 <th class="px-4">Variante</th>
                 <th class="px-4 text-right">Preis brutto</th>
-                <th class="px-4 text-right">Mindestbestand</th>
+                <th class="px-4 text-right">Bestand</th>
+                <th class="px-4 text-right">Ø Einstand</th>
+                <th class="px-4 text-right">Lagerwert</th>
+                <th class="px-4 text-right" title="Preis netto minus Ø Einstand, vor Kanalgebühren und Kostenpositionen">
+                  Marge vor Gebühren
+                </th>
                 <th class="px-4 text-right">Aktionen</th>
               </tr>
             </thead>
@@ -312,7 +317,28 @@ const archivedVariants = computed(
                   {{ formatMoney(variant.priceGross ?? data.basePriceGross) }}
                   <span v-if="variant.priceGross === null" class="text-xs text-leinen-400">(Basis)</span>
                 </td>
-                <td class="zahl px-4 text-leinen-500">{{ variant.minimumStock }}</td>
+                <td class="zahl px-4">
+                  <NuxtLink
+                    :to="`/journal?variantId=${variant.id}`"
+                    class="hover:text-trd-600"
+                    :aria-label="`Journal ${variant.sku}`"
+                  >
+                    {{ variant.inventory?.stock ?? 0 }}
+                  </NuxtLink>
+                  <div
+                    v-if="variant.minimumStock > 0"
+                    class="text-xs"
+                    :class="variant.inventory?.belowMinimum ? 'text-amber-700' : 'text-leinen-400'"
+                  >
+                    min {{ variant.minimumStock }}
+                  </div>
+                </td>
+                <td class="zahl px-4">{{ formatMoney(variant.inventory?.averageCostEur) }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.inventory?.stockValueEur) }}</td>
+                <td class="zahl px-4" :class="(variant.inventory?.marginEur ?? 0) < 0 ? 'text-red-700' : ''">
+                  {{ formatMoney(variant.inventory?.marginEur) }}
+                  <div class="text-xs text-leinen-500">{{ formatPercent(variant.inventory?.margin) }}</div>
+                </td>
                 <td class="px-4">
                   <div class="flex justify-end gap-1">
                     <UButton
@@ -349,7 +375,10 @@ const archivedVariants = computed(
                   </UBadge>
                 </td>
                 <td class="zahl px-4">{{ formatMoney(variant.priceGross ?? data.basePriceGross) }}</td>
-                <td class="zahl px-4">{{ variant.minimumStock }}</td>
+                <td class="zahl px-4">{{ variant.inventory?.stock ?? 0 }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.inventory?.averageCostEur) }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.inventory?.stockValueEur) }}</td>
+                <td class="zahl px-4">–</td>
                 <td class="px-4">
                   <div class="flex justify-end">
                     <UButton
@@ -368,6 +397,10 @@ const archivedVariants = computed(
               </tr>
             </tbody>
           </table>
+          <p class="border-t border-leinen-200/70 px-4 py-2 text-xs text-leinen-500 dark:border-leinen-800">
+            Marge vor Gebühren: Preis netto minus Ø Einstand des Lagerbestands. Kanalgebühren und
+            Kostenpositionen sind noch nicht abgezogen. Bestand anklicken öffnet das Journal.
+          </p>
         </section>
 
         <!-- Cost items -->

@@ -18,7 +18,7 @@ const fieldErrors = ref<Record<string, string>>({});
 
 /** One dialog for create and edit; `editingId` switches to update. */
 const editingId = ref<string | null>(null);
-const form = reactive({ name: '', country: '', note: '' });
+const form = reactive({ name: '', country: '', defaultCurrency: 'EUR', note: '' });
 
 function openDialog(supplier?: Supplier) {
   message.value = null;
@@ -26,6 +26,7 @@ function openDialog(supplier?: Supplier) {
   editingId.value = supplier?.id ?? null;
   form.name = supplier?.name ?? '';
   form.country = supplier?.country ?? '';
+  form.defaultCurrency = supplier?.defaultCurrency ?? 'EUR';
   form.note = supplier?.note ?? '';
   dialogOpen.value = true;
 }
@@ -37,6 +38,7 @@ async function save() {
   const body = {
     name: form.name,
     country: form.country || null,
+    defaultCurrency: form.defaultCurrency,
     note: form.note || null,
   };
   try {
@@ -121,6 +123,7 @@ async function toggleArchived(supplier: Supplier) {
             <tr>
               <th class="px-4">Name</th>
               <th class="px-4">Land</th>
+              <th class="px-4">Währung</th>
               <th class="px-4">Notiz</th>
               <th class="px-4 text-right">Aktionen</th>
             </tr>
@@ -144,6 +147,7 @@ async function toggleArchived(supplier: Supplier) {
                 </UBadge>
               </td>
               <td class="px-4 text-leinen-500">{{ supplier.country ?? '–' }}</td>
+              <td class="px-4 font-mono text-xs text-leinen-500">{{ supplier.defaultCurrency }}</td>
               <td class="max-w-md truncate px-4 text-leinen-500">{{ supplier.note ?? '–' }}</td>
               <td class="px-4">
                 <div class="flex justify-end gap-1">
@@ -204,6 +208,13 @@ async function toggleArchived(supplier: Supplier) {
             help="Zweistelliger Ländercode, etwa DE oder IT."
           >
             <UInput v-model="form.country" maxlength="2" class="w-full uppercase" />
+          </UFormField>
+          <UFormField
+            label="Standard-Währung"
+            :error="fieldErrors.defaultCurrency"
+            help="Wird bei neuen Wareneingängen dieses Lieferanten vorbelegt."
+          >
+            <WaehrungAuswahl v-model="form.defaultCurrency" />
           </UFormField>
           <UFormField label="Notiz" :error="fieldErrors.note">
             <UTextarea v-model="form.note" :rows="2" class="w-full" />

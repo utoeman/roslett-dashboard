@@ -38,6 +38,9 @@ export const journalQuerySchema = listQuerySchema.pick({ limit: true, offset: tr
     .enum(['goods_receipt', 'sale', 'return', 'shrinkage', 'own_use', 'stocktake', 'supplier_return', 'reversal'])
     .optional(),
   shortfallsOnly: flagSchema().default(false),
+  /** Inclusive ISO dates. */
+  from: isoDateSchema.optional(),
+  to: isoDateSchema.optional(),
 });
 
 export type ManualEntry = z.infer<typeof manualEntrySchema>;

@@ -45,7 +45,7 @@ describe('round', () => {
   });
 
   it('rundet symmetrisch um null', () => {
-    // Math.round(-0.5) waere -0, also zur Null hin. Bei Gutschriften falsch.
+    // Math.round(-0.5) would be -0.
     expect(round(-10.5)).toBe(-11);
     expect(round(-10.4)).toBe(-10);
     expect(round(-0.5)).toBe(-1);
@@ -59,7 +59,7 @@ describe('round', () => {
 
 describe('eurosToCents und centsToEuros', () => {
   it('wandelt ohne Fliesskommaverlust', () => {
-    // 19.99 * 100 ergibt in IEEE-754 1998.9999999999998.
+    // 19.99 * 100 is 1998.9999999999998 in IEEE 754.
     expect(eurosToCents(19.99)).toBe(1999);
     expect(eurosToCents(0.1 + 0.2)).toBe(30);
     expect(eurosToCents(1234.567)).toBe(123457);
@@ -109,11 +109,11 @@ describe('parseMoney', () => {
   });
 
   it('rundet mehr als zwei Nachkommastellen', () => {
-    // Vier Nachkommastellen, damit nicht die Tausenderregel greift.
+    // Four decimals, so the thousands rule does not apply.
     expect(parseMoney('1,0050')).toBe(101);
     expect(parseMoney('1,0040')).toBe(100);
     expect(parseMoney('0,9990')).toBe(100);
-    // Drei Nachkommastellen sind dagegen bewusst ein Tausendertrenner.
+    // Three digits are read as a thousands separator.
     expect(parseMoney('1,005')).toBe(100500);
   });
 
@@ -149,12 +149,12 @@ describe('formatMoney und formatPercent', () => {
 
 describe('foreignToEur (Regel 6)', () => {
   it('rechnet Fremdwaehrung mit eingefrorenem Kurs um', () => {
-    // 250,00 USD bei 1 USD = 0,92 EUR ergibt 230,00 EUR.
+    // 250.00 USD at 0.92 = 230.00 EUR.
     expect(foreignToEur(25000, 0.92)).toBe(23000);
   });
 
   it('rundet das Ergebnis sofort, weil es persistiert wird', () => {
-    // 99,99 USD * 0,9134 = 91,330... EUR
+    // 99.99 USD * 0.9134 = 91.330... EUR
     expect(foreignToEur(9999, 0.9134)).toBe(9133);
     expect(foreignToEur(1, 0.005)).toBe(0);
     expect(foreignToEur(1, 1.5)).toBe(2);
@@ -199,7 +199,7 @@ describe('distributeByWeight', () => {
   });
 
   it('vergibt den Rest deterministisch nach groesstem Bruchanteil', () => {
-    // 10 Cent auf Gewichte 1:1:1 ergibt je 3,333 – der Rest von 1 geht an Index 0.
+    // 10 cents at 1:1:1: the remaining cent goes to index 0.
     expect(distributeByWeight(10, [1, 1, 1])).toEqual([4, 3, 3]);
     expect(distributeByWeight(10, [1, 1, 1])).toEqual(
       distributeByWeight(10, [1, 1, 1]),

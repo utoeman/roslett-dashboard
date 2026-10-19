@@ -17,7 +17,7 @@ const saving = ref(false);
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 
-/** Stammdaten des Produkts, direkt bearbeitbar. */
+/** Product master data, edited in place. */
 const editing = ref(false);
 const form = reactive({ name: '', category: '', description: '' });
 
@@ -53,11 +53,7 @@ async function saveProduct() {
   }
 }
 
-/**
- * Derselbe Dialog legt Varianten an und bearbeitet sie. Ist
- * `editingVariantId` gesetzt, wird gespeichert statt angelegt – so gibt es
- * nur ein Formular, und beide Wege koennen nicht auseinanderlaufen.
- */
+/** One dialog for create and edit; `editingVariantId` switches to update. */
 const variantDialog = ref(false);
 const editingVariantId = ref<string | null>(null);
 const variantForm = reactive({
@@ -100,8 +96,7 @@ async function saveVariant() {
   } catch (err) {
     const { message: text, fields: errorFields } = readError(err);
     message.value = text;
-    // Feldpfade aus der Liste auf das Formular zurueckfuehren:
-    // "newVariants.0.sku" wird zu "sku".
+    // Map list paths back to form fields: "newVariants.0.sku" → "sku".
     fieldErrors.value = Object.fromEntries(
       Object.entries(errorFields).map(([k, v]) => [k.split('.').pop() ?? k, v]),
     );
@@ -182,7 +177,7 @@ const archivedVariants = computed(
           :description="message"
         />
 
-        <!-- Stammdaten -->
+        <!-- Master data -->
         <section
           class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 p-4 dark:border-leinen-800"
           style="border-width: 0.5px"
@@ -243,7 +238,7 @@ const archivedVariants = computed(
           </dl>
         </section>
 
-        <!-- Varianten -->
+        <!-- Variants -->
         <section
           class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
           style="border-width: 0.5px"
@@ -343,7 +338,7 @@ const archivedVariants = computed(
           </table>
         </section>
 
-        <!-- Kostenpositionen -->
+        <!-- Cost items -->
         <section
           class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
           style="border-width: 0.5px"

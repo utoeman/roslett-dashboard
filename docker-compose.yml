@@ -1,5 +1,4 @@
-# Lokale Entwicklung: ausschliesslich Postgres.
-# Nuxt laeuft daneben ueber "npm run dev" mit Hot Reload, bewusst nicht im Container.
+# Local development: Postgres only; Nuxt runs via "npm run dev".
 services:
   db:
     image: postgres:16-alpine

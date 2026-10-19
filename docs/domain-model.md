@@ -4,7 +4,7 @@ Internes Lager- und Kalkulations-Dashboard für den Verkauf von Textilien und De
 eigenen Shop und Etsy. Regelbesteuert, vorsteuerabzugsberechtigt; Einkauf teils in Fremdwährung;
 im ersten Jahr unter 100 aktive Varianten; Start ohne Altdaten.
 
-Stand: 17.10.2026 · **v2** – Interview-Modell (v1, siehe `trd-zusammenfassung.md` Abschnitt 3)
+Stand: 17.10.2026 · **v2** – Fachkonzept
 abgeglichen mit dem Code-Stand nach Phase 2. Einzelentscheidungen: `abgleich.md`.
 
 Tabellen- und Spaltennamen sind englisch (Code-Konvention), Erklärungen deutsch.
@@ -276,7 +276,7 @@ Die Zuordnung ist kein Journal; beim Auflösen einer Fehlmenge wird ihr die Char
     + `-` + Größe nur Ziffern. Fehlt Farbe oder Größe, entfällt das Segment
     (z. B. `TRD-VAS-0003-TER`).
 
-**Beispiel rückwirkend (Interview):** 100 Kissen à 5 €, 60 verkauft, dann Zollbescheid 50 €.
+**Beispiel rückwirkend:** 100 Kissen à 5 €, 60 verkauft, dann Zollbescheid 50 €.
 Alle 100 kosten rückwirkend 5,50 €; die 60 verkauften zeigen ihre um 0,50 € kleinere Marge;
 Restbestand 40 × 5,50 €.
 

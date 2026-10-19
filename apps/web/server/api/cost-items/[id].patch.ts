@@ -6,12 +6,7 @@ import { badRequest, databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapCostItem } from '../../utils/mapping.js';
 
-/**
- * Kostenposition aendern.
- *
- * Deaktiviert wird ueber `active: false` – geloescht wird nichts, weil
- * vergangene Kalkulationen sonst nicht mehr nachvollziehbar waeren.
- */
+/** Deactivate with `active: false`; never delete, past calculations depend on it. */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
   const input = await readJsonBody(event, updateCostItemSchema);
@@ -25,12 +20,8 @@ export default defineEventHandler(async (event) => {
     'Die Kostenposition',
   );
 
-  /*
-   * Ein Wechsel der Art ohne neuen Wert wuerde die gespeicherte Zahl
-   * stillschweigend umdeuten: aus "percent 0.0470" (4,7 Prozent) wuerde
-   * "fix 0.0470", gelesen als 5 Cent. Deshalb verlangen wir bei einem
-   * Artwechsel ausdruecklich einen neuen Wert.
-   */
+  // Changing `kind` without a new value would reinterpret the stored number
+  // (4.7 % would become 5 cents), so a value is required.
   if (input.kind !== existing.kind && input.value === undefined) {
     throw badRequest(
       'Beim Wechsel zwischen Fixbetrag und Prozentsatz muss der Wert neu angegeben werden.',

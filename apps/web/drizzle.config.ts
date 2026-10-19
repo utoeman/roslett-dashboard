@@ -1,11 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
 
 /**
- * Migrationen laufen ausschliesslich ueber einen ausdruecklichen Befehl,
- * niemals automatisch beim Start der Anwendung. Auf einem Server waere eine
- * Migration beim Hochfahren gefaehrlich: mehrere Instanzen wuerden gleichzeitig
- * migrieren, und ein fehlgeschlagener Deploy liesse ein halb migriertes
- * Schema zurueck.
+ * Migrations run only via an explicit command (locally or in the release
+ * workflow), never on startup where several instances could race.
  */
 export default defineConfig({
   schema: './server/db/schema.ts',

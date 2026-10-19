@@ -25,11 +25,11 @@ const batch = (
   landedCostEur,
 });
 
-// Drei Chargen derselben Variante zu steigenden Einstandspreisen.
+// Three batches of one variant with rising landed cost.
 const threeBatches = (): Batch[] => [
-  batch('c1', '2026-01-10', 10, 10, 1200), // 12,00 EUR
-  batch('c2', '2026-02-15', 20, 20, 1350), // 13,50 EUR
-  batch('c3', '2026-03-20', 30, 30, 1500), // 15,00 EUR
+  batch('c1', '2026-01-10', 10, 10, 1200), // 12.00 EUR
+  batch('c2', '2026-02-15', 20, 20, 1350), // 13.50 EUR
+  batch('c3', '2026-03-20', 30, 30, 1500), // 15.00 EUR
 ];
 
 describe('sortFifo', () => {
@@ -61,7 +61,7 @@ describe('sortFifo', () => {
 
 describe('allocateIssue – Abgang ueber drei Chargen mit Rest (Regel 9)', () => {
   it('verbraucht die aelteste Batch zuerst und verteilt ueber drei Chargen', () => {
-    const chargen = threeBatches(); // 10 + 20 + 30 = 60 Stueck
+    const chargen = threeBatches(); // 60 units
     const e = allocateIssue(chargen, 45);
 
     expect(e.allocations).toEqual([
@@ -71,10 +71,9 @@ describe('allocateIssue – Abgang ueber drei Chargen mit Rest (Regel 9)', () =>
     ]);
     expect(e.uncoveredQuantity).toBe(0);
 
-    // 10*12,00 + 20*13,50 + 15*15,00 = 120 + 270 + 225 = 615,00 EUR
+    // 10*12.00 + 20*13.50 + 15*15.00 = 615.00 EUR
     expect(e.costOfGoodsSoldEur).toBe(61500);
 
-    // Die dritte Batch behaelt einen Rest von 15 Stueck.
     expect(e.batchesAfter.map((c) => [c.id, c.quantityRemaining])).toEqual([
       ['c1', 0],
       ['c2', 0],
@@ -109,8 +108,7 @@ describe('allocateIssue – Abgang ueber drei Chargen mit Rest (Regel 9)', () =>
   });
 
   it('weist Fehlmengen aus, statt zu werfen', () => {
-    // Ob ein Abgang ins Minus laufen darf, entscheidet die Fachlogik darueber,
-    // nicht die Engine.
+    // Whether stock may go negative is decided by the caller, not the engine.
     const e = allocateIssue(threeBatches(), 100);
     expect(e.uncoveredQuantity).toBe(40);
     expect(availableQuantity(e.batchesAfter)).toBe(0);
@@ -125,8 +123,7 @@ describe('allocateIssue – Abgang ueber drei Chargen mit Rest (Regel 9)', () =>
   });
 
   it('haelt bei erschoepftem Bedarf spaetere Chargen unberuehrt', () => {
-    // Deckt den Zweig ab, in dem die Restmenge bereits null ist,
-    // die Schleife aber noch weitere Chargen durchlaeuft.
+    // Covers the loop continuing after the issue is fully allocated.
     const e = allocateIssue(threeBatches(), 5);
     expect(e.batchesAfter.map((c) => c.quantityRemaining)).toEqual([5, 20, 30]);
   });
@@ -144,7 +141,7 @@ describe('returnToBatches – Retoure und Storno', () => {
     const abgang = allocateIssue(chargen, 45);
     const zurueck = returnToBatches(abgang.batchesAfter, abgang.allocations);
 
-    // Nach vollstaendigem Storno steht der Ausgangszustand wieder da.
+    // A full reversal restores the initial state.
     expect(zurueck.map((c) => [c.id, c.quantityRemaining])).toEqual([
       ['c1', 10],
       ['c2', 20],
@@ -155,7 +152,7 @@ describe('returnToBatches – Retoure und Storno', () => {
   it('bucht eine Teilretoure in die richtige Batch', () => {
     const chargen = threeBatches();
     const abgang = allocateIssue(chargen, 45);
-    // Nur 5 Stueck aus der teuersten Batch kommen zurueck.
+    // Only 5 units from the most expensive batch come back.
     const zurueck = returnToBatches(abgang.batchesAfter, [
       { batchId: 'c3', quantity: 5, landedCostEur: 1500 },
     ]);
@@ -196,13 +193,13 @@ describe('returnToBatches – Retoure und Storno', () => {
 
 describe('stockValue und averageLandedCost', () => {
   it('bewertet den Restbestand zu Einstandspreisen', () => {
-    // 10*12,00 + 20*13,50 + 30*15,00 = 120 + 270 + 450 = 840,00 EUR
+    // 10*12.00 + 20*13.50 + 30*15.00 = 840.00 EUR
     expect(stockValue(threeBatches())).toBe(84000);
     expect(stockValue([])).toBe(0);
   });
 
   it('bildet den gewichteten Durchschnitt', () => {
-    // 840,00 EUR auf 60 Stueck = 14,00 EUR
+    // 840.00 EUR / 60 units = 14.00 EUR
     expect(averageLandedCost(threeBatches())).toBe(1400);
   });
 

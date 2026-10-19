@@ -1,7 +1,4 @@
-/**
- * Ohne Anmeldung fuehrt jede Seite zur Anmeldeseite; die gewuenschte Adresse
- * wandert als ?weiter= mit und wird nach dem Login wieder aufgerufen.
- */
+/** Redirects to /login when signed out; the target is kept in ?weiter=. */
 export default defineNuxtRouteMiddleware((to) => {
   const { loggedIn } = useUserSession();
 

@@ -2,14 +2,11 @@
 @import "@nuxt/ui";
 
 /*
- * Design-Tokens aus dem Interview (docs/trd-zusammenfassung.md, Abschnitt 5).
- *
- * Nuxt UI erwartet Farben als Abstufungen 50 bis 950. Die vorgegebenen Werte
- * sind in der Skala markiert; die uebrigen Stufen sind daraus abgeleitet,
- * damit Zustaende wie Hover und Fokus dieselbe Farbfamilie behalten.
+ * Design tokens (docs/design.md). Nuxt UI expects shades 50–950; the given
+ * values are marked, the other shades are derived from them.
  */
 @theme {
-  /* primary Oliv: 100 hell #E6EAD9, 500 Akzent #4A5A34, 700 dunkel #2F3A20 */
+  /* primary olive: 100 light #E6EAD9, 500 accent #4A5A34, 700 dark #2F3A20 */
   --color-trd-50:  #f3f5ec;
   --color-trd-100: #e6ead9;
   --color-trd-200: #cdd5b6;
@@ -23,9 +20,8 @@
   --color-trd-950: #10150a;
 
   /*
-   * neutral Leinengrau: 50 Navigation #FBFAF7, 100 Grund #F3F0EA,
-   * 200 Rahmen #E2DCD2, 300 Eingabe #D6CFC3, 500 Text gedaempft #6B645A,
-   * 900 Text #23211E.
+   * neutral linen: 50 navigation #FBFAF7, 100 background #F3F0EA,
+   * 200 border #E2DCD2, 300 input #D6CFC3, 500 muted text #6B645A, 900 text #23211E.
    */
   --color-leinen-50:  #fbfaf7;
   --color-leinen-100: #f3f0ea;
@@ -39,7 +35,7 @@
   --color-leinen-900: #23211e;
   --color-leinen-950: #161512;
 
-  /* warning: 100 Flaeche #FBEBD0, 300 Rahmen #E8C98F, 600/700 Text #8A5300/#6E4200 */
+  /* warning: 100 surface #FBEBD0, 300 border #E8C98F, 600/700 text #8A5300/#6E4200 */
   --color-trdwarning-50:  #fdf6e8;
   --color-trdwarning-100: #fbebd0;
   --color-trdwarning-200: #f3d9a8;
@@ -52,7 +48,7 @@
   --color-trdwarning-900: #45290a;
   --color-trdwarning-950: #261604;
 
-  /* error = Storno: 100 Flaeche #F3DCD6, 600 Text #7A2E1C */
+  /* error = reversal: 100 surface #F3DCD6, 600 text #7A2E1C */
   --color-trderror-50:  #fbf1ee;
   --color-trderror-100: #f3dcd6;
   --color-trderror-200: #e9bdb2;
@@ -65,7 +61,7 @@
   --color-trderror-900: #3f1a11;
   --color-trderror-950: #220c07;
 
-  /* info = Retoure, offen: 100 Flaeche #E3ECF3, 700 Text #24435C */
+  /* info = return, open: 100 surface #E3ECF3, 700 text #24435C */
   --color-trdinfo-50:  #f1f6f9;
   --color-trdinfo-100: #e3ecf3;
   --color-trdinfo-200: #c6d7e5;
@@ -78,7 +74,7 @@
   --color-trdinfo-900: #1a2f40;
   --color-trdinfo-950: #0f1c26;
 
-  /* Zweitfarbe fuer Diagramme (Etsy-Balken). */
+  /* Secondary chart color (Etsy bars). */
   --color-sand: #c9a27a;
 
   /* success #639922 */
@@ -96,20 +92,15 @@
 
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
-  /* Zahlen und SKUs. */
+  /* Numbers and SKUs. */
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Radien: 8px fuer Bedienelemente, 12px fuer Karten. */
+  /* Radii: 8px controls, 12px cards. */
   --radius-bedienelement: 8px;
   --radius-karte: 12px;
 }
 
-/*
- * Eigene Werte, die ausserhalb des Tailwind-Themes gebraucht werden.
- * Die Haarlinie ist bewusst 0.5px: auf einem Bildschirm mit doppelter
- * Aufloesung ergibt das eine echte Ein-Pixel-Linie, auf einfachen
- * Bildschirmen die duennste darstellbare.
- */
+/* 0.5px hairline: one physical pixel on high-density screens. */
 :root {
   --trd-haarlinie: 0.5px;
   --trd-zeilenhoehe: 36px;
@@ -121,11 +112,7 @@ html {
   background-color: var(--color-leinen-100);
 }
 
-/*
- * Zahlen laufen mit gleich breiten Ziffern. In einer Preisspalte stehen
- * die Betraege damit buendig untereinander, und ein Wechsel von 9 auf 10
- * verschiebt die Spalte nicht.
- */
+/* Tabular figures keep price columns aligned. */
 .zahl,
 .tabellenzelle-zahl,
 table td.zahl {
@@ -134,13 +121,13 @@ table td.zahl {
   text-align: right;
 }
 
-/* Kompakte Dichte: Tabellenzeilen sind 36px hoch. */
+/* Compact density: 36px table rows. */
 .trd-tabelle :where(td, th) {
   height: var(--trd-zeilenhoehe);
   padding-block: 0;
 }
 
-/* Haarlinien statt der uebrigen Rahmenstaerken. */
+/* Hairlines instead of the default border widths. */
 .trd-haarlinie {
   border-width: var(--trd-haarlinie);
 }

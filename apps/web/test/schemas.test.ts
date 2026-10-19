@@ -1,11 +1,4 @@
-/**
- * Tests der Systemgrenze.
- *
- * Hier wird geprueft, was zwischen Formular und Datenbank passiert: das
- * Parsen von Eingaben zu ganzzahligen Cent (Regel 1) und die Umrechnung
- * fuer die Datenbankspalten. Genau an dieser Grenze entstehen die Fehler,
- * die man in der Oberflaeche nicht sieht.
- */
+/** Boundary tests: input parsing to cents and conversion for database columns. */
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -36,9 +29,7 @@ describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
   const schema = flagSchema();
 
   it('liest "false" als falsch', () => {
-    // Der eigentliche Grund fuer diesen Baustein: z.coerce.boolean() macht
-    // aus "false" ein true, weil jede nicht leere Zeichenkette truthy ist.
-    // Damit waere jeder Filter wirkungslos.
+    // z.coerce.boolean() would turn "false" into true.
     expect(schema.parse('false')).toBe(false);
     expect(schema.parse('0')).toBe(false);
   });
@@ -54,9 +45,7 @@ describe('flagSchema – Wahrheitswerte aus der Abfragezeichenkette', () => {
   });
 
   it('traegt selbst keinen Standardwert', () => {
-    // Der Standard wird bewusst an der Aufrufstelle gesetzt: ein
-    // `.default()` im Baustein wuerde ein aeusseres `.optional()`
-    // aushebeln und bei PATCH Daten ueberschreiben.
+    // Default is set by the caller; an inner `.default()` would break PATCH.
     expect(schema.safeParse(undefined).success).toBe(false);
     expect(schema.default(true).parse(undefined)).toBe(true);
     expect(schema.default(false).parse(undefined)).toBe(false);
@@ -69,7 +58,6 @@ describe('listQuerySchema', () => {
   });
 
   it('respektiert includeArchived=false aus der Abfragezeichenkette', () => {
-    // Genau der Weg, den die Oberflaeche nimmt.
     const result = listQuerySchema.parse({ includeArchived: 'false' });
     expect(result.includeArchived).toBe(false);
   });
@@ -110,7 +98,7 @@ describe('moneySchema – Eingabe zu ganzzahligen Cent (Regel 1)', () => {
   });
 
   it('verliert keinen Cent bei Fliesskomma-Fallstricken', () => {
-    // 19.99 * 100 ergibt in IEEE-754 1998.9999999999998.
+    // 19.99 * 100 is 1998.9999999999998 in IEEE 754.
     expect(schema.parse(19.99)).toBe(1999);
     expect(schema.parse('19,99')).toBe(1999);
   });
@@ -188,7 +176,6 @@ describe('skuSchema', () => {
   });
 
   it('lehnt Leerzeichen und Sonderzeichen ab', () => {
-    // Die SKU landet in Exporten und moeglicherweise in Dateinamen.
     expect(skuSchema.safeParse('HAT SPACE').success).toBe(false);
     expect(skuSchema.safeParse('A/B').success).toBe(false);
     expect(skuSchema.safeParse('').success).toBe(false);
@@ -215,7 +202,7 @@ describe('createCostItemSchema – Art bestimmt die Bedeutung des Werts', () => 
   });
 
   it('haelt Betrag und Satz auseinander', () => {
-    // Derselbe Eingabetext ergibt je nach Art voellig unterschiedliche Werte.
+    // Same input, different value depending on kind.
     const alsBetrag = createCostItemSchema.parse({
       label: 'X',
       kind: 'fix',
@@ -257,13 +244,7 @@ describe('createCostItemSchema – Art bestimmt die Bedeutung des Werts', () => 
 });
 
 describe('Aendern-Schemas setzen keine Standardwerte', () => {
-  /*
-   * Der Fall, der beinahe Daten gekostet haette: ein PATCH mit nur einem
-   * Feld darf die uebrigen nicht auf ihre Standardwerte zuruecksetzen.
-   * Weder `.optional()` noch `.partial()` entfernen ein `.default()`, das
-   * innerhalb eines Bausteins steckt – deshalb wird hier ausdruecklich
-   * geprueft, dass nichts hinzukommt, was nicht uebergeben wurde.
-   */
+  // Regression: a PATCH with one field must not reset the others to defaults.
 
   it('Kanal: leerer Rumpf ergibt keine Felder', () => {
     expect(updateChannelSchema.parse({})).toEqual({});
@@ -289,7 +270,7 @@ describe('Aendern-Schemas setzen keine Standardwerte', () => {
   });
 
   it('Kostenposition: eine deaktivierte Position bleibt deaktiviert', () => {
-    // Sonst wuerde jede Bearbeitung sie stillschweigend wieder einschalten.
+    // Otherwise every edit would silently re-enable it.
     const e = updateCostItemSchema.parse({
       kind: 'percent',
       label: 'Zoll',
@@ -375,7 +356,7 @@ describe('Umrechnung an der Datenbankgrenze', () => {
   });
 
   it('liest den rohen Spaltenwert richtig', () => {
-    // So kommen die Werte tatsaechlich aus Postgres zurueck.
+    // As returned by Postgres.
     expect(numericToCents('0.8500')).toBe(85);
     expect(numericToCents('24.9000')).toBe(2490);
     expect(numericToRate('0.0470')).toBeCloseTo(0.047, 10);

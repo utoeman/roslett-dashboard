@@ -32,11 +32,7 @@ const distributionOptions = [
   { label: 'nach Stückzahl', value: 'quantity' },
 ];
 
-/**
- * Gespeicherte Werte zurueck ins Eingabeformat bringen: Cent als Euro mit
- * Komma, Raten als Prozentzahl. Der Nutzer sieht im Formular wieder, was er
- * urspruenglich getippt hat.
- */
+/** Stored values back to input format (cents → "21,50", rate → "6,5"). */
 function valueToInput(item: CostItem): string {
   if (item.value === null) return '';
   return item.kind === 'fix' ? toInput(item.value) : rateToInput(item.value);
@@ -58,8 +54,7 @@ async function save() {
   saving.value = true;
   message.value = null;
   fieldErrors.value = {};
-  // Die Art gehoert immer in den Rumpf: sie entscheidet, ob der Wert als
-  // Betrag oder als Rate gelesen wird.
+  // `kind` is always sent; it decides how `value` is read.
   const body = {
     label: form.label,
     kind: form.kind,

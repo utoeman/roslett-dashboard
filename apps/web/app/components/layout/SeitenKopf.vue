@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   titel: string;
-  /** Kurze Einordnung unter dem Titel. Optional. */
+  /** Optional subtitle. */
   hinweis?: string;
 }>();
 </script>

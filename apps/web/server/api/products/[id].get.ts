@@ -3,14 +3,7 @@ import { schema, useDb } from '../../db/client.js';
 import { readId, requireFound } from '../../utils/validation.js';
 import { mapCostItem, mapVariant } from '../../utils/mapping.js';
 
-/**
- * Artikel im Detail.
- *
- * Liefert das Produkt mit allen Varianten – archivierte eingeschlossen,
- * damit die Detailansicht die vollstaendige Historie zeigt – sowie die
- * Kostenpositionen, die fuer diesen Artikel gelten: die globalen und die
- * variantenspezifischen.
- */
+/** Product with all variants (including archived) and its applicable cost items. */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
   const db = useDb();
@@ -27,8 +20,6 @@ export default defineEventHandler(async (event) => {
 
   const variantIds = product.variants.map((variant) => variant.id);
 
-  // Globale Positionen gelten immer, variantenspezifische nur fuer die
-  // Varianten dieses Produkts.
   const costItems = await db.query.costItems.findMany({
     where:
       variantIds.length > 0

@@ -19,5 +19,6 @@ coverage
 # Artefakte fehlgeschlagener Skriptlaeufe
 undefined/
 
-# Persönliche Unterlagen (Weiterbildung, Bewerbung) – nur lokal
+# Lokale Notizen und Arbeitsanweisungen – nicht im Repository
 docs/privat/
+CLAUDE.md

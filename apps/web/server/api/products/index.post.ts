@@ -6,17 +6,8 @@ import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapVariant } from '../../utils/mapping.js';
 
 /**
- * Artikel anlegen.
- *
- * Ein Produkt bekommt immer mindestens eine Variante. Werden keine
- * uebergeben, legt die Route selbst eine Standardvariante an – der haeufige
- * Fall eines Artikels ohne Ausfuehrungen kostet den Nutzer damit keinen
- * zusaetzlichen Schritt, und nachgelagerter Code muss nie ein Produkt ohne
- * Variante behandeln.
- *
- * Produkt und Varianten entstehen in einer Transaktion. Ohne sie koennte bei
- * einer doppelten SKU ein Produkt ohne Variante zurueckbleiben – genau der
- * Zustand, den die Regel ausschliesst.
+ * Creates a product with at least one variant (a default one if none given).
+ * One transaction, so a duplicate SKU never leaves a product without variants.
  */
 export default defineEventHandler(async (event) => {
   const input = await readJsonBody(event, createProductSchema);

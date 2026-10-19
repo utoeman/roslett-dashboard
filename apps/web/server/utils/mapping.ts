@@ -1,11 +1,4 @@
-/**
- * Abbildung von Datenbankzeilen auf Antwortobjekte.
- *
- * Jede Route liefert dieselbe Form, damit die Oberflaeche nicht je Endpunkt
- * unterscheiden muss. Insbesondere sind Geldbetraege in jeder Antwort
- * ganzzahlige Cent und Prozentsaetze immer Raten – nie der rohe
- * NUMERIC-String aus Postgres.
- */
+/** Database rows to API objects: money as cents, percentages as rates. */
 
 import { numericToCents, numericToRate } from './money.js';
 
@@ -44,11 +37,7 @@ type CostItemRow = {
   distributionMethod: 'value' | 'quantity';
 };
 
-/**
- * Der Wert bedeutet je nach Art etwas anderes: bei "fix" ein Cent-Betrag,
- * bei "percent" eine Rate. Diese Unterscheidung an genau einer Stelle zu
- * treffen verhindert, dass irgendwo eine Rate als Betrag gelesen wird.
- */
+/** `value` is cents for "fix" and a rate for "percent"; decided only here. */
 export function mapCostItem(row: CostItemRow) {
   return {
     id: row.id,

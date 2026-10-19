@@ -1,9 +1,9 @@
-# Abgleich Interview ↔ Code
+# Abgleich Fachkonzept ↔ Code
 
-Grundlage: `domain-model.md` und `trd-zusammenfassung.md` (Interview, 17.10.2026) gegen
+Grundlage: Fachkonzept (`domain-model.md`, `screens.md`, Stand 17.10.2026) gegen
 `apps/web/server/db/schema.ts` (Stand Phase 2).
 
-Grundregel: **Fachlich entscheidet das Interview, technisch der Code.** Code bleibt englisch.
+Grundregel: **Fachlich entscheidet das Fachkonzept, technisch der Code.** Code bleibt englisch.
 Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 
 ## Schritt 1: Stammdaten (entschieden 17.10.2026)
@@ -39,7 +39,7 @@ Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 
 | Punkt | Entscheidung |
 |---|---|
-| Buchungstypen | 8 Typen wie Interview: `goods_receipt`, `sale`, `return`, `shrinkage`, `own_use`, `stocktake`, `supplier_return`, `reversal` (ersetzt `correction`) |
+| Buchungstypen | 8 Typen wie im Fachkonzept: `goods_receipt`, `sale`, `return`, `shrinkage`, `own_use`, `stocktake`, `supplier_return`, `reversal` (ersetzt `correction`) |
 | Storno-Verweis | neue Buchung zeigt auf Original (`reverses_id`); Original bleibt unverändert (E4) |
 | Fehlmenge | Abgang ohne Bestand wird mit Warnung gebucht, Rest ohne Charge; nächster Zugang oder Inventur ordnet automatisch zu (E8) |
 | Retoure | zurück auf ursprüngliche Charge(n) – wie bisher |
@@ -94,14 +94,14 @@ Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 | Einstellungen | Kanäle, Lieferanten, Kostenpositionen, SKU-Kürzel, MwSt-Sätze, Monatsabschlüsse |
 | Wareneingang mobil | eigener Screen (390 px); PWA erst M4 |
 | Formulare | Nuxt UI-Formular + Zod (kein VeeValidate) |
-| Design-Tokens | aus Interview (Abschnitt 5 der Zusammenfassung): Leinengrau `#F3F0EA`, Oliv `#4A5A34`, Sand `#C9A27A`, Instrument Sans, IBM Plex Mono (`tabular-nums`); Terrakotta + Inter entfallen |
+| Design-Tokens | laut `design.md`: Leinengrau `#F3F0EA`, Oliv `#4A5A34`, Sand `#C9A27A`, Instrument Sans, IBM Plex Mono (`tabular-nums`); Terrakotta + Inter entfallen |
 | Komponenten | Nuxt UI als Basis + eigene, dokumentierte Fachbausteine (Geldfeld, SKU-Badge, Buchungstyp-Badge, Mengen-Stepper, KPI-Kachel) |
 
 ## Schritt 8: Plan, Werkzeuge, Betrieb (entschieden 17.10.2026)
 
 | Punkt | Entscheidung |
 |---|---|
-| Zeitplan | **Weiterbildungsplan führt** (M1–M4, 10 Wochen, 12–15 h/Woche, ab 19.10.2026); Bauplan wird daran angepasst, Phase 1–2 als erledigt |
+| Zeitplan | Roadmap M1–M4 in `roadmap.md`; Phase 1–2 gelten als erledigt |
 | Paketmanager | **npm** (Workspaces) bleibt; Pläne werden korrigiert |
-| Live-Demo | **Vercel + Neon**; Docker für lokale DB, Dockerfile als Nachweis |
+| Betrieb | **Netlify + Neon** (zunächst Vercel geplant); Docker nur für die lokale DB |
 | CI | GitHub Actions (Lint, Typecheck, Tests) – wird ergänzt |

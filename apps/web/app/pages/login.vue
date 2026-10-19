@@ -1,9 +1,5 @@
 <script setup lang="ts">
-/**
- * Anmeldung mit dem Zugangspasswort.
- *
- * Ohne Navigation: vor der Anmeldung gibt es nichts, wohin man gehen koennte.
- */
+/** Login page, without navigation. */
 definePageMeta({ layout: false });
 useHead({ title: 'Anmelden' });
 
@@ -15,7 +11,7 @@ const password = ref('');
 const saving = ref(false);
 const message = ref<string | null>(null);
 
-/** Nur Pfade innerhalb der App, sonst liesse sich ein fremder Link unterschieben. */
+/** Only in-app paths, to prevent open redirects. */
 function target(): string {
   const next = route.query.weiter;
   return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? next : '/';

@@ -1,16 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { useDb } from '../db/client.js';
 
-/**
- * Zustandspruefung.
- *
- * Prueft ausdruecklich die Datenbankverbindung und nicht nur, ob der Prozess
- * laeuft. Ein Nitro-Server, der antwortet, aber die Datenbank nicht erreicht,
- * ist fuer dieses Werkzeug nutzlos – die Pruefung soll das melden.
- *
- * Die Route bleibt spaeter von der Authentifizierung ausgenommen, damit ein
- * Reverse Proxy oder eine Ueberwachung sie ohne Anmeldung abfragen kann.
- */
+/** Health check including the database. Public, for monitoring. */
 export default defineEventHandler(async (event) => {
   const start = Date.now();
   try {
@@ -28,7 +19,7 @@ export default defineEventHandler(async (event) => {
       database: 'unreachable' as const,
       durationMs: Date.now() - start,
       checkedAt: new Date().toISOString(),
-      // Die Route ist oeffentlich; Einzelheiten zur Datenbank nur lokal zeigen.
+      // Public route: only show details locally.
       ...(import.meta.dev
         ? { message: error instanceof Error ? error.message : String(error) }
         : {}),

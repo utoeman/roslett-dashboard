@@ -16,11 +16,7 @@ const saving = ref(false);
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 
-/**
- * Derselbe Dialog legt an und bearbeitet. Ist `editingId` gesetzt, wird
- * gespeichert statt angelegt – so gibt es nur ein Formular zu pflegen und
- * beide Wege koennen nicht auseinanderlaufen.
- */
+/** One dialog for create and edit; `editingId` switches to update. */
 const editingId = ref<string | null>(null);
 const form = reactive({ name: '', country: '', note: '' });
 

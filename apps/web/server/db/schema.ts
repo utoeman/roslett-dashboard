@@ -1,13 +1,9 @@
 /**
- * Drizzle-Schema.
+ * Drizzle schema.
  *
- * Grundsaetze:
- * - Primaerschluessel sind UUIDs, erzeugt von der Datenbank.
- * - Geloescht wird nichts. Stattdessen setzt `archived_at` einen Zeitstempel.
- * - Geldbetraege liegen als NUMERIC(14,4) vor. Die vier Nachkommastellen
- *   nehmen Zwischenwerte auf, ohne dass gerundet werden muss; die Anwendung
- *   rechnet trotzdem durchgaengig in ganzzahligen Cent (Regel 1).
- * - Der Bestand ist kein Feld. Er ergibt sich aus dem Buchungsjournal (Regel 8).
+ * - Nothing is deleted; records are archived via `archived_at`.
+ * - Money is NUMERIC(14,4), but the app computes in integer cents.
+ * - Stock is not a column; it is derived from the stock journal.
  */
 
 import { relations, sql } from 'drizzle-orm';
@@ -25,10 +21,10 @@ import {
 } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
-// Gemeinsame Bausteine
+// Shared columns
 // ---------------------------------------------------------------------------
 
-/** Geldspalte. NUMERIC statt double precision, weil Fliesskomma bei Geld ausfaellt. */
+/** NUMERIC, never floating point, for money. */
 const money = (name: string) => numeric(name, { precision: 14, scale: 4 });
 
 const createdAt = timestamp('created_at', { withTimezone: true })
@@ -36,12 +32,12 @@ const createdAt = timestamp('created_at', { withTimezone: true })
   .defaultNow();
 
 // ---------------------------------------------------------------------------
-// Aufzaehlungen
+// Enums
 // ---------------------------------------------------------------------------
 
 export const costItemKindEnum = pgEnum('cost_item_kind', ['fix', 'percent']);
 
-/** Verteilmethode fuer Nebenkosten einer Sendung (Regel 7). */
+/** How additional shipment costs are split across positions. */
 export const distributionMethodEnum = pgEnum('distribution_method', [
   'value',
   'quantity',
@@ -58,10 +54,7 @@ export const stockEntryKindEnum = pgEnum('stock_entry_kind', [
   'shrinkage',
 ]);
 
-/**
- * Herkunft einer Buchung. Wird angelegt, aber in diesem Projekt nicht
- * verwendet; die Etsy-Anbindung ist ausdruecklich nicht Teil davon.
- */
+/** Origin of a stock entry; prepared for the Etsy import. */
 export const stockEntrySourceEnum = pgEnum('stock_entry_source', [
   'manual',
   'etsy',
@@ -69,7 +62,7 @@ export const stockEntrySourceEnum = pgEnum('stock_entry_source', [
 ]);
 
 // ---------------------------------------------------------------------------
-// Stammdaten
+// Master data
 // ---------------------------------------------------------------------------
 
 export const products = pgTable('products', {
@@ -82,12 +75,8 @@ export const products = pgTable('products', {
 });
 
 /**
- * Varianten.
- *
- * Auch ein Produkt ohne echte Varianten bekommt genau eine Standardvariante.
- * Das haelt jede nachgelagerte Abfrage frei von Sonderfaellen: Chargen,
- * Buchungen und Preise haengen ausnahmslos an einer Variante, nie an einem
- * Produkt.
+ * Every product has at least one (default) variant, so batches, entries and
+ * prices always attach to a variant and never to a product.
  */
 export const variants = pgTable(
   'variants',
@@ -100,7 +89,7 @@ export const variants = pgTable(
     label: text('label').notNull(),
     minimumStock: integer('minimum_stock').notNull().default(0),
     basePriceNet: money('base_price_net'),
-    /** Umsatzsteuersatz zur Information. Beruehrt die Kalkulation nicht (Regel 2). */
+    /** Informational only; calculation is net. */
     vatRate: numeric('vat_rate', { precision: 5, scale: 4 })
       .notNull()
       .default('0.1900'),
@@ -118,33 +107,20 @@ export const suppliers = pgTable('suppliers', {
   name: text('name').notNull(),
   country: text('country'),
   note: text('note'),
-  /**
-   * Geloescht wird nicht. Ein Lieferant, mit dem nicht mehr gearbeitet wird,
-   * bekommt hier einen Zeitstempel und verschwindet aus den Auswahllisten.
-   * Seine Chargen bleiben unangetastet, sonst ginge die Historie verloren.
-   */
+  /** Archived suppliers leave selection lists; their batches stay intact. */
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
 
 // ---------------------------------------------------------------------------
-// Wareneingang
+// Goods receipt
 // ---------------------------------------------------------------------------
 
 /**
- * Chargen.
+ * The exchange rate is frozen at receipt and the EUR amount stored, so past
+ * cost of goods never changes with later rates.
  *
- * Fremdwaehrung: Betrag, Waehrungscode und Wechselkurs werden gespeichert und
- * der Euro-Betrag daneben persistiert (Regel 6). Der Kurs friert beim
- * Wareneingang ein; zur Anzeigezeit wird nie umgerechnet, sonst wuerde sich
- * der Wareneinsatz vergangener Perioden mit jedem Kursstand aendern.
- *
- * `additional_costs_eur` und `landed_cost_eur` sind festgeschriebene
- * Ergebnisse der Verteilung, keine berechneten Felder (Regel 7).
- *
- * `quantity_remaining` ist die einzige Ausnahme von Regel 8: es ist kein
- * Bestandsfeld, sondern der FIFO-Zeiger dieser Charge. Der Bestand einer
- * Variante ergibt sich weiterhin allein aus dem Journal.
+ * `quantity_remaining` is the FIFO pointer of this batch, not a stock field.
  */
 export const batches = pgTable(
   'batches',
@@ -160,7 +136,7 @@ export const batches = pgTable(
     quantityReceived: integer('quantity_received').notNull(),
     quantityRemaining: integer('quantity_remaining').notNull(),
     purchasePriceForeign: money('purchase_price_foreign').notNull(),
-    /** ISO-4217-Code. Bei Einkauf in Euro schlicht "EUR" mit Kurs 1. */
+    /** ISO 4217; "EUR" with rate 1 for euro purchases. */
     currency: text('currency').notNull().default('EUR'),
     exchangeRate: numeric('exchange_rate', { precision: 14, scale: 6 })
       .notNull()
@@ -171,26 +147,18 @@ export const batches = pgTable(
     note: text('note'),
   },
   (t) => [
-    // Deckt die FIFO-Abfrage ab: Chargen einer Variante mit Restmenge,
-    // aelteste zuerst.
+    // FIFO lookup: batches of a variant, oldest first.
     index('batches_fifo_idx').on(t.variantId, t.receivedAt),
   ],
 );
 
 // ---------------------------------------------------------------------------
-// Kalkulation
+// Costing
 // ---------------------------------------------------------------------------
 
 /**
- * Kostenpositionen.
- *
- * `variant_id` null bedeutet: gilt global. `input_tax_deductible` steuert,
- * ob die Position in die Selbstkosten eingeht (Regel 3): Einfuhrumsatzsteuer
- * bleibt draussen, Zoll geht hinein.
- *
- * `distribution_method` ergaenzt das urspruengliche Datenmodell. Regel 7
- * verlangt, dass die Methode pro Kostenposition umschaltbar ist; ohne eigene
- * Spalte liesse sich diese Einstellung nicht speichern.
+ * `variant_id` null means global. Items with deductible input tax (import VAT)
+ * stay out of the cost price; customs duty goes in.
  */
 export const costItems = pgTable(
   'cost_items',
@@ -199,7 +167,7 @@ export const costItems = pgTable(
     variantId: uuid('variant_id').references(() => variants.id),
     label: text('label').notNull(),
     kind: costItemKindEnum('kind').notNull(),
-    /** Bei kind "fix" ein Betrag, bei "percent" eine Rate (0.1900 = 19 %). */
+    /** Amount for "fix", rate for "percent" (0.1900 = 19 %). */
     value: money('value').notNull(),
     inputTaxDeductible: boolean('input_tax_deductible').notNull().default(false),
     active: boolean('active').notNull().default(true),
@@ -213,7 +181,7 @@ export const costItems = pgTable(
 export const channels = pgTable('channels', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  /** Prozentuale Gebuehr auf den Verkaufspreis, 0.0650 = 6,5 %. */
+  /** Fee as a rate of the sales price, 0.0650 = 6.5 %. */
   feePercent: numeric('fee_percent', { precision: 6, scale: 4 })
     .notNull()
     .default('0'),
@@ -232,9 +200,8 @@ export const channelPrices = pgTable(
     channelId: uuid('channel_id')
       .notNull()
       .references(() => channels.id),
-    /** Ergebnis der Rueckwaertsrechnung (Regel 5). */
     suggestedPrice: money('suggested_price'),
-    /** Was tatsaechlich im Shop steht. Weicht bewusst ab, wenn der Nutzer es so will. */
+    /** The price actually listed; may deliberately differ from the suggestion. */
     listedPrice: money('listed_price'),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
@@ -246,20 +213,13 @@ export const channelPrices = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Bestandsjournal
+// Stock journal
 // ---------------------------------------------------------------------------
 
 /**
- * Bestandsbuchungen. Das Journal ist die einzige Wahrheit ueber den Bestand
- * (Regel 8); `quantity` ist vorzeichenbehaftet, Abgaenge sind negativ.
- *
- * Storniert wird nicht durch Loeschen, sondern durch eine Gegenbuchung, die
- * ueber `reversed_by_id` auf das Original zeigt. So bleibt die Historie
- * vollstaendig nachvollziehbar.
- *
- * `source` und `external_reference` werden angelegt, aber in diesem Projekt
- * nicht verwendet. Die eindeutige Bedingung auf `external_reference`
- * verhindert spaeter doppelte Importe derselben Bestellung.
+ * The journal is the single source of truth for stock; outgoing quantities
+ * are negative. Entries are reversed by a counter entry (`reversed_by_id`),
+ * never deleted. The unique `external_reference` prevents duplicate imports.
  */
 export const stockEntries = pgTable(
   'stock_entries',
@@ -280,8 +240,7 @@ export const stockEntries = pgTable(
   },
   (t) => [
     index('stock_entries_variant_idx').on(t.variantId, t.postedAt),
-    // Partieller eindeutiger Index: mehrere Buchungen ohne externe Referenz
-    // sind erlaubt, dieselbe Referenz zweimal aber nicht.
+    // Partial: many entries without a reference, but each reference only once.
     uniqueIndex('stock_entries_external_reference_idx')
       .on(t.externalReference)
       .where(sql`${t.externalReference} is not null`),
@@ -289,16 +248,9 @@ export const stockEntries = pgTable(
 );
 
 /**
- * Chargenzuordnungen.
- *
- * Die FIFO-Zuordnung wird persistiert, nicht bei Bedarf neu berechnet
- * (Regel 9). Der Grund: eine Retoure muss exakt in die Charge zurueckbuchen,
- * aus der die Ware stammt. Wuerde man die Zuordnung nachtraeglich neu
- * herleiten, verschoebe jede spaetere Buchung das Ergebnis rueckwirkend.
- *
- * `landed_cost_eur` wird mitgeschrieben, obwohl er in der Charge steht: so
- * bleibt der Wareneinsatz des Vorgangs auch dann unveraendert, wenn die
- * Charge spaeter korrigiert wird.
+ * FIFO allocations are persisted, not recomputed, so a return goes back to
+ * the exact batch it came from. `landed_cost_eur` is copied so the cost of
+ * the transaction survives later batch corrections.
  */
 export const batchAllocations = pgTable(
   'batch_allocations',
@@ -320,7 +272,7 @@ export const batchAllocations = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Beziehungen
+// Relations
 // ---------------------------------------------------------------------------
 
 export const productsRelations = relations(products, ({ many }) => ({

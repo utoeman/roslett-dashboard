@@ -6,11 +6,9 @@ import { readQuery } from '../../utils/validation.js';
 import { mapCostItem } from '../../utils/mapping.js';
 
 const querySchema = z.object({
-  /** "global" liefert nur die uebergreifenden Positionen. */
+  /** "global" returns only global items. */
   variantId: z.union([z.uuid(), z.literal('global')]).optional(),
   activeOnly: flagSchema().default(false),
-  // Wie bei den uebrigen Listen begrenzt: die Zahl der Positionen waechst
-  // mit dem Artikelstamm, weil sie variantenspezifisch sein koennen.
   limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });

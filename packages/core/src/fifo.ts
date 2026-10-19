@@ -1,15 +1,9 @@
 /**
- * FIFO-Chargenzuordnung.
+ * FIFO batch allocation.
  *
- * Bei einem Abgang wird zuerst die aelteste Charge mit Restmenge verbraucht.
- * Ein Abgang kann sich ueber mehrere Chargen erstrecken (Regel 9). Die
- * Zuordnungen werden anschliessend als eigene Zeilen persistiert, damit
- * Stornos und Retouren exakt dorthin zurueckbuchen, wo die Ware herkam.
- *
- * Alle Funktionen hier sind rein: die uebergebenen Chargen werden nie
- * veraendert, es entsteht stets eine neue Liste. Das macht die Vorschau im
- * Kalkulator gefahrlos – man kann einen Abgang durchrechnen, ohne etwas zu
- * buchen.
+ * Issues consume the oldest batch with remaining stock first and may span
+ * several batches. All functions are pure and never mutate their input, so
+ * the calculator can preview an issue without posting it.
  */
 
 import type { Cents } from './money.js';
@@ -23,12 +17,7 @@ export class FifoError extends Error {
   }
 }
 
-/**
- * Sortiert Chargen in Verbrauchsreihenfolge: aeltester Wareneingang zuerst.
- * Bei identischem Zeitstempel entscheidet die id, damit die Reihenfolge
- * stabil und damit reproduzierbar ist – zwei Chargen aus derselben Lieferung
- * duerfen nicht je nach Datenbankreihenfolge unterschiedlich verbraucht werden.
- */
+/** Oldest receipt first; `id` breaks ties so the order is reproducible. */
 export function sortFifo(batches: readonly Batch[]): Batch[] {
   return [...batches].sort((a, b) => {
     const diff = a.receivedAt.getTime() - b.receivedAt.getTime();
@@ -37,23 +26,14 @@ export function sortFifo(batches: readonly Batch[]): Batch[] {
   });
 }
 
-/** Summe der Restmengen. */
 export function availableQuantity(batches: readonly Batch[]): number {
   return batches.reduce((total, batch) => total + batch.quantityRemaining, 0);
 }
 
 /**
- * Ordnet einen Abgang nach FIFO den vorhandenen Chargen zu.
- *
- * Reicht der Bestand nicht aus, wirft die Funktion nicht, sondern weist die
- * Fehlmenge als `uncoveredQuantity` aus. Ob ein Abgang ins Minus laufen darf,
- * ist eine fachliche Entscheidung der aufrufenden Ebene – Schwund und
- * Inventurdifferenzen erfordern gelegentlich genau das. Die Engine bleibt an
- * dieser Stelle bewusst wertfrei.
- *
- * Der Wareneinsatz wird ueber die Einzelzuordnungen summiert. Da jeder
- * Chargen-Einstandspreis bereits ein gerundeter Cent-Wert ist, ist die Summe
- * ganzzahlig; `round` ist hier reine Absicherung.
+ * Allocates an issue to batches. Missing stock does not throw; it is
+ * returned as `uncoveredQuantity`, and the caller decides whether negative
+ * stock is allowed.
  */
 export function allocateIssue(
   batches: readonly Batch[],
@@ -96,16 +76,8 @@ export function allocateIssue(
 }
 
 /**
- * Bucht Zuordnungen zurueck – fuer Retouren und Stornos.
- *
- * Die Ware landet exakt in der Charge, aus der sie stammt. Genau dafuer
- * werden die Zuordnungen ueberhaupt persistiert: eine Retoure zum Tagespreis
- * oder zum Durchschnitt wuerde den Wareneinsatz vergangener Perioden
- * verfaelschen.
- *
- * Eine Rueckbuchung ueber die urspruengliche Eingangsmenge hinaus wird
- * abgelehnt, weil sie bedeuten wuerde, dass mehr zurueckkommt als je
- * geliefert wurde.
+ * Returns allocations to the exact batches they came from (returns, reversals).
+ * Returning more than was ever received is rejected.
  */
 export function returnToBatches(
   batches: readonly Batch[],
@@ -138,12 +110,7 @@ export function returnToBatches(
   return batches.map((batch) => byId.get(batch.id) ?? batch);
 }
 
-/**
- * Wert des Bestands zu Einstandspreisen.
- *
- * Nicht zu verwechseln mit dem Wareneinsatz: dieser Wert bezieht sich auf
- * das, was noch liegt, nicht auf das, was abgegangen ist.
- */
+/** Value of remaining stock at landed cost (not cost of goods sold). */
 export function stockValue(batches: readonly Batch[]): Cents {
   return round(
     batches.reduce(
@@ -153,13 +120,7 @@ export function stockValue(batches: readonly Batch[]): Cents {
   );
 }
 
-/**
- * Gewichteter durchschnittlicher Einstandspreis des Restbestands.
- *
- * Dient nur der Anzeige. Bewertet und gebucht wird ausschliesslich nach
- * FIFO; ein Durchschnittspreis wuerde die Chargenzuordnung aufweichen.
- * Ohne Restbestand ist das Ergebnis 0.
- */
+/** Weighted average landed cost, for display only; valuation is always FIFO. */
 export function averageLandedCost(batches: readonly Batch[]): Cents {
   const quantity = availableQuantity(batches);
   if (quantity <= 0) return 0;

@@ -3,18 +3,13 @@ import { verifyAccessPassword } from '../../utils/access-password.js';
 import { LoginAttempts } from '../../utils/login-attempts.js';
 import { readJsonBody } from '../../utils/validation.js';
 
-/**
- * Anmeldung mit dem Zugangspasswort.
- *
- * Bei Erfolg setzt nuxt-auth-utils ein verschluesseltes Sitzungscookie; ab dann
- * laesst die Server-Middleware (server/middleware/auth.ts) die API-Aufrufe durch.
- */
+/** Login with the access password; sets an encrypted session cookie. */
 
 const loginSchema = z.object({
   password: z.string().min(1, 'Bitte das Passwort eingeben.').max(200),
 });
 
-// Lebt so lange wie die Server-Instanz, siehe login-attempts.ts.
+// Lives as long as the server instance.
 const attempts = new LoginAttempts();
 
 export default defineEventHandler(async (event) => {
@@ -32,7 +27,7 @@ export default defineEventHandler(async (event) => {
 
   const storedHash = useRuntimeConfig(event).accessPasswordHash;
   if (!storedHash) {
-    // Lieber laut scheitern als still jeden hereinlassen.
+    // Fail loudly rather than let everyone in.
     throw createError({
       statusCode: 500,
       statusMessage: 'Nicht eingerichtet',

@@ -1,10 +1,4 @@
-/**
- * Verzoegert einen Wert, damit nicht jeder Tastendruck eine Anfrage ausloest.
- *
- * Bewusst selbst geschrieben statt eine Bibliothek einzubinden: es sind
- * wenige Zeilen, und das Projekt soll keine Abhaengigkeit tragen, die die
- * Spezifikation nicht vorsieht.
- */
+/** Debounces a value so not every keystroke triggers a request. */
 export function useDebounced<T>(source: Ref<T>, delayMs = 250): Ref<T> {
   const target = ref(source.value) as Ref<T>;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -16,7 +10,7 @@ export function useDebounced<T>(source: Ref<T>, delayMs = 250): Ref<T> {
     }, delayMs);
   });
 
-  // Laufenden Zeitgeber abbrechen, wenn die Komponente verschwindet.
+  // Clear the pending timer on unmount.
   onScopeDispose(() => {
     if (timer !== undefined) clearTimeout(timer);
   });

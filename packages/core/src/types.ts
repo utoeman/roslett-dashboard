@@ -1,95 +1,75 @@
 /**
- * Fachliche Typen der Kalkulations-Engine.
- *
- * Dieses Paket kennt weder Vue noch eine Datenbank. Alle Typen hier sind
- * reine Datenstrukturen; Persistenzdetails wie UUIDs oder Zeitstempel
- * tauchen nur auf, soweit die Rechnung sie tatsaechlich braucht.
+ * Domain types of the calculation engine. Plain data, no Vue, no database.
  */
 
 import type { Cents, Rate } from './money.js';
 
 // ---------------------------------------------------------------------------
-// Kostenpositionen
+// Cost items
 // ---------------------------------------------------------------------------
 
-/** Fixbetrag je Stueck oder Prozentsatz vom Bezugswert. */
+/** Fixed amount per unit or a percentage of the base value. */
 export type CostItemKind = 'fix' | 'percent';
 
 /**
- * Verteilmethode fuer Nebenkosten einer Sendung.
- *
- * `value`    – anteilig nach Warenwert. Standard, weil Fracht- und
- *              Zollkosten in der Praxis am Wert haengen.
- * `quantity` – anteilig nach Stueckzahl. Sinnvoll bei volumen- oder
- *              stueckgetriebenen Kosten, etwa Verpackung pro Teil.
+ * How shipment costs are split: by goods value (default, freight and duty
+ * usually follow value) or by quantity (e.g. packaging per unit).
  */
 export type DistributionMethod = 'value' | 'quantity';
 
 export interface CostItem {
   readonly id: string;
-  /** `null` bedeutet: gilt global fuer alle Varianten. */
+  /** `null` means global. */
   readonly variantId: string | null;
   readonly label: string;
   readonly kind: CostItemKind;
-  /**
-   * Bei `kind: 'fix'` ein Cent-Betrag, bei `kind: 'percent'` eine Rate
-   * (0.15 = 15 %). Die Doppelbelegung ist bewusst: sie haelt Datenmodell
-   * und Formular einfach.
-   */
+  /** Cents for `fix`, a rate for `percent` (0.15 = 15 %). */
   readonly value: Cents | Rate;
-  /**
-   * Vorsteuerabzugsfaehige Positionen bleiben aus den Selbstkosten heraus.
-   * Klassischer Fall: Einfuhrumsatzsteuer. Zoll dagegen ist nicht
-   * abzugsfaehig und gehoert damit in die Selbstkosten (Regel 3).
-   */
+  /** Deductible input tax (import VAT) stays out of the cost price; duty goes in. */
   readonly inputTaxDeductible: boolean;
   readonly active: boolean;
-  /** Nur fuer Nebenkosten einer Sendung relevant. Default `value`. */
+  /** Only relevant for shipment costs. */
   readonly distributionMethod: DistributionMethod;
 }
 
 // ---------------------------------------------------------------------------
-// Chargen
+// Batches
 // ---------------------------------------------------------------------------
 
-/**
- * Eine Charge im Sinne der Engine: ein Wareneingang einer Variante zu einem
- * bestimmten Einstandspreis. Die Reihenfolge fuer FIFO ergibt sich aus
- * `receivedAt`, bei Gleichstand aus `id`.
- */
+/** One goods receipt of a variant. FIFO order: `receivedAt`, then `id`. */
 export interface Batch {
   readonly id: string;
   readonly variantId: string;
   readonly receivedAt: Date;
   readonly quantityReceived: number;
   readonly quantityRemaining: number;
-  /** Einstandspreis je Stueck in EUR-Cent, inklusive verteilter Nebenkosten. */
+  /** Landed cost per unit in EUR cents, including distributed costs. */
   readonly landedCostEur: Cents;
 }
 
-/** Eingangsdaten einer Charge, bevor Nebenkosten verteilt sind. */
+/** Batch input before additional costs are distributed. */
 export interface BatchItem {
   readonly id: string;
   readonly variantId: string;
   readonly quantity: number;
-  /** Reiner Warenwert der Position in EUR-Cent, ohne Nebenkosten. */
+  /** Goods value of the position in EUR cents. */
   readonly goodsValueEur: Cents;
 }
 
-/** Ein Fremdwaehrungsbetrag samt eingefrorenem Kurs (Regel 6). */
+/** Foreign amount with its frozen exchange rate. */
 export interface ForeignAmount {
   readonly amount: Cents;
-  /** ISO-4217-Code, etwa "USD". */
+  /** ISO 4217, e.g. "USD". */
   readonly currency: string;
-  /** Wert einer Einheit Fremdwaehrung in Euro. 1 USD = 0,92 EUR ergibt 0.92. */
+  /** EUR per unit of foreign currency: 1 USD = 0.92 EUR → 0.92. */
   readonly exchangeRate: number;
 }
 
 // ---------------------------------------------------------------------------
-// Nebenkostenverteilung
+// Additional cost distribution
 // ---------------------------------------------------------------------------
 
-/** Eine auf eine Sendung entfallende Nebenkostenrechnung, etwa Fracht oder Zoll. */
+/** A shipment-level cost such as freight or customs duty. */
 export interface AdditionalCost {
   readonly label: string;
   readonly amountEur: Cents;
@@ -98,17 +78,14 @@ export interface AdditionalCost {
 
 export interface DistributedAdditionalCosts {
   readonly batchId: string;
-  /** Nebenkosten der gesamten Position in EUR-Cent. */
   readonly additionalCostsEur: Cents;
-  /** Warenwert plus Nebenkosten der Position in EUR-Cent. */
+  /** Goods value plus additional costs of the position. */
   readonly totalLandedCostEur: Cents;
-  /** Einstandspreis je Stueck in EUR-Cent, gerundet. */
+  /** Rounded landed cost per unit. */
   readonly landedCostEur: Cents;
   /**
-   * Der Rundungsrest, der beim Teilen durch die Stueckzahl anfaellt.
-   * Positiv bedeutet: die Summe der Stueckpreise liegt unter dem
-   * Positionswert. Wird ausgewiesen statt verschluckt, damit die
-   * Buchhaltung nachvollziehbar bleibt.
+   * Remainder from dividing by quantity; positive means the unit prices sum
+   * to less than the position. Reported instead of silently dropped.
    */
   readonly roundingDifferenceEur: Cents;
 }
@@ -123,64 +100,59 @@ export interface DistributionResult {
 // FIFO
 // ---------------------------------------------------------------------------
 
-/** Eine einzelne Chargenzuordnung eines Abgangs. */
 export interface BatchAllocation {
   readonly batchId: string;
   readonly quantity: number;
-  /** Einstandspreis je Stueck der betroffenen Charge in EUR-Cent. */
   readonly landedCostEur: Cents;
 }
 
 export interface FifoResult {
   readonly allocations: readonly BatchAllocation[];
-  /** Chargen nach dem Abgang, mit aktualisierter Restmenge. */
+  /** Batches after the issue, with updated remaining quantity. */
   readonly batchesAfter: readonly Batch[];
-  /** Wareneinsatz des Abgangs in EUR-Cent. */
   readonly costOfGoodsSoldEur: Cents;
-  /** Menge, die mangels Restbestand nicht zugeordnet werden konnte. */
+  /** Quantity that could not be covered by stock. */
   readonly uncoveredQuantity: number;
 }
 
 // ---------------------------------------------------------------------------
-// Kanaele und Preise
+// Channels and prices
 // ---------------------------------------------------------------------------
 
 /**
- * `same_margin` – der Kanalpreis wird aus der Zielmarge zurueckgerechnet,
- *                 sodass nach Kanalgebuehren dieselbe Marge herauskommt.
- * `fixed`       – der Preis ist gesetzt; berechnet wird nur, was uebrig bleibt.
+ * `same_margin`: price is derived back from the target margin after fees.
+ * `fixed`: price is given; only the resulting margin is computed.
  */
 export type PricingRule = 'same_margin' | 'fixed';
 
 export interface Channel {
   readonly id: string;
   readonly name: string;
-  /** Prozentuale Kanalgebuehr auf den Verkaufspreis, 0.065 = 6,5 %. */
+  /** Fee as a rate of the sales price, 0.065 = 6.5 %. */
   readonly feePercent: Rate;
-  /** Fixe Gebuehr je Verkauf in EUR-Cent. */
+  /** Fixed fee per sale in EUR cents. */
   readonly feeFixed: Cents;
   readonly pricingRule: PricingRule;
   readonly active: boolean;
 }
 
 // ---------------------------------------------------------------------------
-// Kalkulationsergebnisse
+// Results
 // ---------------------------------------------------------------------------
 
-/** Eine einzelne Zeile im Kostenaufbau, fuer die Darstellung im Kalkulator. */
+/** One line of the cost breakdown. */
 export interface CostRow {
   readonly label: string;
   readonly amountEur: Cents;
-  /** Aus den Selbstkosten ausgenommen, weil Vorsteuer abziehbar (Regel 3). */
+  /** Excluded from the cost price because input tax is deductible. */
   readonly excluded: boolean;
 }
 
 export interface TotalCostResult {
   readonly landedCostEur: Cents;
   readonly rows: readonly CostRow[];
-  /** Summe aller nicht ausgenommenen Positionen zuzueglich Einstandspreis. */
   readonly totalCostEur: Cents;
-  /** Summe der ausgenommenen Positionen, nur zur Information. */
+  /** Sum of excluded rows, informational only. */
   readonly inputTaxEur: Cents;
 }
 
@@ -188,9 +160,9 @@ export interface MarginResult {
   readonly salesPriceNetEur: Cents;
   readonly totalCostEur: Cents;
   readonly contributionMarginEur: Cents;
-  /** Deckungsbeitrag / Verkaufspreis netto (Regel 4). */
+  /** Contribution / net sales price. */
   readonly margin: Rate;
-  /** Deckungsbeitrag / Selbstkosten (Regel 4). */
+  /** Contribution / total cost. */
   readonly markup: Rate;
 }
 

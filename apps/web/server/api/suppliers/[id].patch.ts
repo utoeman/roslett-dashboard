@@ -4,13 +4,7 @@ import { updateSupplierSchema } from '../../../shared/schemas/supplier.js';
 import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 
-/**
- * Lieferant aendern oder archivieren.
- *
- * `archivedAt` auf einen Zeitstempel setzen blendet ihn aus den
- * Auswahllisten aus, `null` holt ihn zurueck. Seine Chargen bleiben in
- * beiden Faellen unangetastet.
- */
+/** Update or archive a supplier (`archivedAt`); batches stay untouched. */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
   const input = await readJsonBody(event, updateSupplierSchema);
@@ -31,7 +25,7 @@ export default defineEventHandler(async (event) => {
   if (input.archivedAt !== undefined) changes.archivedAt = input.archivedAt;
 
   if (Object.keys(changes).length === 0) {
-    // Leerer Rumpf: unveraendert zurueckgeben statt einer leeren Antwort.
+    // Empty body: return the record unchanged.
     return requireFound(
       await db.query.suppliers.findFirst({
         where: eq(schema.suppliers.id, id),

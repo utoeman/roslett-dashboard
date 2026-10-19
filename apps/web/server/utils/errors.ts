@@ -88,8 +88,8 @@ export function databaseError(error: unknown, context: string): H3Error {
     const detail = String(pgError.detail ?? '');
     // Postgres names the column in the detail text.
     if (detail.includes('sku')) {
-      return conflict('Diese SKU ist bereits vergeben.', {
-        sku: 'Bereits vergeben.',
+      return conflict('Diese Variante (gleiche Farbe und Größe) gibt es schon.', {
+        size: 'Gibt es schon.',
       });
     }
     return conflict(`${context}: Dieser Eintrag existiert bereits.`);

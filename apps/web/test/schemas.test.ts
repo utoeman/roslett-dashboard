@@ -9,7 +9,8 @@ import {
   requiredText,
   percentSchema,
 } from '../shared/schemas/common.js';
-import { skuSchema, createProductSchema } from '../shared/schemas/product.js';
+import { createProductSchema, updateProductSchema, updateVariantSchema } from '../shared/schemas/product.js';
+import { createCategorySchema, createVatRateSchema } from '../shared/schemas/master-data.js';
 import {
   updateCostItemSchema,
   createCostItemSchema,
@@ -169,16 +170,18 @@ describe('requiredText und optionalText', () => {
   });
 });
 
-describe('skuSchema', () => {
-  it('nimmt zulaessige Artikelnummern', () => {
-    expect(skuSchema.parse('VASE-001')).toBe('VASE-001');
-    expect(skuSchema.parse('kiss_50.a')).toBe('kiss_50.a');
+describe('Stammdaten-Schemas', () => {
+  it('normalisiert Kürzel auf drei Großbuchstaben', () => {
+    expect(createCategorySchema.parse({ code: ' kis ', name: 'Kissen', group: 'textile' }).code).toBe('KIS');
+    expect(createCategorySchema.safeParse({ code: 'KISS', name: 'Kissen', group: 'textile' }).success).toBe(false);
+    expect(createCategorySchema.safeParse({ code: 'KIS', name: 'Kissen', group: 'moebel' }).success).toBe(false);
   });
 
-  it('lehnt Leerzeichen und Sonderzeichen ab', () => {
-    expect(skuSchema.safeParse('HAT SPACE').success).toBe(false);
-    expect(skuSchema.safeParse('A/B').success).toBe(false);
-    expect(skuSchema.safeParse('').success).toBe(false);
+  it('liest MwSt-Sätze als Rate und Datum', () => {
+    const e = createVatRateSchema.parse({ country: 'de', vatCategory: 'reduced', rate: '7', validFrom: '2024-01-01' });
+    expect(e.country).toBe('DE');
+    expect(e.rate).toBeCloseTo(0.07, 10);
+    expect(createVatRateSchema.safeParse({ country: 'DE', vatCategory: 'standard', rate: '19', validFrom: '1.1.2024' }).success).toBe(false);
   });
 });
 
@@ -308,23 +311,35 @@ describe('createChannelSchema', () => {
 });
 
 describe('createProductSchema', () => {
+  const categoryId = '0b0f6d0e-6a3b-4f1e-9a5c-2d7e8f9a0b1c';
+
   it('nimmt ein Produkt ohne Varianten entgegen', () => {
-    const e = createProductSchema.parse({ name: 'Vase', sku: 'VASE-1' });
+    const e = createProductSchema.parse({ name: 'Vase', categoryId, basePriceGross: '39,90' });
     expect(e.variants).toBeUndefined();
-    expect(e.sku).toBe('VASE-1');
+    expect(e.basePriceGross).toBe(3990);
+    expect(e.vatCategory).toBe('standard');
+  });
+
+  it('verlangt eine Kategorie und nimmt keine SKU an', () => {
+    expect(createProductSchema.safeParse({ name: 'Vase' }).success).toBe(false);
+    expect('sku' in createProductSchema.parse({ name: 'Vase', categoryId, sku: 'X' })).toBe(false);
   });
 
   it('nimmt ein Produkt mit mehreren Varianten entgegen', () => {
     const e = createProductSchema.parse({
       name: 'Kissen',
-      variants: [
-        { sku: 'K-50', label: '50x50', basePriceNet: '24,90' },
-        { sku: 'K-60', label: '60x60' },
-      ],
+      categoryId,
+      variants: [{ size: '50×50', priceGross: '44,90' }, { size: '60×60', size2: 'ignoriert' }],
     });
     expect(e.variants).toHaveLength(2);
-    expect(e.variants?.[0]?.basePriceNet).toBe(2490);
-    expect(e.variants?.[1]?.vatRate).toBeCloseTo(0.19, 10);
+    expect(e.variants?.[0]?.priceGross).toBe(4490);
+    expect(e.variants?.[1]?.minimumStock).toBe(0);
+  });
+
+  it('kann Kategorie und Farbe/Größe beim Ändern nicht setzen', () => {
+    expect('categoryId' in updateProductSchema.parse({ categoryId })).toBe(false);
+    const v = updateVariantSchema.parse({ id: categoryId, size: 'XL', colorId: categoryId });
+    expect('size' in v || 'colorId' in v).toBe(false);
   });
 });
 

@@ -22,6 +22,7 @@ export default defineEventHandler(async (event) => {
   if (input.name !== undefined) changes.name = input.name;
   if (input.country !== undefined) changes.country = input.country;
   if (input.note !== undefined) changes.note = input.note;
+  if (input.defaultCurrency !== undefined) changes.defaultCurrency = input.defaultCurrency;
   if (input.archivedAt !== undefined) changes.archivedAt = input.archivedAt;
 
   if (Object.keys(changes).length === 0) {

@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
       .values({
         name: input.name,
         country: input.country ?? null,
+        defaultCurrency: input.defaultCurrency ?? 'EUR',
         note: input.note ?? null,
       })
       .returning();

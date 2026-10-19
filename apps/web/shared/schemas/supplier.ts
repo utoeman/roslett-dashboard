@@ -13,6 +13,13 @@ export const createSupplierSchema = z.object({
     .nullable()
     .optional()
     .or(z.literal('').transform(() => null)),
+  /** ISO 4217, preset in goods receipts. */
+  defaultCurrency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, { message: 'Währung muss ein dreistelliger Code sein, etwa EUR.' })
+    .optional(),
   note: optionalText(),
 });
 

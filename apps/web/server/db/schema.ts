@@ -9,6 +9,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   index,
   integer,
   numeric,
@@ -45,6 +46,10 @@ export const distributionMethodEnum = pgEnum('distribution_method', [
 
 export const pricingRuleEnum = pgEnum('pricing_rule', ['same_margin', 'fixed']);
 
+export const categoryGroupEnum = pgEnum('category_group', ['textile', 'decor']);
+
+export const vatCategoryEnum = pgEnum('vat_category', ['standard', 'reduced']);
+
 export const stockEntryKindEnum = pgEnum('stock_entry_kind', [
   'goods_receipt',
   'sale',
@@ -65,18 +70,58 @@ export const stockEntrySourceEnum = pgEnum('stock_entry_source', [
 // Master data
 // ---------------------------------------------------------------------------
 
+/** Category codes (KIS, VAS …) used in SKUs; a code is fixed once in use. */
+export const categories = pgTable('categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  group: categoryGroupEnum('group').notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt,
+});
+
+/** Color codes (SAN, OLI …) used in SKUs; a code is fixed once in use. */
+export const colors = pgTable('colors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt,
+});
+
+/** VAT rate per delivery country and category, valid from a date. */
+export const vatRates = pgTable(
+  'vat_rates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    country: text('country').notNull(),
+    vatCategory: vatCategoryEnum('vat_category').notNull(),
+    rate: numeric('rate', { precision: 5, scale: 4 }).notNull(),
+    validFrom: date('valid_from').notNull(),
+  },
+  (t) => [uniqueIndex('vat_rates_country_category_from_idx').on(t.country, t.vatCategory, t.validFrom)],
+);
+
+/** `number` feeds the SKU; the category is fixed once variants exist. */
 export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
+  number: integer('number').notNull().unique().generatedAlwaysAsIdentity(),
   name: text('name').notNull(),
   description: text('description'),
-  category: text('category'),
+  categoryId: uuid('category_id')
+    .notNull()
+    .references(() => categories.id),
+  /** Gross sales price for all variants and channels. */
+  basePriceGross: money('base_price_gross'),
+  vatCategory: vatCategoryEnum('vat_category').notNull().default('standard'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
 
 /**
- * Every product has at least one (default) variant, so batches, entries and
- * prices always attach to a variant and never to a product.
+ * Every product has at least one variant, so batches, entries and prices
+ * always attach to a variant. Color and size are fixed because they make up
+ * the SKU; the unique SKU also keeps color + size unique per product.
  */
 export const variants = pgTable(
   'variants',
@@ -85,14 +130,12 @@ export const variants = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),
+    colorId: uuid('color_id').references(() => colors.id),
+    size: text('size'),
     sku: text('sku').notNull(),
-    label: text('label').notNull(),
+    /** Overrides the product's base price when set. */
+    priceGross: money('price_gross'),
     minimumStock: integer('minimum_stock').notNull().default(0),
-    basePriceNet: money('base_price_net'),
-    /** Informational only; calculation is net. */
-    vatRate: numeric('vat_rate', { precision: 5, scale: 4 })
-      .notNull()
-      .default('0.1900'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt,
   },
@@ -106,6 +149,8 @@ export const suppliers = pgTable('suppliers', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   country: text('country'),
+  /** ISO 4217, preset in goods receipts. */
+  defaultCurrency: text('default_currency').notNull().default('EUR'),
   note: text('note'),
   /** Archived suppliers leave selection lists; their batches stay intact. */
   archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -275,7 +320,19 @@ export const batchAllocations = pgTable(
 // Relations
 // ---------------------------------------------------------------------------
 
-export const productsRelations = relations(products, ({ many }) => ({
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  products: many(products),
+}));
+
+export const colorsRelations = relations(colors, ({ many }) => ({
+  variants: many(variants),
+}));
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
   variants: many(variants),
 }));
 
@@ -283,6 +340,10 @@ export const variantsRelations = relations(variants, ({ one, many }) => ({
   product: one(products, {
     fields: [variants.productId],
     references: [products.id],
+  }),
+  color: one(colors, {
+    fields: [variants.colorId],
+    references: [colors.id],
   }),
   batches: many(batches),
   stockEntries: many(stockEntries),

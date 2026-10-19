@@ -16,6 +16,10 @@ updates:
       kleine-updates:
         update-types: [minor, patch]
     # Major updates come one by one.
+    ignore:
+      # TypeScript majors need vue-tsc support first; upgrade by hand.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /

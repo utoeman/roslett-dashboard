@@ -2,6 +2,18 @@
 
 Alle Releases des TRD-Dashboards, neueste zuerst.
 
+## v0.3.0 (2026-10-19)
+
+### Neu
+
+- settings pages for codes and VAT (#13)
+- master data v2 with category/color codes, VAT rates and generat… (#12)
+
+### Technik
+
+- concise English comments and cleaned-up docs (#6)
+- Dependabot für npm und GitHub Actions (wöchentlich, gebündelt) (#4)
+
 ## v0.2.0 (2026-10-19)
 
 ### Neu
@@ -18,3 +30,4 @@ Alle Releases des TRD-Dashboards, neueste zuerst.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+

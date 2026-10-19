@@ -25,3 +25,31 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Nach jedem Push auf main: Migrationen auf die Vorschau-Datenbank (Neon-Zweig
+  # "vorschau"). Die Testadresse main--…netlify.app und die PR-Vorschauen
+  # arbeiten damit immer auf dem aktuellen Schema. Die Live-Datenbank migriert
+  # nur der Release-Workflow.
+  vorschau-db:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrationen auf die Vorschau-Datenbank
+        env:
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret PREVIEW_DATABASE_URL fehlt."
+            exit 1
+          fi
+          npm run db:migrate

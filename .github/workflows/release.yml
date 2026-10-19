@@ -1,0 +1,95 @@
+# Release von Hand: Actions → Release → Run workflow → patch / minor / major.
+#
+# Was sich auf main gesammelt hat, geht erst mit diesem Workflow live:
+#   1. alle Pruefungen wie in der CI
+#   2. Version in den drei package.json anheben, CHANGELOG.md schreiben
+#   3. Migrationen auf die Live-Datenbank anwenden
+#   4. Release-Commit und Tag auf main, Branch production auf den Tag setzen
+#      (Netlify veroeffentlicht nur production)
+#   5. GitHub-Release mit den Changelog-Eintraegen
+#
+# Scheitert ein Schritt, bleibt alles Spaetere aus: ohne erfolgreiche Migration
+# wird nichts gepusht, und live bleibt der vorige Stand.
+#
+# Benoetigtes Secret: PRODUCTION_DATABASE_URL (Neon, direkte Verbindung ohne Pooler).
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Art des Releases (patch = nur Fehlerbehebungen, minor = neue Funktionen, major = geändertes Verhalten)'
+        type: choice
+        options: [patch, minor, major]
+        default: minor
+
+# Nie zwei Releases gleichzeitig.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Releases nur vom Stand auf main.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Version anheben
+        id: version
+        run: |
+          NEW=$(npm version "${{ inputs.bump }}" --no-git-tag-version)
+          npm version "$NEW" --no-git-tag-version --workspaces
+          echo "tag=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Neue Version: $NEW"
+
+      - name: Changelog schreiben
+        run: node scripts/changelog.ts "${{ steps.version.outputs.tag }}" --notes "$RUNNER_TEMP/notes.md"
+
+      - name: Migrationen auf die Live-Datenbank
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret PRODUCTION_DATABASE_URL fehlt – Release abgebrochen, nichts wurde veroeffentlicht."
+            exit 1
+          fi
+          npm run db:migrate
+
+      - name: Release-Commit, Tag und production
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json apps/web/package.json packages/core/package.json CHANGELOG.md
+          git commit -m "chore(release): $TAG"
+          git tag -a "$TAG" -m "$TAG"
+          # Atomar: Commit und Tag kommen zusammen an oder gar nicht.
+          git push --atomic origin HEAD:main "$TAG"
+          # production rueckt nur vorwaerts; ein abweichender Stand bricht hier ab.
+          git push origin "$TAG^{commit}:refs/heads/production"
+
+      - name: GitHub-Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"

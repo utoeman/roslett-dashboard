@@ -230,6 +230,22 @@ unmögliche Zielmargen, Nebenkostenverteilung über drei Artikel mit stark
 unterschiedlichen Werten, FIFO-Abgänge über drei Chargen mit Restmenge und die
 Rundung auf Cent.
 
+## Releases
+
+`main` sammelt Features und Fixes, **live ist nur, was released wurde**.
+
+1. GitHub → *Actions* → *Release* → *Run workflow*, Art wählen:
+   `patch` (nur Fehlerbehebungen), `minor` (neue Funktionen), `major` (geändertes Verhalten).
+2. Der Workflow prüft alles wie die CI, hebt die Version an, schreibt `CHANGELOG.md`,
+   wendet die Migrationen auf die Live-Datenbank an, setzt Tag und GitHub-Release und
+   schiebt den Branch `production` nach. Netlify veröffentlicht nur `production`.
+
+Damit der Changelog stimmt, beginnen Commit-Titel mit einem Typ: `feat:`, `fix:`,
+`perf:`, `docs:`, `ci:`, `build:`, `refactor:` (erscheinen im Changelog) oder `chore:`,
+`test:` (erscheinen nicht). `feat!:` markiert geändertes Verhalten.
+Benötigte Secrets im Repo: `PRODUCTION_DATABASE_URL` (Release) und `PREVIEW_DATABASE_URL`
+(CI migriert nach jedem Push auf `main` die Vorschau-Datenbank).
+
 ## Weitere Phasen
 
 Abgeschlossen: Phase 1 (Fundament) und Phase 2 (Stammdaten).

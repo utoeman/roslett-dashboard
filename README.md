@@ -243,7 +243,8 @@ Rundung auf Cent.
 Damit der Changelog stimmt, beginnen Commit-Titel mit einem Typ: `feat:`, `fix:`,
 `perf:`, `docs:`, `ci:`, `build:`, `refactor:` (erscheinen im Changelog) oder `chore:`,
 `test:` (erscheinen nicht). `feat!:` markiert geändertes Verhalten.
-Benötigtes Secret im Repo: `PRODUCTION_DATABASE_URL`.
+Benötigte Secrets im Repo: `PRODUCTION_DATABASE_URL` (Release) und `PREVIEW_DATABASE_URL`
+(CI migriert nach jedem Push auf `main` die Vorschau-Datenbank).
 
 ## Weitere Phasen
 

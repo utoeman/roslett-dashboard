@@ -2,6 +2,19 @@
 
 Alle Releases des TRD-Dashboards, neueste zuerst.
 
+## v0.4.0 (2026-10-19)
+
+### Neu
+
+- price inputs and live margin (#21)
+- stock journal and margins (#20)
+- goods receipt pages (#18)
+- goods receipts and stock journal API (#14)
+
+### Technik
+
+- skip TypeScript major updates (#16)
+
 ## v0.3.0 (2026-10-19)
 
 ### Neu
@@ -30,4 +43,5 @@ Alle Releases des TRD-Dashboards, neueste zuerst.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 

@@ -28,7 +28,10 @@ export default defineEventHandler(async (event) => {
       database: 'unreachable' as const,
       durationMs: Date.now() - start,
       checkedAt: new Date().toISOString(),
-      message: error instanceof Error ? error.message : String(error),
+      // Die Route ist oeffentlich; Einzelheiten zur Datenbank nur lokal zeigen.
+      ...(import.meta.dev
+        ? { message: error instanceof Error ? error.message : String(error) }
+        : {}),
     };
   }
 });

@@ -44,6 +44,8 @@ const sections: NavSection[] = [
   },
 ];
 
+const { logout } = useLogout();
+
 function isActive(path: string): boolean {
   if (path === '/') return route.path === '/';
   return route.path === path || route.path.startsWith(`${path}/`);
@@ -97,5 +99,14 @@ function isActive(path: string): boolean {
         </li>
       </ul>
     </div>
+
+    <button
+      type="button"
+      class="mt-auto flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-leinen-500 transition-colors hover:bg-leinen-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500"
+      @click="logout"
+    >
+      <UIcon name="i-lucide-log-out" class="size-4 shrink-0" />
+      Abmelden
+    </button>
   </nav>
 </template>

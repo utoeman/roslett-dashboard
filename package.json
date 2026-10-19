@@ -12,6 +12,7 @@
     "dev": "npm run dev --workspace @trd/web",
     "build": "npm run build --workspace @trd/web",
     "lint": "eslint .",
+    "passwort:hash": "node scripts/passwort-hash.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && npm run typecheck --workspace @trd/web",

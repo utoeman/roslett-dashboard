@@ -46,9 +46,24 @@ deshalb vollständig ohne laufende Infrastruktur testen.
 ```bash
 npm install
 cp .env.example .env      # Werte anpassen, insbesondere die Passwörter
+npm run passwort:hash     # Zugangspasswort festlegen, Ausgabe in .env eintragen
 npm run db:up             # Postgres starten
 npm run db:migrate        # Schema anlegen
 ```
+
+## Zugang
+
+Die ganze App ist mit **einem** Passwort geschützt (keine Benutzerverwaltung).
+Ohne Anmeldung führt jede Seite zu `/login`, jeder API-Aufruf antwortet mit 401.
+Frei bleibt nur `/api/health`.
+
+| Variable | Inhalt |
+|---|---|
+| `NUXT_SESSION_PASSWORD` | Schlüssel für das Sitzungscookie, `openssl rand -hex 32` |
+| `NUXT_ACCESS_PASSWORD_HASH` | Hash des Passworts aus `npm run passwort:hash` (mind. 12 Zeichen) |
+
+Fehlt der Hash, ist keine Anmeldung möglich – die App bleibt gesperrt, nie offen.
+Nach fünf Fehlversuchen ist die Anmeldung von derselben Adresse 15 Minuten gesperrt.
 
 ## Starten
 
@@ -75,7 +90,9 @@ unterscheidet. Sie steht in `.gitignore` und darf niemals eingecheckt werden.
 | `npm run dev` | Nur der Entwicklungsserver, ohne Postgres zu starten |
 | `npm test` | Tests der Kalkulations-Engine einmalig ausführen |
 | `npm run test:watch` | Tests im Beobachtungsmodus |
-| `npm run typecheck` | TypeScript-Prüfung von `packages/core` |
+| `npm run typecheck` | TypeScript-Prüfung von `packages/core` und der Web-App |
+| `npm run lint` | ESLint über das ganze Repo |
+| `npm run passwort:hash` | Hash für das Zugangspasswort erzeugen |
 | `npm run db:up` | Postgres-Container starten |
 | `npm run db:down` | Postgres-Container stoppen |
 | `npm run db:generate` | Migration aus geändertem Schema erzeugen |
@@ -143,7 +160,8 @@ curl http://localhost:3000/api/health
 ```
 
 Antwortet mit HTTP 200 und `"status": "ok"`, wenn die Datenbank erreichbar ist,
-sonst mit HTTP 503 und der Ursache im Feld `meldung`.
+sonst mit HTTP 503. Die Ursache steht im Feld `message`, aber nur lokal – die
+Route ist ohne Anmeldung erreichbar und verrät produktiv keine Einzelheiten.
 
 ## Migrationen
 
@@ -225,5 +243,5 @@ Als Nächstes folgt der Umbau auf das Domain-Modell v2 in sechs Blöcken:
 5. **Monatsabschluss**
 6. **Screens:** Wareneingang (Desktop und Handy), Verkäufe, Bestandsjournal, Übersicht
 
-Danach: Login, Live-Demo auf Vercel + Neon mit Demodaten, Etsy-Anbindung, Playwright,
+Danach: Betrieb auf Netlify + Neon mit Release-Workflow, Etsy-Anbindung, Playwright,
 Barrierefreiheit, PWA. Zeitplan: Roadmap M1–M4 (`docs/trd-zusammenfassung.md`, Abschnitt 1.2).

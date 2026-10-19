@@ -1,11 +1,6 @@
 /**
- * Erzeugt den Hash fuer das Zugangspasswort (NUXT_ACCESS_PASSWORD_HASH).
- *
- * Aufruf: npm run passwort:hash
- * Das Passwort wird verdeckt abgefragt und landet weder in der Shell-Historie
- * noch in einer Datei. Ausgegeben wird nur der Hash.
- *
- * Laeuft direkt mit Node (ab 22.18 werden Typen ohne Zusatzwerkzeug entfernt).
+ * Prints the hash for NUXT_ACCESS_PASSWORD_HASH. The password is read hidden
+ * and never stored. Runs directly on Node >= 22.18 (type stripping).
  */
 
 import { stdin, stdout } from 'node:process';
@@ -26,7 +21,7 @@ function askHidden(question: string): Promise<string> {
         stdout.write('\n');
         resolve(value);
       } else if (char === '\u0003') {
-        // Strg+C
+        // Ctrl+C
         stdout.write('\n');
         process.exit(1);
       } else if (char === '\u007f') {

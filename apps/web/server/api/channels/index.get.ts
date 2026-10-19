@@ -23,8 +23,7 @@ export default defineEventHandler(async (event) => {
     offset,
   });
 
-  // Gezaehlt wird in der Datenbank, nicht ueber die Laenge der Seite –
-  // sonst waere `total` bei begrenzter Abfrage schlicht falsch.
+  // Count in the database; the page length would be wrong with a limit.
   const [{ total } = { total: 0 }] = await db
     .select({ total: sql<number>`count(*)::int` })
     .from(schema.channels)

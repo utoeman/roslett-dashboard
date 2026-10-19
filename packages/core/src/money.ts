@@ -1,24 +1,14 @@
 /**
  * Money arithmetic.
  *
- * Kernregel des Systems: Betraege leben intern ausschliesslich als
- * ganzzahlige Cent vom Typ `number`. Fliesskomma wird nur an der
- * Systemgrenze beruehrt – beim Parsen einer Nutzereingabe, beim Formatieren
- * fuer die Anzeige und beim Lesen aus der Datenbank. Alles dazwischen ist
- * Ganzzahl.
- *
- * `number` traegt Ganzzahlen exakt bis 2^53-1. Das entspricht rund
- * 90 Billionen Euro in Cent und reicht fuer diesen Anwendungsfall.
+ * Amounts are integer cents (`number`, exact up to 2^53-1). Floating point is
+ * only touched at the boundary: parsing input, formatting, reading the DB.
  */
 
 /** Integer cents. */
 export type Cents = number;
 
-/**
- * Ein Verhaeltnis als Dezimalzahl: 0.35 bedeutet 35 Prozent.
- * Raten sind bewusst kein Cent-Typ – sie sind kein Geld und duerfen
- * zwischendrin volle Fliesskommagenauigkeit behalten (Regel 10).
- */
+/** A ratio, 0.35 = 35 %. Not money, so it keeps full precision. */
 export type Rate = number;
 
 export class MoneyError extends Error {
@@ -30,7 +20,6 @@ export class MoneyError extends Error {
 
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
-/** Prueft, ob ein Wert ein gueltiger Cent-Betrag ist. */
 export function isCents(value: unknown): value is Cents {
   return (
     typeof value === 'number' &&
@@ -39,7 +28,6 @@ export function isCents(value: unknown): value is Cents {
   );
 }
 
-/** Wirft, wenn `value` kein gueltiger Cent-Betrag ist. */
 export function assertCents(value: number, field = 'Betrag'): Cents {
   if (!isCents(value)) {
     throw new MoneyError(
@@ -50,11 +38,8 @@ export function assertCents(value: number, field = 'Betrag'): Cents {
 }
 
 /**
- * Kaufmaennische Rundung auf die Ganzzahl, symmetrisch um null.
- *
- * `Math.round` rundet -0.5 auf -0, also zur Null hin, waehrend +0.5 von der
- * Null weg gerundet wird. Diese Asymmetrie ist bei Gutschriften und Retouren
- * falsch, deshalb der eigene Weg ueber den Betrag.
+ * Round half away from zero. `Math.round(-0.5)` gives -0, which would be
+ * wrong for credits and returns.
  */
 export function round(value: number): Cents {
   if (!Number.isFinite(value)) {
@@ -64,13 +49,7 @@ export function round(value: number): Cents {
   return sign * Math.round(Math.abs(value));
 }
 
-/**
- * Wandelt Euro in Cent. Nur an der Systemgrenze verwenden.
- *
- * Der Umweg ueber `toFixed` faengt Faelle wie 19.99 * 100 =
- * 1998.9999999999998 ab, die bei direkter Multiplikation einen Cent
- * verlieren wuerden.
- */
+/** Boundary only. `toFixed` avoids losing a cent on 19.99 * 100. */
 export function eurosToCents(euros: number): Cents {
   if (!Number.isFinite(euros)) {
     throw new MoneyError(`Kein gueltiger Euro-Betrag: ${String(euros)}`);
@@ -78,21 +57,16 @@ export function eurosToCents(euros: number): Cents {
   return round(Number.parseFloat((euros * 100).toFixed(4)));
 }
 
-/** Wandelt Cent in Euro. Nur fuer Anzeige und Systemgrenze. */
+/** Boundary and display only. */
 export function centsToEuros(cents: Cents): number {
   assertCents(cents);
   return cents / 100;
 }
 
 /**
- * Parst eine Nutzereingabe zu Cent.
- *
- * Akzeptiert deutsche und englische Schreibweise: "1.234,56", "1,234.56",
- * "1234,56", "1234.56", "12", "-3,40", "€ 9,99". Die Unterscheidung laeuft
- * ueber das *letzte* auftretende Trennzeichen: es gilt als Dezimaltrenner,
- * alle uebrigen als Tausenderpunkte. Bei einem einzelnen Trennzeichen mit
- * genau drei Nachkommastellen ("1.234") wird es als Tausendertrenner
- * gelesen, weil das im deutschen Sprachraum die haeufigere Absicht ist.
+ * Parses user input in German or English notation ("1.234,56", "1,234.56",
+ * "-3,40", "€ 9,99"). The last separator is the decimal one; a single
+ * separator followed by exactly three digits ("1.234") is read as thousands.
  */
 export function parseMoney(input: string): Cents {
   const raw = input.trim();
@@ -109,7 +83,7 @@ export function parseMoney(input: string): Cents {
   } else if (text.startsWith('+')) {
     text = text.slice(1);
   }
-  // Buchhalterische Klammerschreibweise: (12,50) bedeutet -12,50.
+  // Accounting notation: (12,50) means -12,50.
   if (text.startsWith('(') && text.endsWith(')')) {
     negative = true;
     text = text.slice(1, -1);
@@ -132,8 +106,6 @@ export function parseMoney(input: string): Cents {
   } else {
     const afterSeparator = text.slice(separatorAt + 1);
     const separator = text.charAt(separatorAt);
-    // Genau drei Ziffern hinter einem einzelnen Punkt oder Komma:
-    // Tausendertrenner, nicht Dezimaltrenner.
     const singleSeparator =
       text.indexOf(separator) === separatorAt &&
       (separator === '.' ? lastComma : lastDot) === -1;
@@ -155,7 +127,7 @@ export function parseMoney(input: string): Cents {
     throw new MoneyError(`Kein gueltiger Betrag: "${input}"`);
   }
 
-  // Nachkommastellen jenseits der zweiten werden gerundet, nicht abgeschnitten.
+  // Digits beyond the second are rounded, not truncated.
   const paddedFraction = (fraction + '00').slice(0, 2);
   const fractionCents = Number.parseInt(paddedFraction, 10);
   const rest =
@@ -165,7 +137,6 @@ export function parseMoney(input: string): Cents {
   return negative ? -cents : cents;
 }
 
-/** Formatiert Cent als deutschen Geldstring. */
 export function formatMoney(
   cents: Cents,
   options: { currency?: string; withSymbol?: boolean } = {},
@@ -180,7 +151,7 @@ export function formatMoney(
   }).format(cents / 100);
 }
 
-/** Formatiert eine Rate (0.35) als Prozentangabe ("35,0 %"). */
+/** 0.35 → "35,0 %". */
 export function formatPercent(rate: Rate, fractionDigits = 1): string {
   return new Intl.NumberFormat('de-DE', {
     style: 'percent',
@@ -190,12 +161,8 @@ export function formatPercent(rate: Rate, fractionDigits = 1): string {
 }
 
 /**
- * Rechnet einen Fremdwaehrungsbetrag mit eingefrorenem Kurs in Euro-Cent um.
- *
- * `rate` ist der Wert einer Einheit Fremdwaehrung in Euro: bei
- * 1 USD = 0,92 EUR lautet der Kurs 0.92. Das Ergebnis wird sofort gerundet,
- * weil es persistiert wird und damit das Ende einer Rechenkette bildet
- * (Regel 6 und 10).
+ * Converts with a frozen rate (EUR per foreign unit, 1 USD = 0.92 EUR → 0.92).
+ * Rounded right away because the result is persisted.
  */
 export function foreignToEur(foreignAmount: Cents, rate: number): Cents {
   assertCents(foreignAmount, 'Fremdwaehrungsbetrag');
@@ -207,7 +174,6 @@ export function foreignToEur(foreignAmount: Cents, rate: number): Cents {
   return round(foreignAmount * rate);
 }
 
-/** Summiert Cent-Betraege. Leere Liste ergibt 0. */
 export function sum(amounts: readonly Cents[]): Cents {
   let total = 0;
   for (const amount of amounts) {
@@ -216,10 +182,7 @@ export function sum(amounts: readonly Cents[]): Cents {
   return total;
 }
 
-/**
- * Wendet eine Rate auf einen Betrag an, ohne zu runden.
- * Das Runden gehoert ans Ende der Kette, nicht hierher (Regel 10).
- */
+/** Applies a rate without rounding; rounding belongs at the end of a chain. */
 export function share(amount: Cents, rate: Rate): number {
   assertCents(amount);
   if (!Number.isFinite(rate)) {
@@ -229,19 +192,8 @@ export function share(amount: Cents, rate: Rate): number {
 }
 
 /**
- * Verteilt einen Betrag restfrei nach Gewichten.
- *
- * Das ist die zentrale Hilfsfunktion der Nebenkostenverteilung. Naives
- * Runden jedes Einzelanteils verliert oder erfindet Cent; hier wird zuerst
- * abgerundet und der Rundungsrest anschliessend Cent fuer Cent an die
- * Positionen mit dem groessten Nachkommaanteil vergeben. Die Summe der
- * Ergebnisse entspricht damit exakt dem Eingangsbetrag.
- *
- * Bei Gleichstand entscheidet der kleinere Index, damit das Ergebnis
- * deterministisch und damit testbar bleibt.
- *
- * Sind alle Gewichte null, wird gleichmaessig verteilt – sonst waere das
- * Ergebnis undefiniert und der Betrag ginge verloren.
+ * Splits an amount by weights without losing or inventing cents (largest
+ * remainder method). Ties go to the lower index; all-zero weights split evenly.
  */
 export function distributeByWeight(
   amount: Cents,
@@ -264,8 +216,7 @@ export function distributeByWeight(
   const effectiveTotal = totalWeight === 0 ? weights.length : totalWeight;
 
   const exact = effective.map((w) => (amount * w) / effectiveTotal);
-  // Zur Null hin abschneiden, damit die Verteilung bei negativen Betraegen
-  // (Korrekturen, Gutschriften) spiegelbildlich zur positiven laeuft.
+  // Truncate toward zero so negative amounts mirror positive ones.
   const floored = exact.map((v) => Math.trunc(v));
   const distributed = floored.reduce((a, b) => a + b, 0);
   let rest = amount - distributed;

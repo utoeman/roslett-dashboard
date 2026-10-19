@@ -11,7 +11,7 @@ Alle Releases des TRD-Dashboards, neueste zuerst.
 
 ### Doku
 
-- Interview-Abgleich, Domain-Modell v2 und Screens-Zusammenfassung
+- Abgleich mit dem Fachkonzept, Domain-Modell v2 und Screens
 
 ### Technik
 

@@ -11,8 +11,6 @@ const includeArchived = ref(false);
 const page = ref(0);
 const perPage = 100;
 
-// Die Suche wartet einen Moment, damit nicht jeder Tastendruck eine
-// Anfrage ausloest.
 const searchDebounced = useDebounced(search, 250);
 
 const { data, pending, error, refresh } = await useFetch<List<Product>>(
@@ -27,8 +25,7 @@ const { data, pending, error, refresh } = await useFetch<List<Product>>(
   },
 );
 
-// Bei neuer Suche oder geaendertem Filter zurueck auf die erste Seite –
-// sonst landet man auf einer Seite, die es im neuen Ergebnis nicht gibt.
+// Back to page one when search or filter changes.
 watch([searchDebounced, includeArchived], () => {
   page.value = 0;
 });
@@ -75,10 +72,7 @@ async function create() {
   }
 }
 
-/**
- * Hinweis im Seitenkopf. Weist ausdruecklich aus, wenn die Liste laenger ist
- * als das, was angezeigt wird.
- */
+/** Header hint; says so when not all results are shown. */
 const listHint = computed(() => {
   if (!data.value) return undefined;
   const { total, items } = data.value;
@@ -90,11 +84,8 @@ const listHint = computed(() => {
 });
 
 /**
- * Klick auf eine Tabellenzeile führt zum Produkt.
- *
- * Klicks auf den Namen übernimmt der Link selbst – sonst würde zweimal
- * navigiert. Markiert der Nutzer gerade Text, wird nicht navigiert: sonst
- * ließe sich eine SKU nicht herauskopieren.
+ * Row click opens the product. Skipped for clicks on the link itself and while
+ * text is selected, so SKUs can still be copied.
  */
 function openRow(id: string, event: MouseEvent) {
   const target = event.target as HTMLElement | null;
@@ -103,7 +94,7 @@ function openRow(id: string, event: MouseEvent) {
   navigateTo(`/produkte/${id}`);
 }
 
-/** Zeigt die Preisspanne eines Produkts über alle Varianten. */
+/** Price range across all variants. */
 function priceRange(product: Product): string {
   const prices = product.variants
     .map((variant) => variant.basePriceNet)
@@ -204,12 +195,8 @@ function priceRange(product: Product): string {
           </thead>
           <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
             <!--
-              Die ganze Zeile führt zum Produkt, weil der Zeilen-Hover das
-              ohnehin verspricht. Umgesetzt über einen Klick-Handler statt
-              über ein absolut positioniertes Pseudo-Element: `position:
-              relative` ist auf einer Tabellenzeile nicht verlässlich
-              definiert. Die Zeile ist zugleich `group`, damit sich der Name
-              färbt, sobald irgendwo in der Zeile gehovert wird.
+              Whole row is clickable via a handler: `position: relative` is
+              unreliable on table rows, so no stretched pseudo-element.
             -->
             <tr
               v-for="product in data.items"

@@ -1,14 +1,7 @@
 /**
- * Zugangsschutz fuer die API.
- *
- * Jeder Aufruf unter /api/ braucht eine gueltige Sitzung. Frei bleiben nur:
- * - /api/health: Ueberwachung ohne Anmeldung (siehe health.get.ts)
- * - /api/auth/login: sonst koennte man sich nie anmelden
- * - /api/_auth/session: Sitzungsabfrage von nuxt-auth-utils, antwortet ohne
- *   Sitzung ohnehin nur mit einem leeren Objekt
- *
- * Die Seiten selbst sind statisch (ssr: false) und enthalten keine Daten; den
- * Umweg zur Anmeldeseite uebernimmt app/middleware/auth.global.ts.
+ * Every /api route requires a session, except health, login and the
+ * nuxt-auth-utils session endpoint. Pages are static (ssr: false); the client
+ * redirect lives in app/middleware/auth.global.ts.
  */
 
 const PUBLIC_PATHS = new Set(['/api/health', '/api/auth/login', '/api/_auth/session']);

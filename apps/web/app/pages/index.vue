@@ -1,12 +1,7 @@
 <script setup lang="ts">
 useHead({ title: 'Übersicht' });
 
-/*
- * Alle vier Zaehlwerte gemeinsam laden. Jede Liste liefert `total` mit,
- * sodass hier nur die Zahl gebraucht wird und nicht der gesamte Datensatz.
- * `limit: 1` haelt die uebertragene Menge klein – gezaehlt wird in der
- * Datenbank, nicht im Browser.
- */
+// Load the four counts in parallel; `limit: 1` because only `total` is needed.
 const { data, pending, error } = await useAsyncData(
   'overview-metrics',
   async () => {
@@ -70,7 +65,7 @@ const tiles = computed(() => [
               <span v-if="pending && !data" class="text-leinen-300 dark:text-leinen-700">–</span>
               <span v-else>{{ tile.value }}</span>
             </p>
-            <!-- Der Pfeil macht sichtbar, dass die Kachel irgendwohin führt. -->
+            <!-- The arrow signals that the tile is a link. -->
             <UIcon
               name="i-lucide-arrow-right"
               class="size-4 text-leinen-300 transition-colors group-hover:text-trd-500 dark:text-leinen-700"

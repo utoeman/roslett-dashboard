@@ -29,8 +29,7 @@ export default defineEventHandler(async (event) => {
   if (input.active !== undefined) changes.active = input.active;
 
   if (Object.keys(changes).length === 0) {
-    // Ein leerer Rumpf ist kein Fehler: der Datensatz wird unveraendert
-    // zurueckgegeben.
+    // Empty body: return the record unchanged.
     const unchanged = await db.query.channels.findFirst({
       where: eq(schema.channels.id, id),
     });

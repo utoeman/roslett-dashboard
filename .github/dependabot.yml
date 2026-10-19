@@ -1,7 +1,5 @@
-# Wöchentliche Update-PRs für npm-Pakete und GitHub Actions.
-# Ähnliche Updates kommen gebündelt in einem PR, damit es nicht jede Woche
-# zwanzig einzelne werden. Sicherheitsupdates kommen unabhängig davon sofort.
-# Titel mit "chore(deps):" – erscheinen damit nicht im Changelog.
+# Weekly grouped update PRs; security updates arrive immediately.
+# "chore(deps):" titles stay out of the changelog.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -15,10 +13,9 @@ updates:
     commit-message:
       prefix: chore(deps)
     groups:
-      # Kleine Updates (Fehlerbehebungen, neue Funktionen ohne Bruch) zusammen.
       kleine-updates:
         update-types: [minor, patch]
-    # Große Versionssprünge kommen einzeln, die brauchen einen eigenen Blick.
+    # Major updates come one by one.
 
   - package-ecosystem: github-actions
     directory: /

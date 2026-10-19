@@ -10,14 +10,8 @@ const querySchema = listQuerySchema.extend({
 });
 
 /**
- * Artikelliste.
- *
- * Liefert Produkte samt ihrer Varianten. Der Bestand fehlt bewusst: er ergibt
- * sich aus dem Buchungsjournal (Regel 8) und kommt in Phase 3 dazu, wenn es
- * Buchungen gibt.
- *
- * Archivierte Eintraege bleiben standardmaessig ausgeblendet, lassen sich
- * aber ueber `includeArchived=true` einblenden – geloescht wird nichts.
+ * Products with variants. Stock is added once the journal exists. Archived
+ * entries are hidden unless `includeArchived=true`.
  */
 export default defineEventHandler(async (event) => {
   const { search, includeArchived, limit, offset, category } = readQuery(
@@ -35,8 +29,7 @@ export default defineEventHandler(async (event) => {
   }
   if (search) {
     const pattern = `%${search}%`;
-    // Auch ueber die SKU der Varianten suchen: danach sucht man im Alltag
-    // haeufiger als nach dem Produktnamen.
+    // Also search by variant SKU.
     conditions.push(
       or(
         ilike(schema.products.name, pattern),

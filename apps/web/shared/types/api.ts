@@ -1,12 +1,6 @@
 /**
- * Antworttypen der API.
- *
- * Sie liegen in shared/, weil sie beschreiben, worauf sich Server und Client
- * geeinigt haben. Aendert eine Route ihre Antwort, faellt die Abweichung
- * hier auf – und nicht erst zur Laufzeit im Browser.
- *
- * Zur Erinnerung an die Systemgrenze: Geldbetraege sind in jeder Antwort
- * ganzzahlige Cent, Prozentsaetze Raten (0.19 bedeutet 19 Prozent).
+ * API response types shared by server and client. Money is always integer
+ * cents, percentages are rates (0.19 = 19 %).
  */
 
 export interface Variant {
@@ -14,9 +8,9 @@ export interface Variant {
   sku: string;
   label: string;
   minimumStock: number;
-  /** Ganzzahlige Cent oder null. */
+  /** Cents or null. */
   basePriceNet: number | null;
-  /** Rate, 0.19 bedeutet 19 Prozent. */
+  /** Rate, 0.19 = 19 %. */
   vatRate: number | null;
   archivedAt: string | null;
 }
@@ -36,7 +30,7 @@ export interface CostItem {
   variantId: string | null;
   label: string;
   kind: 'fix' | 'percent';
-  /** Bei "fix" ganzzahlige Cent, bei "percent" eine Rate. */
+  /** Cents for "fix", a rate for "percent". */
   value: number | null;
   inputTaxDeductible: boolean;
   active: boolean;
@@ -58,15 +52,15 @@ export interface Supplier {
 export interface Channel {
   id: string;
   name: string;
-  /** Rate, 0.065 bedeutet 6,5 Prozent. */
+  /** Rate, 0.065 = 6.5 %. */
   feePercent: number | null;
-  /** Ganzzahlige Cent. */
+  /** Cents. */
   feeFixed: number | null;
   pricingRule: 'same_margin' | 'fixed';
   active: boolean;
 }
 
-/** Gemeinsame Huelle aller Listenantworten. */
+/** Envelope of all list responses. */
 export interface List<T> {
   items: T[];
   total: number;

@@ -1,4 +1,4 @@
-# Prueft jeden Push auf main und jeden Pull Request: Lint, Typen, Tests, Build.
+# Lint, typecheck, tests and build for every push to main and every PR.
 name: CI
 
 on:
@@ -17,8 +17,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      # postinstall fuehrt "nuxt prepare" aus; ohne die erzeugten Typen
-      # schlaegt der Typecheck der Web-App fehl.
+      # postinstall runs "nuxt prepare", which the typecheck needs.
       - run: npm ci
 
       - run: npm run lint
@@ -26,10 +25,8 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Nach jedem Push auf main: Migrationen auf die Vorschau-Datenbank (Neon-Zweig
-  # "vorschau"). Die Testadresse main--…netlify.app und die PR-Vorschauen
-  # arbeiten damit immer auf dem aktuellen Schema. Die Live-Datenbank migriert
-  # nur der Release-Workflow.
+  # After each push to main, migrate the preview database (Neon branch
+  # "vorschau"). Production is only migrated by the release workflow.
   vorschau-db:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

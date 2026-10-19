@@ -1,15 +1,9 @@
 /**
- * Zugangspasswort der App.
+ * Single access password, stored only as a hash in NUXT_ACCESS_PASSWORD_HASH
+ * (create with `npm run passwort:hash`).
  *
- * Das Werkzeug hat genau eine Nutzerin; statt einer Benutzerverwaltung schuetzt
- * ein einziges Passwort alles. Gespeichert wird nur sein Hash, in der
- * Umgebungsvariable NUXT_ACCESS_PASSWORD_HASH.
- *
- * Format: "scrypt:<salz hex>:<hash hex>". Bewusst ohne Dollarzeichen – die
- * .env-Dateien von Nuxt ersetzen "$name" durch andere Variablen und wuerden
- * einen Hash im ueblichen "$scrypt$…"-Format still verfaelschen.
- *
- * Erzeugen: npm run passwort:hash
+ * Format "scrypt:<salt hex>:<hash hex>" without "$": Nuxt's .env loader would
+ * expand "$scrypt$…" as variables and silently corrupt the hash.
  */
 
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
@@ -37,13 +31,7 @@ export async function hashAccessPassword(password: string): Promise<string> {
   return `${PREFIX}:${salt.toString('hex')}:${key.toString('hex')}`;
 }
 
-/**
- * Prueft ein Passwort gegen den gespeicherten Hash.
- *
- * Ein fehlender oder kaputter Hash ergibt `false` statt eines Fehlers: eine
- * falsch gesetzte Umgebungsvariable darf die Anmeldung sperren, aber nie
- * oeffnen.
- */
+/** A missing or malformed hash returns false: misconfiguration locks, never opens. */
 export async function verifyAccessPassword(password: string, stored: string): Promise<boolean> {
   const [prefix, saltHex, keyHex] = stored.split(':');
   const hexPattern = /^[0-9a-f]+$/;
@@ -55,6 +43,6 @@ export async function verifyAccessPassword(password: string, stored: string): Pr
     return false;
   }
   const actual = await derive(password, Buffer.from(saltHex, 'hex'));
-  // Vergleich in konstanter Zeit, damit die Antwortdauer nichts verraet.
+  // Constant-time comparison.
   return timingSafeEqual(actual, expected);
 }

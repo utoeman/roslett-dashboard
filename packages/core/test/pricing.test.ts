@@ -55,25 +55,23 @@ describe('costItemsForVariant', () => {
 
 describe('calculateTotalCost – gemischte Fix- und Prozentkosten', () => {
   it('summiert Fixbetraege und Prozentanteile auf den Einstandspreis', () => {
-    // Einstandspreis 20,00 EUR
+    // Landed cost 20.00 EUR
     const e = calculateTotalCost(2000, [
-      ci('Verpackung', 'fix', 85), //        0,85 EUR
-      ci('Handling', 'percent', 0.05), //    5 % von 20,00 = 1,00 EUR
-      ci('Lagerkosten', 'fix', 40), //       0,40 EUR
-      ci('Ausschussquote', 'percent', 0.02), // 2 % von 20,00 = 0,40 EUR
+      ci('Verpackung', 'fix', 85), //        0.85 EUR
+      ci('Handling', 'percent', 0.05), //    5 % of 20.00 = 1.00 EUR
+      ci('Lagerkosten', 'fix', 40), //       0.40 EUR
+      ci('Ausschussquote', 'percent', 0.02), // 2 % of 20.00 = 0.40 EUR
     ]);
 
     expect(e.landedCostEur).toBe(2000);
     expect(e.rows.map((z) => z.amountEur)).toEqual([85, 100, 40, 40]);
-    // 20,00 + 0,85 + 1,00 + 0,40 + 0,40 = 22,65 EUR
+    // 20.00 + 0.85 + 1.00 + 0.40 + 0.40 = 22.65 EUR
     expect(e.totalCostEur).toBe(2265);
     expect(e.inputTaxEur).toBe(0);
   });
 
   it('rundet erst am Ende, nicht je Position (Regel 10)', () => {
-    // 3 x 3,333 % von 10,01 EUR ergibt je 0,3336... Cent.
-    // Zwischenrunden wuerde jeweils 33 ergeben, Summe 1100.
-    // Korrekt ist die Summe der ungerundeten Anteile: 1001 + 100,0800... = 1101.
+    // Rounding each 3.333 % share first would give 1100; summing unrounded gives 1101.
     const e = calculateTotalCost(1001, [
       ci('a', 'percent', 0.03333),
       ci('b', 'percent', 0.03333),
@@ -107,9 +105,7 @@ describe('calculateTotalCost – gemischte Fix- und Prozentkosten', () => {
 
 describe('calculateTotalCost – vorsteuerabzugsfaehige Position (Regel 3)', () => {
   it('haelt Einfuhrumsatzsteuer aus den Selbstkosten heraus, Zoll aber nicht', () => {
-    // Einstandspreis 100,00 EUR.
-    // Zoll 4,7 % ist nicht abzugsfaehig und belastet die Marge.
-    // Einfuhrumsatzsteuer 19 % ist Vorsteuer und belastet sie nicht.
+    // Duty (4.7 %) counts towards cost; import VAT (19 %) is deductible and does not.
     const e = calculateTotalCost(10000, [
       ci('Zoll', 'percent', 0.047),
       ci('Einfuhrumsatzsteuer', 'percent', 0.19, {
@@ -117,11 +113,10 @@ describe('calculateTotalCost – vorsteuerabzugsfaehige Position (Regel 3)', () 
       }),
     ]);
 
-    // 100,00 + 4,70 = 104,70 EUR – die 19,00 EUR EUSt bleiben draussen.
+    // 100.00 + 4.70 = 104.70 EUR; the 19.00 EUR import VAT stays out.
     expect(e.totalCostEur).toBe(10470);
     expect(e.inputTaxEur).toBe(1900);
 
-    // Beide Zeilen werden ausgewiesen, aber unterschiedlich markiert.
     expect(e.rows).toEqual([
       { label: 'Zoll', amountEur: 470, excluded: false },
       { label: 'Einfuhrumsatzsteuer', amountEur: 1900, excluded: true },
@@ -140,11 +135,11 @@ describe('calculateTotalCost – vorsteuerabzugsfaehige Position (Regel 3)', () 
 
 describe('calculateMargin – Marge und Aufschlag sind nicht dasselbe (Regel 4)', () => {
   it('unterscheidet die beiden Kennzahlen sauber', () => {
-    // 40,00 EUR Selbstkosten, 100,00 EUR Verkaufspreis.
+    // Cost 40.00 EUR, price 100.00 EUR.
     const e = calculateMargin(10000, 4000);
     expect(e.contributionMarginEur).toBe(6000);
-    expect(e.margin).toBeCloseTo(0.6, 10); // 60 % vom Verkaufspreis
-    expect(e.markup).toBeCloseTo(1.5, 10); // 150 % auf die Selbstkosten
+    expect(e.margin).toBeCloseTo(0.6, 10); // 60 % of the price
+    expect(e.markup).toBeCloseTo(1.5, 10); // 150 % on cost
     expect(e.margin).not.toBeCloseTo(e.markup, 5);
   });
 
@@ -169,14 +164,14 @@ describe('calculateMargin – Marge und Aufschlag sind nicht dasselbe (Regel 4)'
 
 describe('calculateSalesPrice – Rueckwaertsrechnung (Regel 5)', () => {
   it('rechnet ohne Gebuehren aus der Zielmarge zurueck', () => {
-    // 40,00 EUR Selbstkosten bei 60 % Zielmarge: 40 / 0,4 = 100,00 EUR.
+    // Cost 40.00 EUR at 60 % margin: 40 / 0.4 = 100.00 EUR.
     const vk = calculateSalesPrice({ totalCostEur: 4000, targetMargin: 0.6 });
     expect(vk).toBe(10000);
     expect(calculateMargin(vk, 4000).margin).toBeCloseTo(0.6, 10);
   });
 
   it('bezieht prozentuale Gebuehren auf den gesuchten Verkaufspreis', () => {
-    // VK = (40,00 + 0,20) / (1 - 0,40 - 0,065) = 40,20 / 0,535 = 75,14 EUR
+    // (40.00 + 0.20) / (1 - 0.40 - 0.065) = 75.14 EUR
     const vk = calculateSalesPrice({
       totalCostEur: 4000,
       targetMargin: 0.4,
@@ -185,7 +180,7 @@ describe('calculateSalesPrice – Rueckwaertsrechnung (Regel 5)', () => {
     });
     expect(vk).toBe(7514);
 
-    // Gegenprobe: nach Abzug der Gebuehren steht die Zielmarge.
+    // Cross-check: after fees the target margin remains.
     const gebuehren = Math.round(vk * 0.065 + 20);
     const db = vk - 4000 - gebuehren;
     expect(db / vk).toBeCloseTo(0.4, 3);
@@ -208,14 +203,14 @@ describe('calculateSalesPrice – Rueckwaertsrechnung (Regel 5)', () => {
   });
 
   it('erlaubt eine negative Zielmarge als bewussten Verlustverkauf', () => {
-    // Abverkauf unter Selbstkosten: der Nenner bleibt positiv.
+    // Selling below cost: the denominator stays positive.
     expect(
       calculateSalesPrice({ totalCostEur: 4000, targetMargin: -0.25 }),
     ).toBe(3200);
   });
 
   it('wirft bei rechnerisch unmoeglicher Zielmarge', () => {
-    // 70 % Marge plus 35 % Gebuehren ergeben 105 % – der Nenner wird negativ.
+    // 70 % margin + 35 % fees = 105 %: negative denominator.
     expect(() =>
       calculateSalesPrice({
         totalCostEur: 4000,
@@ -224,7 +219,6 @@ describe('calculateSalesPrice – Rueckwaertsrechnung (Regel 5)', () => {
       }),
     ).toThrow(PricingError);
 
-    // Der Fehler muss erklaeren, woran es liegt, nicht nur dass es scheitert.
     expect(() =>
       calculateSalesPrice({
         totalCostEur: 4000,
@@ -298,10 +292,10 @@ describe('calculateChannelPrice', () => {
       fixedPriceEur: 6000,
     });
     expect(e.salesPriceNetEur).toBe(6000);
-    // 6,5 % von 60,00 = 3,90 EUR, plus 0,20 EUR fix.
+    // 6.5 % of 60.00 = 3.90 EUR, plus 0.20 EUR fixed.
     expect(e.feesEur).toBe(410);
     expect(e.contributionMarginEur).toBe(6000 - 4000 - 410);
-    // Die tatsaechliche Marge liegt unter der Zielmarge – genau das soll sichtbar sein.
+    // Actual margin falls below target; that must be visible.
     expect(e.margin).toBeLessThan(0.4);
   });
 
@@ -355,7 +349,7 @@ describe('calculateChannelPrice', () => {
 describe('minimumMargin', () => {
   it('zeigt, was bei gegebenem Preis uebrig bleibt', () => {
     const m = minimumMargin(4000, { feePercent: 0.065, feeFixed: 20 }, 10000);
-    // (100,00 - 40,00 - 6,50 - 0,20) / 100,00
+    // (100.00 - 40.00 - 6.50 - 0.20) / 100.00
     expect(m).toBeCloseTo(0.533, 3);
   });
 

@@ -5,30 +5,19 @@ export const costItemKindSchema = z.enum(['fix', 'percent']);
 export const distributionMethodSchema = z.enum(['value', 'quantity']);
 
 /**
- * Kostenpositionen.
- *
- * `variantId` null bedeutet: gilt fuer alle Varianten. Das Feld
- * `inputTaxDeductible` entscheidet, ob die Position in die Selbstkosten
- * eingeht (Regel 3): Einfuhrumsatzsteuer bleibt draussen, Zoll geht hinein.
- *
- * Der Wert bedeutet je nach Art etwas anderes – bei "fix" ein Betrag in Cent,
- * bei "percent" eine Rate. Deshalb wird er nicht pauschal geparst, sondern
- * abhaengig von der Art, siehe unten.
+ * Cost items. `variantId` null means global. `value` is cents for "fix" and a
+ * rate for "percent", so it is parsed depending on `kind`.
  */
 const base = z.object({
   variantId: uuidSchema.nullable().optional(),
   label: requiredText('Bezeichnung'),
   inputTaxDeductible: flagSchema().default(false),
   active: flagSchema().default(true),
-  /** Nur fuer Nebenkosten einer Sendung relevant (Regel 7). */
+  /** Only relevant for shipment costs. */
   distributionMethod: distributionMethodSchema.default('value'),
 });
 
-/**
- * Die Art bestimmt, wie der Wert gelesen wird. Ein diskriminierter Verbund
- * erzwingt das auf Typebene: eine Rate kann nicht versehentlich als
- * Cent-Betrag durchrutschen.
- */
+/** Discriminated union: a rate can never slip through as cents. */
 export const createCostItemSchema = z.discriminatedUnion('kind', [
   base.extend({
     kind: z.literal('fix'),
@@ -41,10 +30,8 @@ export const createCostItemSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * Beim Aendern wird die Art mitgeschickt, damit der Wert richtig gelesen
- * wird. Ein Verbund laesst sich nicht teilweise machen, deshalb eine eigene
- * Fassung mit optionalen Feldern – und ohne Standardwerte, damit ein PATCH
- * nur uebertraegt, was uebergeben wurde.
+ * Update schema: a union cannot be made partial, so this is a separate
+ * definition without defaults; PATCH only changes what is sent.
  */
 export const updateCostItemSchema = z.union([
   z.object({

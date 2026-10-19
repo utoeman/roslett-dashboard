@@ -11,25 +11,15 @@ import { badRequest, databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapVariant } from '../../utils/mapping.js';
 
-/**
- * Der Rumpf kann Produktfelder aendern und gleichzeitig Varianten anlegen
- * oder aendern. Beides in einem Aufruf, damit das Detailformular mit einem
- * Speichern auskommt und nicht in einen halb gespeicherten Zustand geraet.
- */
+/** Product fields and variant changes in one call, so the form saves atomically. */
 const bodySchema = updateProductSchema.extend({
   newVariants: z.array(createVariantSchema).optional(),
   updatedVariants: z.array(updateVariantSchema).optional(),
 });
 
 /**
- * Artikel aendern.
- *
- * Geloescht wird nichts. Eine Variante verschwindet, indem `archivedAt`
- * gesetzt wird; `null` holt sie zurueck.
- *
- * Alles laeuft in einer Transaktion: schlaegt eine einzelne Variante fehl,
- * etwa wegen doppelter SKU, bleibt der gesamte Vorgang aus. Sonst waere nach
- * einem Fehlschlag unklar, was gespeichert wurde und was nicht.
+ * Updates a product in one transaction: if one variant fails (e.g. duplicate
+ * SKU), nothing is saved. Variants are archived via `archivedAt`.
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
@@ -46,8 +36,7 @@ export default defineEventHandler(async (event) => {
 
   const { newVariants, updatedVariants, ...productFields } = input;
 
-  // Nur uebergebene Felder anfassen: ein fehlendes Feld bedeutet
-  // "unveraendert", nicht "auf null setzen".
+  // Missing fields mean "unchanged", not null.
   const productChanges: Record<string, unknown> = {};
   if (productFields.name !== undefined) productChanges.name = productFields.name;
   if (productFields.description !== undefined)
@@ -87,7 +76,7 @@ export default defineEventHandler(async (event) => {
         if (existing === undefined) {
           throw badRequest(`Variante ${variant.id} wurde nicht gefunden.`);
         }
-        // Verhindert, dass ueber diesen Weg eine fremde Variante veraendert wird.
+        // Only variants of this product.
         if (existing.productId !== id) {
           throw badRequest('Die Variante gehoert nicht zu diesem Artikel.');
         }
@@ -119,8 +108,6 @@ export default defineEventHandler(async (event) => {
       if (updated === undefined) {
         throw new Error('Artikel nach dem Speichern nicht auffindbar.');
       }
-      // Ueber dieselbe Abbildung wie die GET-Routen, damit die Oberflaeche
-      // nicht je Endpunkt unterschiedlich rechnen muss.
       return {
         id: updated.id,
         name: updated.name,

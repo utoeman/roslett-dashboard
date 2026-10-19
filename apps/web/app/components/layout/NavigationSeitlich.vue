@@ -1,16 +1,11 @@
 <script setup lang="ts">
 /**
- * Seitennavigation.
- *
- * Die Reihenfolge folgt dem Arbeitsablauf: Ueberblick, Produkte, die
- * Bewegungen (Wareneingang, Verkauf, Journal), zuletzt die Einstellungen
- * (docs/trd-zusammenfassung.md, Abschnitt 4). Punkte fuer spaetere Phasen sind
- * bereits sichtbar, aber als "folgt" gekennzeichnet – so ist erkennbar,
- * wohin das Werkzeug waechst, ohne dass ein Klick ins Leere fuehrt.
+ * Sidebar in workflow order (docs/screens.md). Upcoming sections are shown as
+ * "folgt" without a link.
  */
 const route = useRoute();
 
-/** Ein Punkt, der noch nicht gebaut ist, traegt `pending` und wird nicht verlinkt. */
+/** `pending` entries are not linked yet. */
 interface NavLink {
   name: string;
   path: string;

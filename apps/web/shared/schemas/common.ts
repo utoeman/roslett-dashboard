@@ -1,19 +1,14 @@
 /**
- * Bausteine, die alle Schemas teilen.
- *
- * Die Schemas liegen in shared/, damit Client und Server dieselbe Definition
- * verwenden. Eine Regel, die im Formular gilt, gilt damit zwangslaeufig auch
- * in der API – sie koennen nicht auseinanderlaufen.
- *
- * Die Fehlermeldungen sind deutsch: sie werden unveraendert im Formular
- * angezeigt.
+ * Building blocks shared by all schemas. Client and server use the same
+ * definitions, so form and API rules cannot drift apart. Messages are German
+ * because they are shown as-is.
  */
 
 import { z } from 'zod';
 
 export const uuidSchema = z.uuid({ message: 'Keine gueltige Kennung.' });
 
-/** Pflichttext mit sinnvoller Obergrenze und ohne fuehrende Leerzeichen. */
+/** Required, trimmed text with a sensible maximum. */
 export const requiredText = (field: string, max = 200) =>
   z
     .string()
@@ -21,7 +16,7 @@ export const requiredText = (field: string, max = 200) =>
     .min(1, { message: `${field} darf nicht leer sein.` })
     .max(max, { message: `${field} ist zu lang (hoechstens ${max} Zeichen).` });
 
-/** Freitext, der auch leer bleiben darf. Leerstring wird zu null. */
+/** Optional text; an empty string becomes null. */
 export const optionalText = (max = 2000) =>
   z
     .string()
@@ -32,12 +27,8 @@ export const optionalText = (max = 2000) =>
     .optional();
 
 /**
- * Geldbetrag als Nutzereingabe.
- *
- * Angenommen wird sowohl eine Zahl in Euro als auch ein String in deutscher
- * oder englischer Schreibweise. Das Ergebnis ist immer ein ganzzahliger
- * Cent-Betrag (Regel 1) – die Umrechnung passiert hier, an der Systemgrenze,
- * und nirgends sonst.
+ * Money input: a number in euros or a German/English string. Always yields
+ * integer cents; this is the only place where the conversion happens.
  */
 export const moneySchema = (field = 'Betrag') =>
   z.union([z.number(), z.string()]).transform((value, ctx) => {
@@ -58,12 +49,8 @@ export const moneySchema = (field = 'Betrag') =>
   });
 
 /**
- * Kleiner Parser fuer die Systemgrenze.
- *
- * Bewusst eine eigene, schlanke Fassung statt eines Imports aus
- * packages/core: shared/ laeuft auch im Browser, und die Engine soll nicht
- * ins Client-Bundle wandern, nur damit ein Formularfeld gelesen werden kann.
- * Die Regeln sind dieselben – das letzte Trennzeichen entscheidet.
+ * Slim copy of the core parser: shared/ runs in the browser and the engine
+ * should not end up in the client bundle. Same rule: the last separator wins.
  */
 function parseMoneyInput(input: string): number {
   const raw = input.trim().replace(/[€$£\s]/g, '').replace(/(EUR|USD|GBP)/gi, '');
@@ -112,13 +99,7 @@ function parseMoneyInput(input: string): number {
   return negative ? -cents : cents;
 }
 
-/**
- * Prozentsatz als Nutzereingabe.
- *
- * Der Nutzer tippt "6,5" und meint 6,5 Prozent. Gespeichert wird 0.065.
- * Die Umrechnung gehoert an die Systemgrenze, damit im Rest des Systems
- * ausschliesslich Raten kursieren.
- */
+/** Percentage input: "6,5" means 6.5 % and is stored as the rate 0.065. */
 export const percentSchema = (field = 'Prozentsatz', maxPercent = 100) =>
   z.union([z.number(), z.string()]).transform((value, ctx) => {
     const parsed =
@@ -140,19 +121,9 @@ export const percentSchema = (field = 'Prozentsatz', maxPercent = 100) =>
   });
 
 /**
- * Wahrheitswert aus einer Abfragezeichenkette.
- *
- * `z.coerce.boolean()` ist hier unbrauchbar: es wendet die Truthiness von
- * JavaScript an, und damit wird auch "false" zu `true` – jede nicht leere
- * Zeichenkette tut das. In der Abfragezeichenkette steht aber genau dieses
- * "false", sodass ein Filter niemals greifen wuerde.
- *
- * Der Standardwert wird bewusst NICHT hier eingebaut, sondern an der
- * Aufrufstelle gesetzt: ein `.default()` innerhalb dieser Funktion greift
- * vor einem aeusseren `.optional()` oder `.partial()` und macht damit aus
- * einem fehlenden Feld einen gesetzten Wert. Bei einem PATCH wuerde das
- * bedeuten, dass ein nicht uebergebenes Feld stillschweigend auf den
- * Standard zurueckfaellt – also Daten verliert.
+ * Boolean from a query string. `z.coerce.boolean()` turns "false" into true.
+ * No default here: an inner `.default()` would fill missing PATCH fields and
+ * silently overwrite data, so callers set it.
  */
 export const flagSchema = () =>
   z
@@ -161,10 +132,10 @@ export const flagSchema = () =>
       typeof value === 'boolean' ? value : value === 'true' || value === '1',
     );
 
-/** Seitenweise Abfrage fuer Listen. */
+/** Paging for list endpoints. */
 export const listQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
-  /** Standardmaessig bleiben archivierte Eintraege ausgeblendet. */
+  /** Archived entries are hidden by default. */
   includeArchived: flagSchema().default(false),
   limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),

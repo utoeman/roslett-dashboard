@@ -1,13 +1,7 @@
 /**
- * Changelog aus Commit-Titeln (Conventional Commits).
- *
- * Aufruf: node scripts/changelog.ts <version> [--notes <datei>]
- * - liest alle Commits seit dem letzten Tag (beim ersten Release: alle),
- * - stellt den neuen Abschnitt oben in CHANGELOG.md ein,
- * - schreibt ihn mit --notes zusaetzlich in eine Datei (Text des GitHub-Release).
- *
- * Gezaehlt wird nur, was einen Typ traegt ("feat: …", "fix(api): …").
- * Aeltere Commits ohne Typ, Merge-Commits und Release-Commits fallen heraus.
+ * Changelog from Conventional Commit titles since the last tag.
+ * Usage: node scripts/changelog.ts <version> [--notes <file>]
+ * Prepends to CHANGELOG.md; --notes also writes the GitHub release text.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -19,7 +13,7 @@ export interface Commit {
   body: string;
 }
 
-/** Reihenfolge = Reihenfolge im Changelog. Typen ohne Eintrag erscheinen nicht. */
+/** Order in the changelog; other types are skipped. */
 const GROUPS: { title: string; types: string[] }[] = [
   { title: 'Neu', types: ['feat'] },
   { title: 'Fehlerbehebungen', types: ['fix'] },
@@ -81,7 +75,7 @@ export function prependSection(existing: string, section: string): string {
 }
 
 function git(args: string[]): string {
-  // stderr verschlucken: "keine Namen gefunden" vor dem ersten Tag ist erwartet.
+  // Silence stderr: "no names found" is expected before the first tag.
   return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 }
 
@@ -90,7 +84,7 @@ function readCommits(): Commit[] {
   try {
     range = `${git(['describe', '--tags', '--abbrev=0']).trim()}..HEAD`;
   } catch {
-    // Noch kein Tag: erster Release, alle Commits.
+    // No tag yet: first release, all commits.
   }
   const raw = git(['log', range, '--no-merges', '--format=%s%x1f%b%x1e']);
   return raw
@@ -117,13 +111,13 @@ function main(argv: string[]): void {
   writeFileSync(file, prependSection(existing, section));
 
   if (flag === '--notes' && notesFile) {
-    // Im Release-Text ohne die Ueberschrift, die zeigt GitHub selbst an.
+    // Without the heading; GitHub shows the title itself.
     writeFileSync(notesFile, section.split('\n').slice(2).join('\n'));
   }
   console.log(section);
 }
 
-// Nur als Skript ausfuehren, nicht beim Import aus den Tests.
+// Run only as a script, not when imported by tests.
 if (import.meta.url === `file://${process.argv[1]}`) {
   main(process.argv.slice(2));
 }

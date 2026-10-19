@@ -14,15 +14,13 @@ const item = (
 ): BatchItem => ({ id, variantId: `v-${id}`, quantity, goodsValueEur });
 
 describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen Werten', () => {
-  // Eine Sendung mit einem teuren, einem mittleren und einem billigen Artikel.
-  // Genau hier zeigt sich, warum nach Wert und nicht nach Stueckzahl verteilt
-  // wird: die 200 Billigteile wuerden sonst fast die gesamte Fracht tragen.
+  // Distributing by value: by quantity, the 200 cheap units would carry almost all freight.
   const items = [
-    item('teuer', 2, 180000), // 900,00 EUR je Stueck
-    item('mittel', 10, 45000), //  45,00 EUR je Stueck
-    item('billig', 200, 20000), //   1,00 EUR je Stueck
+    item('teuer', 2, 180000), // 900.00 EUR each
+    item('mittel', 10, 45000), //  45.00 EUR each
+    item('billig', 200, 20000), //   1.00 EUR each
   ];
-  const warenwertGesamt = 180000 + 45000 + 20000; // 2.450,00 EUR
+  const warenwertGesamt = 180000 + 45000 + 20000; // 2,450.00 EUR
 
   it('verteilt nach Warenwert und verliert keinen Cent', () => {
     const fracht: AdditionalCost[] = [
@@ -36,7 +34,7 @@ describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen
     const verteilt = e.items.map((p) => p.additionalCostsEur);
     expect(verteilt.reduce((a, b) => a + b, 0)).toBe(49000);
 
-    // 490,00 EUR auf 2.450,00 EUR Warenwert sind genau 20 Prozent.
+    // 490.00 on 2,450.00 EUR goods value is exactly 20 %.
     expect(verteilt).toEqual([36000, 9000, 4000]);
   });
 
@@ -47,7 +45,7 @@ describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen
     const e = distributeAdditionalCosts(items, verpackung);
     const verteilt = e.items.map((p) => p.additionalCostsEur);
 
-    // 212 Stueck, 212,00 EUR – exakt 1,00 EUR je Stueck.
+    // 212 units, 212.00 EUR: exactly 1.00 EUR each.
     expect(verteilt).toEqual([200, 1000, 20000]);
     expect(verteilt.reduce((a, b) => a + b, 0)).toBe(21200);
   });
@@ -75,8 +73,7 @@ describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen
       const eingang = items.find((q) => q.id === p.batchId);
       expect(eingang).toBeDefined();
       const quantity = eingang!.quantity;
-      // Definition der Rundungsdifferenz: was der Stueckpreis mal Menge
-      // gegenueber dem Positionswert nicht abbildet.
+      // Rounding difference = position total - unit price * quantity.
       expect(p.totalLandedCostEur - p.landedCostEur * quantity).toBe(
         p.roundingDifferenceEur,
       );
@@ -102,15 +99,15 @@ describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen
 
 describe('distributeAdditionalCosts – Fremdwaehrung mit eingefrorenem Kurs (Regel 6)', () => {
   it('verteilt auf Basis der bereits in Euro umgerechneten Werte', () => {
-    // Rechnung ueber 1.200,00 USD, Kurs 1 USD = 0,9150 EUR.
+    // Invoice 1,200.00 USD at 1 USD = 0.9150 EUR.
     const kurs = 0.915;
-    const wertA = foreignToEur(80000, kurs); // 800,00 USD -> 732,00 EUR
-    const wertB = foreignToEur(40000, kurs); // 400,00 USD -> 366,00 EUR
+    const wertA = foreignToEur(80000, kurs); // 800.00 USD -> 732.00 EUR
+    const wertB = foreignToEur(40000, kurs); // 400.00 USD -> 366.00 EUR
     expect(wertA).toBe(73200);
     expect(wertB).toBe(36600);
 
-    // Fracht wird in USD berechnet und ebenfalls beim Wareneingang eingefroren.
-    const frachtEur = foreignToEur(15000, kurs); // 150,00 USD -> 137,25 EUR
+    // Freight in USD, frozen at receipt as well.
+    const frachtEur = foreignToEur(15000, kurs); // 150.00 USD -> 137.25 EUR
     expect(frachtEur).toBe(13725);
 
     const e = distributeAdditionalCosts(
@@ -118,17 +115,16 @@ describe('distributeAdditionalCosts – Fremdwaehrung mit eingefrorenem Kurs (Re
       [{ label: 'Fracht', amountEur: frachtEur, distributionMethod: 'value' }],
     );
 
-    // Werte stehen 2:1, also 9.150 zu 4.575 Cent.
+    // Values are 2:1, so 9,150 vs 4,575 cents.
     expect(e.items.map((p) => p.additionalCostsEur)).toEqual([9150, 4575]);
-    expect(e.items[0]!.landedCostEur).toBe(8235); // 82,35 EUR
+    expect(e.items[0]!.landedCostEur).toBe(8235); // 82.35 EUR
     expect(e.items[1]!.landedCostEur).toBe(8235);
   });
 });
 
 describe('distributeAdditionalCosts – Rundung auf Cent (Regel 10)', () => {
   it('vergibt den Rundungsrest deterministisch, ohne Cent zu erfinden', () => {
-    // 100,00 EUR Fracht auf drei gleich wertige Positionen: 33,33 dreimal
-    // liesse einen Cent uebrig.
+    // 100.00 EUR over three equal positions: 3 x 33.33 would lose a cent.
     const e = distributeAdditionalCosts(
       [item('a', 1, 1000), item('b', 1, 1000), item('c', 1, 1000)],
       [{ label: 'Fracht', amountEur: 10000, distributionMethod: 'value' }],
@@ -139,7 +135,7 @@ describe('distributeAdditionalCosts – Rundung auf Cent (Regel 10)', () => {
   });
 
   it('rundet den Stueckpreis erst am Ende', () => {
-    // 10,01 EUR auf 3 Stueck: 333,66 Cent je Stueck, gerundet 334.
+    // 10.01 EUR over 3 units: 333.66 cents, rounded 334.
     const e = distributeAdditionalCosts(
       [item('a', 3, 1001)],
       [],

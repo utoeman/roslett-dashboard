@@ -1,12 +1,6 @@
 /**
- * Validierungshilfen fuer API-Routen.
- *
- * Jede schreibende Route liest ihren Rumpf ueber `readJsonBody`, jede Liste ihre
- * Abfrageparameter ueber `readQuery`. So entsteht ueberall dieselbe
- * Fehlerform, ohne dass jede Route sie selbst zusammenbaut.
- *
- * Der Name lautet bewusst nicht `readBody`: Nitro stellt eine gleichnamige
- * Funktion automatisch bereit, und die eigene wuerde sie ueberdecken.
+ * Request validation with one error shape for all routes. Not named
+ * `readBody`, which would shadow Nitro's auto-import.
  */
 
 import type { H3Event } from 'h3';
@@ -37,12 +31,7 @@ export function readQuery<T>(event: H3Event, schema: ZodType<T>): T {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Liest eine UUID aus dem Pfad.
- *
- * Ohne diese Pruefung wuerde eine unsinnige Kennung erst in Postgres
- * auflaufen und dort einen Serverfehler statt einer klaren 400 erzeugen.
- */
+/** UUID from the path; invalid ids get a 400 instead of a Postgres error. */
 export function readId(event: H3Event, name = 'id'): string {
   const value = getRouterParam(event, name);
   if (value === undefined || value === '') {
@@ -54,7 +43,7 @@ export function readId(event: H3Event, name = 'id'): string {
   return value;
 }
 
-/** Wirft 404, wenn nichts gefunden wurde. Sonst gibt es den Datensatz zurueck. */
+/** Returns the record or throws 404. */
 export function requireFound<T>(value: T | undefined, what: string): T {
   if (value === undefined) {
     throw notFound(what);

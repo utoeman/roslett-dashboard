@@ -1,9 +1,6 @@
 /**
- * Oeffentliche Schnittstelle der Kalkulations-Engine.
- *
- * Dieses Paket ist reines TypeScript ohne Abhaengigkeiten. Es kennt weder
- * Vue noch eine Datenbank und laesst sich deshalb vollstaendig ohne laufende
- * Infrastruktur testen.
+ * Public API of the calculation engine: plain TypeScript without
+ * dependencies, testable without any infrastructure.
  */
 
 export * from './money.js';

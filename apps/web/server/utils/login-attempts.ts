@@ -1,13 +1,7 @@
 /**
- * Sperre gegen das Durchprobieren von Passwoertern.
- *
- * Nach fuenf Fehlversuchen von derselben Adresse ist die Anmeldung dort fuer
- * 15 Minuten gesperrt. Der Zaehler liegt im Speicher des Server-Prozesses. Auf
- * Netlify laufen mehrere kurzlebige Instanzen, die Sperre ist dort also nur
- * eine Bremse und kein harter Riegel – den eigentlichen Schutz liefert ein
- * langes Passwort (mindestens 12 Zeichen, siehe access-password.ts).
- *
- * Die Zeit wird uebergeben statt gelesen, damit die Tests ohne Uhr auskommen.
+ * Locks login for 15 minutes after five failures per address. In-memory, so on
+ * serverless it only slows attackers down; the real protection is a long
+ * password. `now` is passed in to keep tests clock-free.
  */
 
 const MAX_FAILURES = 5;

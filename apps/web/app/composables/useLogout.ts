@@ -1,9 +1,4 @@
-/**
- * Abmelden aus beiden Navigationen (breit und schmal).
- *
- * Erst das Cookie auf dem Server loeschen, dann den Sitzungszustand im Browser
- * leeren; sonst haelt die Oberflaeche die Nutzerin noch fuer angemeldet.
- */
+/** Clears the server cookie first, then the client session state. */
 export function useLogout() {
   const { clear } = useUserSession();
 

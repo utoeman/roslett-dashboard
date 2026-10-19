@@ -1,17 +1,7 @@
 /**
- * Nebenkostenverteilung (landed cost).
- *
- * Eine Sendung enthaelt mehrere Chargenpositionen – im Regelfall
- * unterschiedliche Varianten, die gemeinsam angeliefert wurden. Auf dieser
- * Sendung liegen Nebenkosten wie Fracht und Zoll, die nicht einer einzelnen
- * Position zuzuordnen sind. Diese Kosten werden anteilig verteilt und danach
- * je Position als fester Betrag persistiert (Regel 7). Zur Anzeigezeit wird
- * nie neu gerechnet.
- *
- * Wichtig zur Abgrenzung: Einfuhrumsatzsteuer gehoert hier nicht hinein,
- * weil sie als Vorsteuer abziehbar ist. Zoll dagegen schon (Regel 3). Die
- * Auswahl trifft der Aufrufer, indem er nur nicht abzugsfaehige Positionen
- * uebergibt.
+ * Landed cost: distributing shipment costs (freight, duty) across the batch
+ * positions of a shipment. Results are persisted per position. Import VAT is
+ * deductible and must not be passed in.
  */
 
 import type { Cents ,
@@ -37,22 +27,9 @@ export class DistributionError extends Error {
 }
 
 /**
- * Verteilt die Nebenkosten einer Sendung auf ihre Chargenpositionen.
- *
- * Jede Nebenkostenrechnung wird einzeln nach ihrer eigenen Methode verteilt
- * und die Teilergebnisse werden anschliessend addiert. Das ist genauer als
- * eine Verteilung der Gesamtsumme, weil Fracht nach Wert und Verpackung nach
- * Stueckzahl aufgeteilt werden koennen, ohne sich gegenseitig zu
- * verfaelschen.
- *
- * Die Verteilung selbst ist restfrei: `distributeByWeight` vergibt den
- * Rundungsrest deterministisch, sodass die Summe der Positionsanteile exakt
- * dem Rechnungsbetrag entspricht. Kein Cent geht verloren, keiner entsteht.
- *
- * Der Stueckpreis wird erst ganz am Ende gerundet (Regel 10). Die dabei
- * unvermeidbare Differenz zwischen Positionsbetrag und Stueckpreis mal
- * Stueckzahl wird als `roundingDifferenceEur` ausgewiesen, statt sie
- * stillschweigend verschwinden zu lassen.
+ * Each cost is distributed by its own method (value or quantity), then the
+ * shares are added up. No cent is lost or created. The unit price is rounded
+ * last; the unavoidable remainder is reported as `roundingDifferenceEur`.
  */
 export function distributeAdditionalCosts(
   items: readonly BatchItem[],
@@ -86,7 +63,6 @@ export function distributeAdditionalCosts(
   const valueWeights = items.map((item) => item.goodsValueEur);
   const quantityWeights = items.map((item) => item.quantity);
 
-  // Anteile je Position aufsummieren, eine Nebenkostenrechnung nach der anderen.
   const shares = items.map(() => 0);
   for (const cost of additionalCosts) {
     assertCents(cost.amountEur, `Nebenkosten "${cost.label}"`);
@@ -121,13 +97,7 @@ export function distributeAdditionalCosts(
   };
 }
 
-/**
- * Einstandspreis je Stueck fuer eine einzelne Position ohne Sendungskontext.
- *
- * Bequemlichkeitsfunktion fuer den haeufigen Fall, dass ein Wareneingang nur
- * eine Position enthaelt. Sie ruft dieselbe Verteilung auf, damit es keinen
- * zweiten Rechenweg gibt, der auseinanderlaufen koennte.
- */
+/** Single-position shortcut; uses the same distribution to avoid a second code path. */
 export function landedCostPerUnit(
   item: BatchItem,
   additionalCosts: readonly AdditionalCost[] = [],

@@ -1,13 +1,6 @@
 /**
- * Datenbankverbindung.
- *
- * Der Pool wird traege beim ersten Zugriff aufgebaut und danach
- * wiederverwendet. Die Verbindungszeichenfolge kommt ausschliesslich aus der
- * Umgebung, gelesen ueber runtimeConfig: lokal und produktiv unterscheiden
- * sich allein in der .env-Datei. Nichts ist hartkodiert.
- *
- * drizzle-kit laeuft ausserhalb von Nitro und hat keine runtimeConfig; dort
- * greift der Rueckfall auf process.env.
+ * Lazily created connection pool. The URL comes from runtimeConfig, with a
+ * fallback to process.env for scripts like drizzle-kit.
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -21,7 +14,7 @@ function databaseUrl(): string {
   try {
     url = useRuntimeConfig().databaseUrl;
   } catch {
-    // Ausserhalb eines Nitro-Kontexts, etwa in einem Skript.
+    // Outside a Nitro context, e.g. in a script.
     url = undefined;
   }
   const value = url || process.env.DATABASE_URL;
@@ -37,8 +30,7 @@ export function getPool(): Pool {
   if (pool === undefined) {
     pool = new Pool({
       connectionString: databaseUrl(),
-      // Bewusst knapp gehalten: die Anwendung laeuft einprozessig und
-      // beantwortet keine hohen Lastspitzen.
+      // Small pool: low traffic, one user.
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,

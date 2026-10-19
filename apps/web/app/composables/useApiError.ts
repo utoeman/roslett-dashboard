@@ -1,21 +1,12 @@
 import type { FetchError } from 'ofetch';
 
-/**
- * Nutzdaten, die jede API-Route im Fehlerfall mitschickt.
- * Die Schluessel sind deutsch, weil sie unveraendert angezeigt werden.
- */
+/** Error payload of every API route (German keys, shown as-is). */
 interface ErrorPayload {
   fehler?: string;
   felder?: Record<string, string>;
 }
 
-/**
- * Liest die einheitliche Fehlerform der API aus.
- *
- * Jede Route antwortet im Fehlerfall mit `{ data: { fehler, felder? } }`.
- * Diese Funktion holt daraus eine Meldung fuer den Nutzer und, falls
- * vorhanden, die Meldungen je Formularfeld.
- */
+/** Reads `{ data: { fehler, felder? } }` into a message and per-field errors. */
 export function useApiError() {
   function readError(error: unknown): {
     message: string;
@@ -25,8 +16,7 @@ export function useApiError() {
       | (ErrorPayload & { data?: ErrorPayload })
       | undefined;
 
-    // Nitro verschachtelt die Nutzdaten je nach Fehlerart unterschiedlich:
-    // mal liegen sie direkt vor, mal noch einmal unter "data".
+    // Nitro sometimes nests the payload one level deeper under "data".
     const payload: ErrorPayload | undefined = response?.data ?? response;
 
     return {

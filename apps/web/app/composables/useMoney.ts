@@ -1,10 +1,4 @@
-/**
- * Formatierung fuer die Anzeige.
- *
- * Die API liefert Geldbetraege ausnahmslos als ganzzahlige Cent und
- * Prozentsaetze als Raten. Umgewandelt wird erst hier, unmittelbar vor der
- * Ausgabe – und immer in deutscher Schreibweise, weil es angezeigt wird.
- */
+/** Display formatting: cents and rates from the API, German notation. */
 
 const moneyFormat = new Intl.NumberFormat('de-DE', {
   style: 'currency',
@@ -19,19 +13,19 @@ const numberFormat = new Intl.NumberFormat('de-DE', {
 });
 
 export function useMoney() {
-  /** Cent als Euro-Betrag. `null` ergibt einen Gedankenstrich, keinen Nullwert. */
+  /** `null` renders as a dash, not as zero. */
   function formatMoney(cents: number | null | undefined): string {
     if (cents === null || cents === undefined) return '–';
     return moneyFormat.format(cents / 100);
   }
 
-  /** Cent als Zahl ohne Waehrungszeichen, fuer Spalten mit eigener Kopfzeile. */
+  /** Without currency symbol, for columns with their own header. */
   function formatAmount(cents: number | null | undefined): string {
     if (cents === null || cents === undefined) return '–';
     return numberFormat.format(cents / 100);
   }
 
-  /** Rate als Prozentangabe. 0.065 wird zu "6,5 %". */
+  /** 0.065 → "6,5 %". */
   function formatPercent(rate: number | null | undefined, digits = 1): string {
     if (rate === null || rate === undefined) return '–';
     return new Intl.NumberFormat('de-DE', {
@@ -51,13 +45,13 @@ export function useMoney() {
     }).format(date);
   }
 
-  /** Cent zurueck ins Eingabeformat: 2150 wird zu "21,50". */
+  /** 2150 → "21,50". */
   function toInput(cents: number | null | undefined): string {
     if (cents === null || cents === undefined) return '';
     return (cents / 100).toFixed(2).replace('.', ',');
   }
 
-  /** Rate zurueck ins Eingabeformat: 0.065 wird zu "6,5". */
+  /** 0.065 → "6,5". */
   function rateToInput(rate: number | null | undefined): string {
     if (rate === null || rate === undefined || rate === 0) return '';
     return String(Number((rate * 100).toFixed(4))).replace('.', ',');

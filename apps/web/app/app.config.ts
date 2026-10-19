@@ -1,9 +1,4 @@
-/**
- * Design-Tokens.
- *
- * Die Farbskalen stehen in assets/css/main.css; hier wird festgelegt, welche
- * Skala Nuxt UI fuer welche Rolle nimmt.
- */
+/** Maps the color scales from assets/css/main.css to Nuxt UI roles. */
 export default defineAppConfig({
   ui: {
     colors: {
@@ -16,7 +11,7 @@ export default defineAppConfig({
     },
   },
 
-  /** Rohwerte der Marke, unabhaengig von Nuxt UI. */
+  /** Raw brand values, independent of Nuxt UI. */
   trd: {
     farben: {
       primary: '#4A5A34',
@@ -30,8 +25,7 @@ export default defineAppConfig({
     schrift: {
       familie: 'Instrument Sans',
       zahlenFamilie: 'IBM Plex Mono',
-      // Zahlenspalten laufen mit gleich breiten Ziffern, damit Betraege
-      // untereinander buendig stehen.
+      // Tabular figures keep amounts aligned.
       zahlen: 'tabular-nums',
     },
     dichte: {

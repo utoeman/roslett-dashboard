@@ -1,16 +1,10 @@
 import { z } from 'zod';
 import { optionalText, requiredText } from './common.js';
 
-/**
- * Lieferanten.
- *
- * Geloescht wird nicht: ein Lieferant, mit dem nicht mehr gearbeitet wird,
- * wird archiviert. Seine Chargen bleiben bestehen, sonst verloere der
- * Wareneingang seine Herkunft.
- */
+/** Suppliers are archived, never deleted, so batches keep their origin. */
 export const createSupplierSchema = z.object({
   name: requiredText('Name'),
-  /** ISO-3166-Laendercode, etwa "DE" oder "CN". Optional. */
+  /** ISO 3166 country code, e.g. "DE". */
   country: z
     .string()
     .trim()

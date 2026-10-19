@@ -1,11 +1,5 @@
 <script setup lang="ts">
-/**
- * Grundgeruest: feste Seitennavigation links, Inhalt rechts.
- *
- * Ein internes Werkzeug wird taeglich benutzt und immer an denselben Stellen
- * bedient. Die Navigation bleibt deshalb sichtbar stehen, statt hinter einem
- * Menue zu verschwinden – ein Klick weniger bei jedem Wechsel.
- */
+/** Fixed sidebar on the left, content on the right. */
 </script>
 
 <template>

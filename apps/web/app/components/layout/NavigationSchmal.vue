@@ -1,11 +1,5 @@
 <script setup lang="ts">
-/**
- * Navigation fuer schmale Bildschirme.
- *
- * Auf dem Telefon ist links kein Platz fuer die feste Leiste. Statt sie
- * ersatzlos auszublenden – dann kaeme man von einer Unterseite nicht mehr
- * weiter – klappt hier eine Liste auf.
- */
+/** Collapsible navigation for narrow screens, where the sidebar does not fit. */
 const open = ref(false);
 const route = useRoute();
 const { logout } = useLogout();
@@ -18,7 +12,7 @@ const links = [
   { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen' },
 ];
 
-// Beim Seitenwechsel schliessen, sonst bleibt die Liste ueber dem Inhalt stehen.
+// Close on navigation so the list does not cover the content.
 watch(() => route.path, () => { open.value = false; });
 </script>
 

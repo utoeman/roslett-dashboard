@@ -1,10 +1,6 @@
 /**
- * Schemas fuer Produkte und Varianten.
- *
- * Ein Produkt hat immer mindestens eine Variante. Auch ein Artikel ohne
- * echte Ausfuehrungen bekommt genau eine Standardvariante, damit Chargen,
- * Buchungen und Preise ausnahmslos an einer Variante haengen und der uebrige
- * Code keine Sonderfaelle kennt.
+ * Products and variants. A product always has at least one variant (a default
+ * one if needed), so the rest of the code has no special cases.
  */
 
 import { z } from 'zod';
@@ -16,13 +12,7 @@ import {
   uuidSchema,
 } from './common.js';
 
-/**
- * Artikelnummer.
- *
- * Bewusst streng: Buchstaben, Ziffern, Bindestrich, Unterstrich und Punkt.
- * Die SKU landet spaeter in Exporten und moeglicherweise in Dateinamen;
- * Leerzeichen und Sonderzeichen machen dort Aerger.
- */
+/** Strict SKU charset: it ends up in exports and possibly file names. */
 export const skuSchema = z
   .string()
   .trim()
@@ -41,15 +31,15 @@ export const createVariantSchema = z.object({
     .int({ message: 'Mindestbestand muss eine ganze Zahl sein.' })
     .min(0, { message: 'Mindestbestand darf nicht negativ sein.' })
     .default(0),
-  /** Listenpreis netto in Cent. Optional, weil er sich oft erst aus der Kalkulation ergibt. */
+  /** Net list price in cents; often only known after costing. */
   basePriceNet: moneySchema('Basispreis').nullable().optional(),
-  /** Umsatzsteuersatz zur Information. Beruehrt die Kalkulation nicht (Regel 2). */
+  /** Informational; calculation is net. */
   vatRate: percentSchema('Umsatzsteuersatz').default(0.19),
 });
 
 export const updateVariantSchema = createVariantSchema.partial().extend({
   id: uuidSchema,
-  /** Zeitstempel setzen archiviert, null holt die Variante zurueck. */
+  /** A timestamp archives, null restores. */
   archivedAt: z.coerce.date().nullable().optional(),
 });
 
@@ -57,13 +47,9 @@ export const createProductSchema = z.object({
   name: requiredText('Name'),
   description: optionalText(),
   category: optionalText(100),
-  /**
-   * Wird keine Variante uebergeben, legt die API selbst eine Standardvariante
-   * an. Der haeufige Fall – ein Artikel ohne Ausfuehrungen – kostet den
-   * Nutzer damit keinen zusaetzlichen Schritt.
-   */
+  /** Without variants the API creates a default one. */
   variants: z.array(createVariantSchema).optional(),
-  /** Nur relevant, wenn keine Varianten uebergeben werden. */
+  /** Only used when no variants are given. */
   sku: skuSchema.optional(),
 });
 

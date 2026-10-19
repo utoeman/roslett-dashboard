@@ -1,24 +1,17 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-29',
 
-  // Reine Single-Page-Anwendung: es handelt sich um ein internes Werkzeug
-  // hinter einem Login, Suchmaschinen und Erstladezeit spielen keine Rolle.
+  // Internal tool behind a login: SEO and first paint do not matter.
   ssr: false,
 
   modules: ['@nuxt/ui', 'nuxt-auth-utils'],
 
-  // Das Design (Leinengrau/Oliv) ist nur hell entworfen. Ohne Farbmodus-Modul
-  // bleibt die App auch bei dunklem System hell.
+  // The design is light-only; without the color mode module it stays light.
   ui: {
     colorMode: false,
   },
 
-  /**
-   * Komponenten liegen nach Sachgebiet in Unterordnern (artikel/, layout/,
-   * kalkulator/ …). Ohne pathPrefix wuerde Nuxt den Ordnernamen voranstellen
-   * und aus SeitenKopf ein LayoutSeitenKopf machen. Die Ordner gliedern hier
-   * nur den Bestand, sie gehoeren nicht in den Namen.
-   */
+  // Subfolders only group components; keep them out of the component names.
   components: [{ path: '~/components', pathPrefix: false }],
 
   css: ['~/assets/css/main.css'],
@@ -28,17 +21,12 @@ export default defineNuxtConfig({
     typeCheck: false,
   },
 
-  /**
-   * Jede Konfiguration kommt aus der Umgebung. Werte ohne `public` bleiben
-   * auf dem Server. `public` ist bewusst leer: der Client spricht die API
-   * ausschliesslich ueber relative Pfade an und braucht deshalb keine
-   * Basis-URL.
-   */
+  // All config comes from the environment. `public` is empty: the client
+  // only calls the API via relative paths.
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL ?? '',
-    // Hash des Zugangspassworts, zur Laufzeit aus NUXT_ACCESS_PASSWORD_HASH.
-    // Leer im Build, damit kein Geheimnis im Server-Bundle landet. Das
-    // Sitzungsgeheimnis liest nuxt-auth-utils selbst aus NUXT_SESSION_PASSWORD.
+    // Set at runtime via NUXT_ACCESS_PASSWORD_HASH; empty at build time so no
+    // secret ends up in the bundle. NUXT_SESSION_PASSWORD is read by nuxt-auth-utils.
     accessPasswordHash: '',
     public: {},
   },

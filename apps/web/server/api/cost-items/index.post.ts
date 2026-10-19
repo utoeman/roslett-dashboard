@@ -5,13 +5,7 @@ import { databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapCostItem } from '../../utils/mapping.js';
 
-/**
- * Kostenposition anlegen.
- *
- * Der Wert wird je nach Art unterschiedlich abgelegt: ein Fixbetrag als
- * Euro-Wert, eine Rate als Dezimalzahl. Das Schema hat ihn bereits
- * entsprechend geparst, hier folgt nur noch die Umrechnung fuer die Spalte.
- */
+/** Stores `value` as euros for "fix" and as a decimal rate for "percent". */
 export default defineEventHandler(async (event) => {
   const input = await readJsonBody(event, createCostItemSchema);
   try {

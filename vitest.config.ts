@@ -6,7 +6,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/core/src/**/*.ts'],
-      // index.ts reicht Exporte nur durch, types.ts enthaelt keinen Laufzeitcode.
+      // index.ts only re-exports, types.ts has no runtime code.
       exclude: ['packages/core/src/index.ts', 'packages/core/src/types.ts'],
       thresholds: { lines: 95, functions: 100, branches: 90, statements: 95 },
     },

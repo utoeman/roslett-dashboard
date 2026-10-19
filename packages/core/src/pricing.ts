@@ -1,9 +1,6 @@
 /**
- * Preis- und Margenrechnung.
- *
- * Alles hier laeuft netto (Regel 2). Umsatzsteuer ist bei einem
- * regelbesteuerten Unternehmen ein durchlaufender Posten und beruehrt die
- * Marge nicht. Sie taucht in diesem Modul deshalb gar nicht auf.
+ * Pricing and margin calculation. Everything is net: for a VAT-registered
+ * business, VAT passes through and never affects the margin.
  */
 
 import type { Cents, Rate } from './money.js';
@@ -24,10 +21,7 @@ export class PricingError extends Error {
   }
 }
 
-/**
- * Waehlt die Kostenpositionen aus, die fuer eine Variante gelten:
- * alle aktiven globalen plus alle aktiven der Variante selbst.
- */
+/** All active global cost items plus the active items of the variant. */
 export function costItemsForVariant(
   items: readonly CostItem[],
   variantId: string,
@@ -39,21 +33,11 @@ export function costItemsForVariant(
 }
 
 /**
- * Berechnet die Selbstkosten je Stueck aus Einstandspreis und
- * Kostenpositionen.
+ * Total cost per unit from landed cost and cost items.
  *
- * Prozentuale Positionen beziehen sich hier auf den Einstandspreis, nicht auf
- * den Verkaufspreis. Kosten, die am Verkaufspreis haengen – Kanalgebuehren
- * etwa – sind keine Selbstkosten, sondern gehen in die Rueckwaertsrechnung
- * ein, weil sie den gesuchten Preis voraussetzen.
- *
- * Vorsteuerabzugsfaehige Positionen werden zwar ausgewiesen, aber nicht
- * eingerechnet (Regel 3). Die Einfuhrumsatzsteuer ist der Standardfall: sie
- * wird gezahlt, aber zurueckgeholt und belastet die Marge nicht. Zoll
- * hingegen ist nicht abzugsfaehig und zaehlt voll mit.
- *
- * Gerundet wird erst am Schluss (Regel 10): die prozentualen Anteile bleiben
- * bis zur Summenbildung Fliesskomma.
+ * Percentages refer to the landed cost. Costs that depend on the sales price
+ * (channel fees) belong to the reverse calculation instead. Deductible input
+ * tax is listed but not included; rounding happens only at the end.
  */
 export function calculateTotalCost(
   landedCostEur: Cents,
@@ -94,22 +78,11 @@ export function calculateTotalCost(
 }
 
 /**
- * Marge und Aufschlag zu einem gegebenen Verkaufspreis.
+ * margin = contribution / net sales price, markup = contribution / total cost.
+ * Cost 40, price 100: margin 60 %, markup 150 %. Always reported separately.
  *
- * Die beiden Kennzahlen werden regelmaessig verwechselt, deshalb hier
- * ausdruecklich (Regel 4):
- *
- *   Marge     = Deckungsbeitrag / Verkaufspreis netto
- *   Aufschlag = Deckungsbeitrag / Selbstkosten
- *
- * Bei 40 EUR Selbstkosten und 100 EUR Verkaufspreis betraegt die Marge 60 %,
- * der Aufschlag aber 150 %. Sie werden nie ineinander umgerechnet, sondern
- * immer getrennt ausgewiesen.
- *
- * Sonderfaelle: Bei einem Verkaufspreis von 0 ist die Marge nicht definiert
- * und wird als 0 zurueckgegeben; bei Selbstkosten von 0 gilt dasselbe fuer
- * den Aufschlag. Ein Fehler waere hier unangebracht, weil der Kalkulator
- * waehrend der Eingabe zwangslaeufig durch solche Zwischenzustaende laeuft.
+ * A zero price or cost yields 0 instead of throwing, because the calculator
+ * passes through such states while the user types.
  */
 export function calculateMargin(
   salesPriceNetEur: Cents,
@@ -130,19 +103,12 @@ export function calculateMargin(
 }
 
 /**
- * Rueckwaertsrechnung: gesuchter Verkaufspreis zu einer Zielmarge (Regel 5).
+ * Sales price for a target margin. Percentage fees apply to the price we are
+ * looking for, so they go into the denominator:
  *
- * Der Denkfehler, den diese Funktion vermeidet: prozentuale Gebuehren
- * beziehen sich auf den Verkaufspreis, den wir erst suchen. Wer die Gebuehr
- * auf die Selbstkosten aufschlaegt, rechnet zu niedrig.
+ *   price = (total cost + fixed fees) / (1 - target margin - fee rate)
  *
- *   VK = (Selbstkosten + Fixgebuehren) / (1 - Zielmarge - Gebuehrensatz)
- *
- * Der Nenner beschreibt den Anteil des Verkaufspreises, der nach Marge und
- * prozentualen Gebuehren fuer die Kosten uebrig bleibt. Ist er null oder
- * negativ, existiert kein Preis, der die Vorgabe erfuellt: die Zielmarge
- * frisst zusammen mit den Gebuehren bereits den gesamten Erloes. Ein hoeherer
- * Preis hilft dann nicht, weil Marge und Gebuehr proportional mitwachsen.
+ * A denominator <= 0 means no price can satisfy the target.
  */
 export function calculateSalesPrice(parameters: {
   totalCostEur: Cents;
@@ -179,8 +145,7 @@ export function calculateSalesPrice(parameters: {
 
   const denominator = 1 - targetMargin - feePercent;
   if (denominator <= 0) {
-    // Fehlermeldungen werden dem Nutzer im Kalkulator angezeigt und muessen
-    // deshalb deutsch formatiert sein, also mit Komma als Dezimaltrenner.
+    // Shown to the user, hence German number formatting.
     throw new PricingError(
       `Zielmarge ${formatPercent(targetMargin)} und Gebuehren ` +
         `${formatPercent(feePercent)} ergeben zusammen ` +
@@ -194,13 +159,9 @@ export function calculateSalesPrice(parameters: {
 }
 
 /**
- * Kanalpreis fuer eine Variante.
- *
- * Bei `pricingRule: 'same_margin'` wird der Preis so zurueckgerechnet, dass
- * nach Abzug der Kanalgebuehren die Zielmarge stehen bleibt. Bei
- * `pricingRule: 'fixed'` gilt der uebergebene Preis, und berechnet wird nur,
- * was davon uebrig bleibt – dann kann die tatsaechliche Marge unter der
- * Zielmarge liegen, was der Kalkulator so auch anzeigen soll.
+ * Channel price for a variant. `same_margin` derives the price from the
+ * target margin after fees; `fixed` uses the given price, so the actual
+ * margin may fall below the target.
  */
 export function calculateChannelPrice(parameters: {
   channel: Channel;
@@ -228,8 +189,7 @@ export function calculateChannelPrice(parameters: {
     });
   }
 
-  // Erst hier runden: der prozentuale Gebuehrenanteil bleibt bis zur
-  // Summenbildung mit der Fixgebuehr ungerundet (Regel 10).
+  // Round only after adding the fixed fee.
   const fees = round(share(salesPrice, channel.feePercent) + channel.feeFixed);
   const contributionMargin = salesPrice - totalCostEur - fees;
 
@@ -245,10 +205,7 @@ export function calculateChannelPrice(parameters: {
   };
 }
 
-/**
- * Zielmarge, die noetig ist, um bei gegebenem Verkaufspreis und Kanal
- * kostendeckend zu bleiben. Nuetzlich fuer die Warnschwelle im Regler.
- */
+/** Margin left at a given price and channel; used for the slider warning. */
 export function minimumMargin(
   totalCostEur: Cents,
   channel: Pick<Channel, 'feePercent' | 'feeFixed'>,

@@ -1,17 +1,7 @@
-# Release von Hand: Actions → Release → Run workflow → patch / minor / major.
-#
-# Was sich auf main gesammelt hat, geht erst mit diesem Workflow live:
-#   1. alle Pruefungen wie in der CI
-#   2. Version in den drei package.json anheben, CHANGELOG.md schreiben
-#   3. Migrationen auf die Live-Datenbank anwenden
-#   4. Release-Commit und Tag auf main, Branch production auf den Tag setzen
-#      (Netlify veroeffentlicht nur production)
-#   5. GitHub-Release mit den Changelog-Eintraegen
-#
-# Scheitert ein Schritt, bleibt alles Spaetere aus: ohne erfolgreiche Migration
-# wird nichts gepusht, und live bleibt der vorige Stand.
-#
-# Benoetigtes Secret: PRODUCTION_DATABASE_URL (Neon, direkte Verbindung ohne Pooler).
+# Manual release: checks, version bump, CHANGELOG.md, production migration,
+# tag, `production` branch (deployed by Netlify) and GitHub release.
+# If a step fails, nothing after it runs and production stays as it was.
+# Requires PRODUCTION_DATABASE_URL (Neon, direct connection).
 name: Release
 
 on:
@@ -23,7 +13,6 @@ on:
         options: [patch, minor, major]
         default: minor
 
-# Nie zwei Releases gleichzeitig.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -34,7 +23,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Releases nur vom Stand auf main.
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
@@ -83,9 +71,9 @@ jobs:
           git add package.json package-lock.json apps/web/package.json packages/core/package.json CHANGELOG.md
           git commit -m "chore(release): $TAG"
           git tag -a "$TAG" -m "$TAG"
-          # Atomar: Commit und Tag kommen zusammen an oder gar nicht.
+          # Atomic: commit and tag land together or not at all.
           git push --atomic origin HEAD:main "$TAG"
-          # production rueckt nur vorwaerts; ein abweichender Stand bricht hier ab.
+          # Fast-forward only.
           git push origin "$TAG^{commit}:refs/heads/production"
 
       - name: GitHub-Release

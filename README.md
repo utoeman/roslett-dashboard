@@ -203,7 +203,7 @@ Diese Regeln sind im Code verankert und dürfen nicht aufgeweicht werden:
 
 ### Beschlossen, noch nicht umgesetzt
 
-Am 17.10.2026 wurde der Code mit dem fachlichen Interview abgeglichen. Verbindlich ist ab
+Am 17.10.2026 wurde der Code mit dem Fachkonzept abgeglichen. Verbindlich ist ab
 jetzt `docs/domain-model.md` (v2), die Einzelentscheidungen stehen in `docs/abgleich.md`.
 Die wichtigsten Änderungen gegenüber den Regeln oben:
 
@@ -260,4 +260,4 @@ Als Nächstes folgt der Umbau auf das Domain-Modell v2 in sechs Blöcken:
 6. **Screens:** Wareneingang (Desktop und Handy), Verkäufe, Bestandsjournal, Übersicht
 
 Danach: Betrieb auf Netlify + Neon mit Release-Workflow, Etsy-Anbindung, Playwright,
-Barrierefreiheit, PWA. Zeitplan: Roadmap M1–M4 (`docs/trd-zusammenfassung.md`, Abschnitt 1.2).
+Barrierefreiheit, PWA. Zeitplan: Roadmap M1–M4 in `docs/roadmap.md`, Screens in `docs/screens.md`, Design-Tokens in `docs/design.md`.

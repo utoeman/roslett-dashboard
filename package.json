@@ -11,6 +11,7 @@
     "start": "bash scripts/start.sh",
     "dev": "npm run dev --workspace @trd/web",
     "build": "npm run build --workspace @trd/web",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && npm run typecheck --workspace @trd/web",
@@ -20,7 +21,9 @@
     "db:migrate": "npm run db:migrate --workspace @trd/web"
   },
   "devDependencies": {
+    "@nuxt/eslint-config": "^1.17.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^9.39.5",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"
   }

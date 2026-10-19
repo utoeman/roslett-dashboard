@@ -132,14 +132,14 @@ describe('parseMoney', () => {
 
 describe('formatMoney und formatPercent', () => {
   it('formatiert deutsch', () => {
-    expect(formatMoney(123456).replace(/ /g, ' ')).toBe('1.234,56 €');
-    expect(formatMoney(-500).replace(/ /g, ' ')).toBe('-5,00 €');
+    expect(formatMoney(123456).replace(/\u00a0/g, ' ')).toBe('1.234,56 €');
+    expect(formatMoney(-500).replace(/\u00a0/g, ' ')).toBe('-5,00 €');
     expect(formatMoney(999, { withSymbol: false })).toBe('9,99');
   });
 
   it('formatiert Prozentsaetze', () => {
-    expect(formatPercent(0.35).replace(/ /g, ' ')).toBe('35,0 %');
-    expect(formatPercent(0.065, 2).replace(/ /g, ' ')).toBe('6,50 %');
+    expect(formatPercent(0.35).replace(/\u00a0/g, ' ')).toBe('35,0 %');
+    expect(formatPercent(0.065, 2).replace(/\u00a0/g, ' ')).toBe('6,50 %');
   });
 
   it('lehnt Nicht-Cent ab', () => {

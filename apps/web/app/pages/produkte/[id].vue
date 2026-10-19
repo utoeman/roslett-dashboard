@@ -11,13 +11,13 @@ const { data, pending, error, refresh } = await useFetch<ProductDetail>(
   () => `/api/products/${id.value}`,
 );
 
-useHead({ title: () => data.value?.name ?? 'Artikel' });
+useHead({ title: () => data.value?.name ?? 'Produkt' });
 
 const saving = ref(false);
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 
-/** Stammdaten des Artikels, direkt bearbeitbar. */
+/** Stammdaten des Produkts, direkt bearbeitbar. */
 const editing = ref(false);
 const form = reactive({ name: '', category: '', description: '' });
 
@@ -144,30 +144,30 @@ const archivedVariants = computed(
         color="error"
         variant="subtle"
         class="rounded-[12px]"
-        title="Artikel nicht gefunden"
-        description="Der angeforderte Artikel existiert nicht oder wurde entfernt."
+        title="Produkt nicht gefunden"
+        description="Das angeforderte Produkt existiert nicht oder wurde entfernt."
       />
-      <UButton to="/artikel" variant="ghost" class="mt-4 rounded-[8px]" icon="i-lucide-arrow-left">
+      <UButton to="/produkte" variant="ghost" class="mt-4 rounded-[8px]" icon="i-lucide-arrow-left">
         Zurück zur Liste
       </UButton>
     </div>
 
-    <div v-else-if="pending && !data" class="p-6 text-sm text-zinc-500">
-      Artikel wird geladen …
+    <div v-else-if="pending && !data" class="p-6 text-sm text-leinen-500">
+      Produkt wird geladen …
     </div>
 
     <div v-else-if="data">
       <SeitenKopf :titel="data.name" :hinweis="data.category ?? undefined">
         <template #aktionen>
           <UButton
-            to="/artikel"
+            to="/produkte"
             variant="ghost"
             color="neutral"
             size="sm"
             icon="i-lucide-arrow-left"
             class="rounded-[8px]"
           >
-            Alle Artikel
+            Alle Produkte
           </UButton>
         </template>
       </SeitenKopf>
@@ -184,7 +184,7 @@ const archivedVariants = computed(
 
         <!-- Stammdaten -->
         <section
-          class="rounded-[12px] border border-zinc-200/70 p-4 dark:border-zinc-800"
+          class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 p-4 dark:border-leinen-800"
           style="border-width: 0.5px"
         >
           <div class="mb-3 flex items-center justify-between">
@@ -229,15 +229,15 @@ const archivedVariants = computed(
 
           <dl v-else class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div>
-              <dt class="text-xs text-zinc-500">Kategorie</dt>
+              <dt class="text-xs text-leinen-500">Kategorie</dt>
               <dd>{{ data.category ?? '–' }}</dd>
             </div>
             <div>
-              <dt class="text-xs text-zinc-500">Angelegt</dt>
+              <dt class="text-xs text-leinen-500">Angelegt</dt>
               <dd>{{ formatDate(data.createdAt) }}</dd>
             </div>
             <div class="sm:col-span-2">
-              <dt class="text-xs text-zinc-500">Beschreibung</dt>
+              <dt class="text-xs text-leinen-500">Beschreibung</dt>
               <dd>{{ data.description ?? '–' }}</dd>
             </div>
           </dl>
@@ -245,13 +245,13 @@ const archivedVariants = computed(
 
         <!-- Varianten -->
         <section
-          class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+          class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
           style="border-width: 0.5px"
         >
           <div class="flex items-center justify-between px-4 py-3">
             <h2 class="text-sm font-semibold">
               Varianten
-              <span class="ml-1 font-normal text-zinc-500">
+              <span class="ml-1 font-normal text-leinen-500">
                 {{ activeVariants.length }}
               </span>
             </h2>
@@ -267,10 +267,10 @@ const archivedVariants = computed(
 
           <table class="trd-tabelle w-full min-w-[44rem] text-sm">
             <thead
-              class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+              class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
             >
               <tr>
-                <th class="px-4">Artikelnummer</th>
+                <th class="px-4">SKU</th>
                 <th class="px-4">Bezeichnung</th>
                 <th class="px-4 text-right">Basispreis netto</th>
                 <th class="px-4 text-right">USt</th>
@@ -278,13 +278,13 @@ const archivedVariants = computed(
                 <th class="px-4 text-right">Aktionen</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+            <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
               <tr v-for="variant in activeVariants" :key="variant.id">
                 <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
                 <td class="px-4">{{ variant.label }}</td>
                 <td class="zahl px-4">{{ formatMoney(variant.basePriceNet) }}</td>
-                <td class="zahl px-4 text-zinc-500">{{ formatPercent(variant.vatRate) }}</td>
-                <td class="zahl px-4 text-zinc-500">{{ variant.minimumStock }}</td>
+                <td class="zahl px-4 text-leinen-500">{{ formatPercent(variant.vatRate) }}</td>
+                <td class="zahl px-4 text-leinen-500">{{ variant.minimumStock }}</td>
                 <td class="px-4">
                   <div class="flex justify-end gap-1">
                     <UButton
@@ -312,7 +312,7 @@ const archivedVariants = computed(
                   </div>
                 </td>
               </tr>
-              <tr v-for="variant in archivedVariants" :key="variant.id" class="text-zinc-400">
+              <tr v-for="variant in archivedVariants" :key="variant.id" class="text-leinen-400">
                 <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
                 <td class="px-4">
                   {{ variant.label }}
@@ -345,13 +345,13 @@ const archivedVariants = computed(
 
         <!-- Kostenpositionen -->
         <section
-          class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+          class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
           style="border-width: 0.5px"
         >
           <div class="px-4 py-3">
             <h2 class="text-sm font-semibold">Kostenpositionen</h2>
-            <p class="mt-0.5 text-xs text-zinc-500">
-              Gültig für diesen Artikel: übergreifende und variantenspezifische
+            <p class="mt-0.5 text-xs text-leinen-500">
+              Gültig für dieses Produkt: übergreifende und variantenspezifische
               Positionen. Vorsteuerabzugsfähige Positionen zählen nicht zu den
               Selbstkosten.
             </p>
@@ -359,7 +359,7 @@ const archivedVariants = computed(
 
           <p
             v-if="!data.costItems.length"
-            class="border-t border-zinc-200/70 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800"
+            class="border-t border-leinen-200/70 px-4 py-6 text-center text-sm text-leinen-500 dark:border-leinen-800"
           >
             Keine Kostenpositionen hinterlegt.
             <NuxtLink
@@ -372,7 +372,7 @@ const archivedVariants = computed(
 
           <table v-else class="trd-tabelle w-full min-w-[44rem] text-sm">
             <thead
-              class="border-y border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+              class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
             >
               <tr>
                 <th class="px-4">Bezeichnung</th>
@@ -382,11 +382,11 @@ const archivedVariants = computed(
                 <th class="px-4 text-right">Verteilung</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+            <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
               <tr
                 v-for="item in data.costItems"
                 :key="item.id"
-                :class="{ 'text-zinc-400': !item.active }"
+                :class="{ 'text-leinen-400': !item.active }"
               >
                 <td class="px-4">
                   {{ item.label }}
@@ -400,7 +400,7 @@ const archivedVariants = computed(
                     inaktiv
                   </UBadge>
                 </td>
-                <td class="px-4 text-zinc-500">
+                <td class="px-4 text-leinen-500">
                   {{ item.variantId ? 'Variante' : 'übergreifend' }}
                 </td>
                 <td class="zahl px-4">
@@ -416,9 +416,9 @@ const archivedVariants = computed(
                   >
                     abziehbar
                   </UBadge>
-                  <span v-else class="text-zinc-400">–</span>
+                  <span v-else class="text-leinen-400">–</span>
                 </td>
-                <td class="px-4 text-right text-zinc-500">
+                <td class="px-4 text-right text-leinen-500">
                   {{ item.distributionMethod === 'value' ? 'Warenwert' : 'Stückzahl' }}
                 </td>
               </tr>
@@ -441,7 +441,7 @@ const archivedVariants = computed(
               class="rounded-[12px]"
               :description="message"
             />
-            <UFormField label="Artikelnummer" required :error="fieldErrors.sku">
+            <UFormField label="SKU" required :error="fieldErrors.sku">
               <UInput v-model="variantForm.sku" autofocus class="w-full font-mono" />
             </UFormField>
             <UFormField label="Bezeichnung" required :error="fieldErrors.label">

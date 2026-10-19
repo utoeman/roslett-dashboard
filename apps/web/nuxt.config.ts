@@ -7,6 +7,12 @@ export default defineNuxtConfig({
 
   modules: ['@nuxt/ui'],
 
+  // Das Design (Leinengrau/Oliv) ist nur hell entworfen. Ohne Farbmodus-Modul
+  // bleibt die App auch bei dunklem System hell.
+  ui: {
+    colorMode: false,
+  },
+
   /**
    * Komponenten liegen nach Sachgebiet in Unterordnern (artikel/, layout/,
    * kalkulator/ …). Ohne pathPrefix wuerde Nuxt den Ordnernamen voranstellen

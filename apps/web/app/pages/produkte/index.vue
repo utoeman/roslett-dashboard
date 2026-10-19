@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { List, Product } from '~~/shared/types/api';
 
-useHead({ title: 'Artikel' });
+useHead({ title: 'Produkte' });
 
 const { formatMoney } = useMoney();
 const { readError } = useApiError();
@@ -82,28 +82,28 @@ async function create() {
 const listHint = computed(() => {
   if (!data.value) return undefined;
   const { total, items } = data.value;
-  if (total === 0) return 'Keine Artikel';
-  if (items.length === total) return `${total} Artikel`;
+  if (total === 0) return 'Keine Produkte';
+  if (items.length === total) return total === 1 ? '1 Produkt' : `${total} Produkte`;
   const from = page.value * perPage + 1;
   const to = from + items.length - 1;
-  return `Artikel ${from} bis ${to} von ${total}`;
+  return `Produkte ${from} bis ${to} von ${total}`;
 });
 
 /**
- * Klick auf eine Tabellenzeile führt zum Artikel.
+ * Klick auf eine Tabellenzeile führt zum Produkt.
  *
  * Klicks auf den Namen übernimmt der Link selbst – sonst würde zweimal
  * navigiert. Markiert der Nutzer gerade Text, wird nicht navigiert: sonst
- * ließe sich eine Artikelnummer nicht herauskopieren.
+ * ließe sich eine SKU nicht herauskopieren.
  */
 function openRow(id: string, event: MouseEvent) {
   const target = event.target as HTMLElement | null;
   if (target?.closest('a, button, input, label')) return;
   if ((window.getSelection()?.toString() ?? '') !== '') return;
-  navigateTo(`/artikel/${id}`);
+  navigateTo(`/produkte/${id}`);
 }
 
-/** Zeigt die Preisspanne eines Artikels über alle Varianten. */
+/** Zeigt die Preisspanne eines Produkts über alle Varianten. */
 function priceRange(product: Product): string {
   const prices = product.variants
     .map((variant) => variant.basePriceNet)
@@ -117,7 +117,7 @@ function priceRange(product: Product): string {
 
 <template>
   <div>
-    <SeitenKopf titel="Artikel" :hinweis="listHint">
+    <SeitenKopf titel="Produkte" :hinweis="listHint">
       <template #aktionen>
         <UButton
           icon="i-lucide-plus"
@@ -125,7 +125,7 @@ function priceRange(product: Product): string {
           class="rounded-[8px]"
           @click="dialogOpen = true"
         >
-          Artikel anlegen
+          Produkt anlegen
         </UButton>
       </template>
     </SeitenKopf>
@@ -135,7 +135,7 @@ function priceRange(product: Product): string {
         <UInput
           v-model="search"
           icon="i-lucide-search"
-          placeholder="Name oder Artikelnummer"
+          placeholder="Name oder SKU"
           size="sm"
           class="w-64"
           :ui="{ base: 'rounded-[8px]' }"
@@ -149,30 +149,30 @@ function priceRange(product: Product): string {
         variant="subtle"
         icon="i-lucide-circle-alert"
         class="mb-4 rounded-[12px]"
-        title="Die Artikel konnten nicht geladen werden."
+        title="Die Produkte konnten nicht geladen werden."
         :description="error.message"
       />
 
       <div
         v-else-if="pending && !data"
-        class="py-16 text-center text-sm text-zinc-500"
+        class="py-16 text-center text-sm text-leinen-500"
       >
-        Artikel werden geladen …
+        Produkte werden geladen …
       </div>
 
       <div
         v-else-if="!data?.items.length"
-        class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
+        class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 py-16 text-center dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <p class="text-sm font-medium">
-          {{ search ? 'Kein Artikel gefunden.' : 'Noch keine Artikel angelegt.' }}
+          {{ search ? 'Kein Produkt gefunden.' : 'Noch keine Produkte angelegt.' }}
         </p>
-        <p class="mt-1 text-sm text-zinc-500">
+        <p class="mt-1 text-sm text-leinen-500">
           {{
             search
-              ? 'Andere Suche versuchen oder archivierte Artikel einblenden.'
-              : 'Legen Sie den ersten Artikel an, um zu beginnen.'
+              ? 'Andere Suche versuchen oder archivierte Produkte einblenden.'
+              : 'Legen Sie das erste Produkt an, um zu beginnen.'
           }}
         </p>
         <UButton
@@ -182,29 +182,29 @@ function priceRange(product: Product): string {
           class="mt-4 rounded-[8px]"
           @click="dialogOpen = true"
         >
-          Artikel anlegen
+          Produkt anlegen
         </UButton>
       </div>
 
       <div
         v-else
-        class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+        class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <table class="trd-tabelle w-full min-w-[40rem] text-sm">
           <thead
-            class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
             <tr>
-              <th class="px-4">Artikel</th>
+              <th class="px-4">Produkt</th>
               <th class="px-4">Kategorie</th>
               <th class="px-4">Varianten</th>
               <th class="px-4 text-right">Basispreis netto</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+          <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
             <!--
-              Die ganze Zeile führt zum Artikel, weil der Zeilen-Hover das
+              Die ganze Zeile führt zum Produkt, weil der Zeilen-Hover das
               ohnehin verspricht. Umgesetzt über einen Klick-Handler statt
               über ein absolut positioniertes Pseudo-Element: `position:
               relative` ist auf einer Tabellenzeile nicht verlässlich
@@ -214,12 +214,12 @@ function priceRange(product: Product): string {
             <tr
               v-for="product in data.items"
               :key="product.id"
-              class="group cursor-pointer transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40"
+              class="group cursor-pointer transition-colors hover:bg-leinen-50/70 dark:hover:bg-leinen-900/40"
               @click="openRow(product.id, $event)"
             >
               <td class="px-4">
                 <NuxtLink
-                  :to="`/artikel/${product.id}`"
+                  :to="`/produkte/${product.id}`"
                   class="font-medium transition-colors group-hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:group-hover:text-trd-400"
                 >
                   {{ product.name }}
@@ -234,8 +234,8 @@ function priceRange(product: Product): string {
                   archiviert
                 </UBadge>
               </td>
-              <td class="px-4 text-zinc-500">{{ product.category ?? '–' }}</td>
-              <td class="px-4 text-zinc-500">
+              <td class="px-4 text-leinen-500">{{ product.category ?? '–' }}</td>
+              <td class="px-4 text-leinen-500">
                 <span class="font-mono text-xs">
                   {{ product.variants.map((v) => v.sku).join(', ') }}
                 </span>
@@ -250,7 +250,7 @@ function priceRange(product: Product): string {
         v-if="data && pageCount > 1"
         class="mt-3 flex items-center justify-between text-sm"
       >
-        <p class="text-zinc-500">Seite {{ page + 1 }} von {{ pageCount }}</p>
+        <p class="text-leinen-500">Seite {{ page + 1 }} von {{ pageCount }}</p>
         <div class="flex gap-2">
           <UButton
             size="sm"
@@ -278,7 +278,7 @@ function priceRange(product: Product): string {
       </div>
     </div>
 
-    <UModal v-model:open="dialogOpen" title="Artikel anlegen">
+    <UModal v-model:open="dialogOpen" title="Produkt anlegen">
       <template #body>
         <form class="space-y-4" @submit.prevent="create">
           <UAlert
@@ -294,13 +294,13 @@ function priceRange(product: Product): string {
             label="Name"
             required
             :error="fieldErrors.name"
-            help="So heißt der Artikel in Listen und Auswertungen."
+            help="So heißt das Produkt in Listen und Auswertungen."
           >
             <UInput v-model="form.name" autofocus class="w-full" />
           </UFormField>
 
           <UFormField
-            label="Artikelnummer"
+            label="SKU"
             required
             :error="fieldErrors.sku"
             help="Eindeutig. Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich."
@@ -313,9 +313,9 @@ function priceRange(product: Product): string {
           </UFormField>
 
           <p
-            class="rounded-[8px] bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+            class="rounded-[8px] bg-leinen-50 px-3 py-2 text-xs text-leinen-600 dark:bg-leinen-900 dark:text-leinen-400"
           >
-            Der Artikel erhält automatisch eine Standardvariante. Weitere
+            Das Produkt erhält automatisch eine Standardvariante. Weitere
             Varianten legen Sie anschließend in der Detailansicht an.
           </p>
 

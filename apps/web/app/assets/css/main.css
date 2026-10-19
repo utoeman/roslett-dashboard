@@ -2,51 +2,84 @@
 @import "@nuxt/ui";
 
 /*
- * Design-Tokens aus der Spezifikation.
+ * Design-Tokens aus dem Interview (docs/trd-zusammenfassung.md, Abschnitt 5).
  *
  * Nuxt UI erwartet Farben als Abstufungen 50 bis 950. Die vorgegebenen Werte
- * bilden jeweils die Stufe 500; die uebrigen Stufen sind daraus abgeleitet,
+ * sind in der Skala markiert; die uebrigen Stufen sind daraus abgeleitet,
  * damit Zustaende wie Hover und Fokus dieselbe Farbfamilie behalten.
  */
 @theme {
-  /* primary #B84C3E – gebranntes Terrakotta */
-  --color-trd-50:  #fdf4f2;
-  --color-trd-100: #fbe6e2;
-  --color-trd-200: #f7d0c9;
-  --color-trd-300: #eeb0a4;
-  --color-trd-400: #dd8070;
-  --color-trd-500: #b84c3e;
-  --color-trd-600: #a54234;
-  --color-trd-700: #8a362b;
-  --color-trd-800: #722f27;
-  --color-trd-900: #602b25;
-  --color-trd-950: #34130f;
+  /* primary Oliv: 100 hell #E6EAD9, 500 Akzent #4A5A34, 700 dunkel #2F3A20 */
+  --color-trd-50:  #f3f5ec;
+  --color-trd-100: #e6ead9;
+  --color-trd-200: #cdd5b6;
+  --color-trd-300: #a9b788;
+  --color-trd-400: #77885a;
+  --color-trd-500: #4a5a34;
+  --color-trd-600: #3f4d2c;
+  --color-trd-700: #2f3a20;
+  --color-trd-800: #263019;
+  --color-trd-900: #1e2614;
+  --color-trd-950: #10150a;
 
-  /* warning #EF9F27 */
-  --color-trdwarning-50:  #fef8ec;
-  --color-trdwarning-100: #fbecc9;
-  --color-trdwarning-200: #f7d78e;
-  --color-trdwarning-300: #f3bd53;
-  --color-trdwarning-400: #ef9f27;
-  --color-trdwarning-500: #e98510;
-  --color-trdwarning-600: #ce640b;
-  --color-trdwarning-700: #ab460d;
-  --color-trdwarning-800: #8b3711;
-  --color-trdwarning-900: #722e11;
-  --color-trdwarning-950: #421604;
+  /*
+   * neutral Leinengrau: 50 Navigation #FBFAF7, 100 Grund #F3F0EA,
+   * 200 Rahmen #E2DCD2, 300 Eingabe #D6CFC3, 500 Text gedaempft #6B645A,
+   * 900 Text #23211E.
+   */
+  --color-leinen-50:  #fbfaf7;
+  --color-leinen-100: #f3f0ea;
+  --color-leinen-200: #e2dcd2;
+  --color-leinen-300: #d6cfc3;
+  --color-leinen-400: #9a9184;
+  --color-leinen-500: #6b645a;
+  --color-leinen-600: #57514a;
+  --color-leinen-700: #45403a;
+  --color-leinen-800: #34302b;
+  --color-leinen-900: #23211e;
+  --color-leinen-950: #161512;
 
-  /* error #E24B4A */
-  --color-trderror-50:  #fef3f2;
-  --color-trderror-100: #fee5e3;
-  --color-trderror-200: #fecfcc;
-  --color-trderror-300: #fcaea9;
-  --color-trderror-400: #f77f78;
-  --color-trderror-500: #e24b4a;
-  --color-trderror-600: #cf3130;
-  --color-trderror-700: #ae2524;
-  --color-trderror-800: #902322;
-  --color-trderror-900: #782322;
-  --color-trderror-950: #410e0d;
+  /* warning: 100 Flaeche #FBEBD0, 300 Rahmen #E8C98F, 600/700 Text #8A5300/#6E4200 */
+  --color-trdwarning-50:  #fdf6e8;
+  --color-trdwarning-100: #fbebd0;
+  --color-trdwarning-200: #f3d9a8;
+  --color-trdwarning-300: #e8c98f;
+  --color-trdwarning-400: #d9a24e;
+  --color-trdwarning-500: #b87a1e;
+  --color-trdwarning-600: #8a5300;
+  --color-trdwarning-700: #6e4200;
+  --color-trdwarning-800: #573509;
+  --color-trdwarning-900: #45290a;
+  --color-trdwarning-950: #261604;
+
+  /* error = Storno: 100 Flaeche #F3DCD6, 600 Text #7A2E1C */
+  --color-trderror-50:  #fbf1ee;
+  --color-trderror-100: #f3dcd6;
+  --color-trderror-200: #e9bdb2;
+  --color-trderror-300: #d99484;
+  --color-trderror-400: #c2654f;
+  --color-trderror-500: #a3432d;
+  --color-trderror-600: #7a2e1c;
+  --color-trderror-700: #642617;
+  --color-trderror-800: #4f1f14;
+  --color-trderror-900: #3f1a11;
+  --color-trderror-950: #220c07;
+
+  /* info = Retoure, offen: 100 Flaeche #E3ECF3, 700 Text #24435C */
+  --color-trdinfo-50:  #f1f6f9;
+  --color-trdinfo-100: #e3ecf3;
+  --color-trdinfo-200: #c6d7e5;
+  --color-trdinfo-300: #9dbad1;
+  --color-trdinfo-400: #6e96b6;
+  --color-trdinfo-500: #4a7598;
+  --color-trdinfo-600: #355c7b;
+  --color-trdinfo-700: #24435c;
+  --color-trdinfo-800: #1e384c;
+  --color-trdinfo-900: #1a2f40;
+  --color-trdinfo-950: #0f1c26;
+
+  /* Zweitfarbe fuer Diagramme (Etsy-Balken). */
+  --color-sand: #c9a27a;
 
   /* success #639922 */
   --color-trdsuccess-50:  #f5faeb;
@@ -61,8 +94,10 @@
   --color-trdsuccess-900: #314618;
   --color-trdsuccess-950: #172607;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-    sans-serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  /* Zahlen und SKUs. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Radien: 8px fuer Bedienelemente, 12px fuer Karten. */
   --radius-bedienelement: 8px;
@@ -83,6 +118,7 @@
 
 html {
   font-family: var(--font-sans);
+  background-color: var(--color-leinen-100);
 }
 
 /*
@@ -93,6 +129,7 @@ html {
 .zahl,
 .tabellenzelle-zahl,
 table td.zahl {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }

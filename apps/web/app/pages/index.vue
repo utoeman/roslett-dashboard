@@ -26,7 +26,7 @@ const { data, pending, error } = await useAsyncData(
 );
 
 const tiles = computed(() => [
-  { name: 'Artikel', value: data.value?.products ?? 0, path: '/artikel' },
+  { name: 'Produkte', value: data.value?.products ?? 0, path: '/produkte' },
   {
     name: 'Lieferanten',
     value: data.value?.suppliers ?? 0,
@@ -61,19 +61,19 @@ const tiles = computed(() => [
           v-for="tile in tiles"
           :key="tile.name"
           :to="tile.path"
-          class="group cursor-pointer rounded-[12px] border border-zinc-200/70 px-4 py-3 transition-colors hover:border-trd-300 hover:bg-trd-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trd-500 dark:border-zinc-800 dark:hover:border-trd-800 dark:hover:bg-trd-950/20"
+          class="group cursor-pointer rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 px-4 py-3 transition-colors hover:border-trd-300 hover:bg-trd-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trd-500 dark:border-leinen-800 dark:hover:border-trd-800 dark:hover:bg-trd-950/20"
           style="border-width: 0.5px"
         >
-          <p class="text-xs uppercase tracking-wide text-zinc-500">{{ tile.name }}</p>
+          <p class="text-xs uppercase tracking-wide text-leinen-500">{{ tile.name }}</p>
           <div class="mt-1 flex items-center justify-between">
             <p class="zahl text-2xl font-semibold tabular-nums">
-              <span v-if="pending && !data" class="text-zinc-300 dark:text-zinc-700">–</span>
+              <span v-if="pending && !data" class="text-leinen-300 dark:text-leinen-700">–</span>
               <span v-else>{{ tile.value }}</span>
             </p>
             <!-- Der Pfeil macht sichtbar, dass die Kachel irgendwohin führt. -->
             <UIcon
               name="i-lucide-arrow-right"
-              class="size-4 text-zinc-300 transition-colors group-hover:text-trd-500 dark:text-zinc-700"
+              class="size-4 text-leinen-300 transition-colors group-hover:text-trd-500 dark:text-leinen-700"
               aria-hidden="true"
             />
           </div>
@@ -81,11 +81,11 @@ const tiles = computed(() => [
       </div>
 
       <div
-        class="mt-6 rounded-[12px] border border-zinc-200/70 px-4 py-3 text-sm dark:border-zinc-800"
+        class="mt-6 rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 px-4 py-3 text-sm dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <p class="font-medium">Nächster Schritt</p>
-        <p class="mt-0.5 text-zinc-600 dark:text-zinc-400">
+        <p class="mt-0.5 text-leinen-600 dark:text-leinen-400">
           Bestandsführung und Kalkulation folgen in Phase 3: Wareneingang mit
           Chargen, Abgänge nach FIFO, Retouren, Inventur und der Kalkulator.
         </p>

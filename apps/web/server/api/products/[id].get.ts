@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
         variants: { orderBy: [asc(schema.variants.sku)] },
       },
     }),
-    'Der Artikel',
+    'Das Produkt',
   );
 
   const variantIds = product.variants.map((variant) => variant.id);

@@ -98,29 +98,29 @@ async function toggleArchived(supplier: Supplier) {
 
       <UCheckbox v-model="includeArchived" label="Archivierte anzeigen" size="sm" class="mb-4" />
 
-      <div v-if="pending && !data" class="py-12 text-center text-sm text-zinc-500">
+      <div v-if="pending && !data" class="py-12 text-center text-sm text-leinen-500">
         Wird geladen …
       </div>
 
       <div
         v-else-if="!data?.items.length"
-        class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
+        class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 py-16 text-center dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <p class="text-sm font-medium">Noch keine Lieferanten angelegt.</p>
-        <p class="mt-1 text-sm text-zinc-500">
+        <p class="mt-1 text-sm text-leinen-500">
           Lieferanten werden beim Wareneingang einer Charge zugeordnet.
         </p>
       </div>
 
       <div
         v-else
-        class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+        class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <table class="trd-tabelle w-full min-w-[40rem] text-sm">
           <thead
-            class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
             <tr>
               <th class="px-4">Name</th>
@@ -129,11 +129,11 @@ async function toggleArchived(supplier: Supplier) {
               <th class="px-4 text-right">Aktionen</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+          <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
             <tr
               v-for="supplier in data.items"
               :key="supplier.id"
-              :class="{ 'text-zinc-400': supplier.archivedAt }"
+              :class="{ 'text-leinen-400': supplier.archivedAt }"
             >
               <td class="px-4 font-medium">
                 {{ supplier.name }}
@@ -147,8 +147,8 @@ async function toggleArchived(supplier: Supplier) {
                   archiviert
                 </UBadge>
               </td>
-              <td class="px-4 text-zinc-500">{{ supplier.country ?? '–' }}</td>
-              <td class="max-w-md truncate px-4 text-zinc-500">{{ supplier.note ?? '–' }}</td>
+              <td class="px-4 text-leinen-500">{{ supplier.country ?? '–' }}</td>
+              <td class="max-w-md truncate px-4 text-leinen-500">{{ supplier.note ?? '–' }}</td>
               <td class="px-4">
                 <div class="flex justify-end gap-1">
                   <UButton

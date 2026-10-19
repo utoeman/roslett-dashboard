@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       where: eq(schema.products.id, id),
       columns: { id: true },
     }),
-    'Der Artikel',
+    'Das Produkt',
   );
 
   const { newVariants, updatedVariants, ...productFields } = input;
@@ -132,6 +132,6 @@ export default defineEventHandler(async (event) => {
       };
     });
   } catch (error) {
-    throw databaseError(error, 'Artikel aendern');
+    throw databaseError(error, 'Produkt aendern');
   }
 });

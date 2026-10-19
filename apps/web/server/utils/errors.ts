@@ -118,7 +118,7 @@ export function databaseError(error: unknown, context: string): H3Error {
     const detail = String(pgError.detail ?? '');
     // Postgres nennt die betroffene Spalte im Detailtext.
     if (detail.includes('sku')) {
-      return conflict('Diese Artikelnummer ist bereits vergeben.', {
+      return conflict('Diese SKU ist bereits vergeben.', {
         sku: 'Bereits vergeben.',
       });
     }

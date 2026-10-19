@@ -11,10 +11,10 @@ const route = useRoute();
 
 const links = [
   { name: 'Übersicht', path: '/' },
-  { name: 'Artikel', path: '/artikel' },
+  { name: 'Produkte', path: '/produkte' },
+  { name: 'Kanäle', path: '/einstellungen/kanaele' },
   { name: 'Lieferanten', path: '/einstellungen/lieferanten' },
   { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen' },
-  { name: 'Kanäle', path: '/einstellungen/kanaele' },
 ];
 
 // Beim Seitenwechsel schliessen, sonst bleibt die Liste ueber dem Inhalt stehen.
@@ -23,7 +23,7 @@ watch(() => route.path, () => { open.value = false; });
 
 <template>
   <div
-    class="border-b border-zinc-200/70 px-4 py-2 md:hidden dark:border-zinc-800"
+    class="border-b border-leinen-200/70 px-4 py-2 md:hidden dark:border-leinen-800"
     style="border-bottom-width: 0.5px"
   >
     <div class="flex items-center justify-between">
@@ -52,7 +52,7 @@ watch(() => route.path, () => { open.value = false; });
         :class="
           route.path === link.path
             ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
-            : 'text-zinc-600 dark:text-zinc-400'
+            : 'text-leinen-600 dark:text-leinen-400'
         "
       >
         {{ link.name }}

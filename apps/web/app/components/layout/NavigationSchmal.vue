@@ -10,6 +10,9 @@ const links = [
   { name: 'Kanäle', path: '/einstellungen/kanaele' },
   { name: 'Lieferanten', path: '/einstellungen/lieferanten' },
   { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen' },
+  { name: 'Kategorien', path: '/einstellungen/kategorien' },
+  { name: 'Farben', path: '/einstellungen/farben' },
+  { name: 'MwSt-Sätze', path: '/einstellungen/mwst' },
 ];
 
 // Close on navigation so the list does not cover the content.

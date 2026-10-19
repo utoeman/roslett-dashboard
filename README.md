@@ -114,6 +114,8 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Lieferanten | Anlegen, bearbeiten, archivieren |
 | Kostenpositionen | Anlegen, aktiv schalten, Fix- und Prozentpositionen |
 | Kanäle | Anlegen, Gebühren pflegen, aktiv schalten |
+| Kategorien, Farben | SKU-Kürzel anlegen, umbenennen, archivieren; verwendete Kürzel sind gesperrt |
+| MwSt-Sätze | Sätze je Land und Kategorie mit Gültig-ab; der aktuell gültige ist markiert |
 
 Wareneingang, Buchungen und Inventur sind in der Navigation als „folgt"
 gekennzeichnet und entstehen in Phase 3.

@@ -412,8 +412,9 @@ const archivedVariants = computed(
             </tbody>
           </table>
           <p class="border-t border-leinen-200/70 px-4 py-2 text-xs text-leinen-500 dark:border-leinen-800">
-            Marge vor Gebühren: Preis netto minus Ø Einstand des Lagerbestands. Kanalgebühren und
-            Kostenpositionen sind noch nicht abgezogen. Bestand anklicken öffnet das Journal.
+            Marge vor Gebühren: Verkaufspreis ohne MwSt minus Ø Einstand (EK + Nebenkosten) des
+            Lagerbestands. Kanalgebühren, Verpackung und Versand sind noch nicht abgezogen. Bestand
+            anklicken öffnet das Journal.
           </p>
         </section>
 

@@ -42,6 +42,7 @@ const result = computed(() => {
     return { min: Math.min(...values), max: Math.max(...values) };
   };
   return {
+    gross: priceCents.value,
     net: margins[0]?.salesPriceNetEur ?? 0,
     cost: span(known.value.map((c) => c.landed)),
     purchase: span(known.value.map((c) => c.purchase)),
@@ -77,14 +78,23 @@ const tone = computed(() => {
     <UIcon :name="tone.icon" class="mt-0.5 size-5 shrink-0" :class="tone.iconColor" aria-hidden="true" />
     <div>
       <p class="font-semibold">
-        {{ tone.label }}: Marge {{ range(result.euro, formatMoney) }} ({{
+        {{ tone.label }}: Marge vor Kanalgebühren {{ range(result.euro, formatMoney) }} ({{
           range(result.rate, (v) => formatPercent(v))
         }})
       </p>
-      <p class="text-xs">
-        Netto {{ formatMoney(result.net) }} · EK {{ range(result.purchase, formatMoney) }} + Nebenkosten
-        {{ range(result.extra, formatMoney) }} = Ø Einstand {{ range(result.cost, formatMoney) }} · vor Gebühren
-      </p>
+      <!-- Reads top to bottom as the calculation: net price minus landed cost. -->
+      <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-3 text-xs">
+        <dt>Verkaufspreis netto</dt>
+        <dd>
+          <span class="tabular-nums">{{ formatMoney(result.net) }}</span>
+          ({{ formatMoney(result.gross) }} ohne {{ formatPercent(vatRate, 0) }} MwSt)
+        </dd>
+        <dt>− Ø Einstand</dt>
+        <dd>
+          <span class="tabular-nums">{{ range(result.cost, formatMoney) }}</span>
+          (EK {{ range(result.purchase, formatMoney) }} + Nebenkosten {{ range(result.extra, formatMoney) }})
+        </dd>
+      </dl>
     </div>
   </div>
   <p v-else-if="priceCents !== null && known.length === 0" class="text-xs text-leinen-500">

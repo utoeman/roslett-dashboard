@@ -71,6 +71,14 @@ const colorOptions = computed(
   () => colors.value?.items.map((c) => ({ label: `${c.code} · ${c.name}`, value: c.id })) ?? [],
 );
 
+/** Landed costs of the active variants that use the base price; feeds the margin preview. */
+const baseCosts = computed(
+  () =>
+    data.value?.variants
+      .filter((v) => v.archivedAt === null && v.priceGross === null)
+      .map((v) => v.inventory?.averageCostEur ?? null) ?? [],
+);
+
 const variantDialog = ref(false);
 const editingVariant = ref<Variant | null>(null);
 const variantForm = reactive({
@@ -218,12 +226,17 @@ const archivedVariants = computed(
             </UFormField>
             <div class="grid gap-3 sm:grid-cols-2">
               <UFormField label="Preis brutto" :error="fieldErrors.basePriceGross" help="Zum Beispiel 39,90">
-                <UInput v-model="form.basePriceGross" class="w-full" placeholder="0,00" />
+                <BetragFeld v-model="form.basePriceGross" class="w-full" />
               </UFormField>
               <UFormField label="MwSt" :error="fieldErrors.vatCategory">
                 <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />
               </UFormField>
             </div>
+            <MargeVorschau
+              :price="form.basePriceGross"
+              :vat-rate="data.vatRates[form.vatCategory]"
+              :costs="baseCosts"
+            />
             <UFormField label="Beschreibung">
               <UTextarea v-model="form.description" :rows="3" class="w-full" />
             </UFormField>
@@ -537,8 +550,15 @@ const archivedVariants = computed(
               :error="fieldErrors.priceGross"
               help="Nur bei Abweichung vom Produktpreis. Zum Beispiel 44,90"
             >
-              <UInput v-model="variantForm.priceGross" class="w-full" placeholder="wie Produkt" />
+              <BetragFeld v-model="variantForm.priceGross" class="w-full" placeholder="wie Produkt" />
             </UFormField>
+            <MargeVorschau
+              v-if="data"
+              :price="variantForm.priceGross"
+              :fallback-cents="data.basePriceGross"
+              :vat-rate="data.vatRates[data.vatCategory]"
+              :costs="[editingVariant?.inventory?.averageCostEur ?? null]"
+            />
             <UFormField label="Mindestbestand" :error="fieldErrors.minimumStock">
               <UInput
                 v-model.number="variantForm.minimumStock"

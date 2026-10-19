@@ -210,7 +210,7 @@ async function toggleActive(channel: Channel) {
             :error="fieldErrors.feeFixed"
             help="Betrag je Verkauf. Zum Beispiel 0,20"
           >
-            <UInput v-model="form.feeFixed" class="w-full" placeholder="0,00" />
+            <BetragFeld v-model="form.feeFixed" class="w-full" />
           </UFormField>
           <UFormField label="Preisregel">
             <USelectMenu

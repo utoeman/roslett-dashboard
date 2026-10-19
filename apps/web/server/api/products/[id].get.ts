@@ -3,7 +3,7 @@ import { schema, useDb } from '../../db/client.js';
 import { readId, requireFound } from '../../utils/validation.js';
 import { mapCostItem } from '../../utils/mapping.js';
 import { loadProduct } from '../../utils/products.js';
-import { withInventory } from '../../utils/inventory.js';
+import { currentVatRates, withInventory } from '../../utils/inventory.js';
 
 /** Product with all variants (including archived, with stock) and its applicable cost items. */
 export default defineEventHandler(async (event) => {
@@ -21,6 +21,7 @@ export default defineEventHandler(async (event) => {
     orderBy: [asc(schema.costItems.label)],
   });
 
-  const [withStock] = await withInventory(db, [product]);
-  return { ...withStock, costItems: costItems.map(mapCostItem) };
+  const [[withStock], vatRates] = await Promise.all([withInventory(db, [product]), currentVatRates(db)]);
+  // Rates for both categories: the margin preview follows a category change in the form.
+  return { ...withStock, costItems: costItems.map(mapCostItem), vatRates };
 });

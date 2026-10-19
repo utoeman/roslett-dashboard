@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MoneyError, convertToEur, parseMoney } from '@trd/core';
 import type { AdditionalCost, GoodsReceipt, List, Product, ReceiptPosition } from '~~/shared/types/api';
 
 const route = useRoute();
@@ -100,12 +101,33 @@ function addRow() {
   rows.value.push({ variantId: undefined, quantityOrdered: 1, unitPrice: '', note: '' });
 }
 
-/** Rough EUR preview while typing; the server value is authoritative after saving. */
-function previewEur(input: string): string {
-  const cents = Math.round(Number(input.replace(/\./g, '').replace(',', '.')) * 100);
-  if (!data.value || !Number.isFinite(cents) || input.trim() === '') return '–';
-  return formatMoney(Math.round(cents / data.value.exchangeRate));
+/** Unit price in minor units, or null while the input is empty or invalid. */
+function unitMinor(input: string): number | null {
+  if (input.trim() === '') return null;
+  try {
+    return parseMoney(input);
+  } catch (error) {
+    if (error instanceof MoneyError) return null;
+    throw error;
+  }
 }
+
+/** EUR preview while typing, converted like the server does when saving. */
+const toEur = (minor: number) => convertToEur(minor, data.value?.exchangeRate ?? 1);
+
+function rowTotal(row: Row): number | null {
+  const unit = unitMinor(row.unitPrice);
+  return unit === null || !Number.isFinite(row.quantityOrdered) ? null : unit * row.quantityOrdered;
+}
+
+/** Line total as on the supplier invoice, plus EUR for foreign currencies. */
+function formatTotal(minor: number | null): string {
+  if (minor === null || !data.value) return '–';
+  const foreign = formatForeign(minor, data.value.currency);
+  return data.value.currency === 'EUR' ? foreign : `${foreign} ≈ ${formatMoney(toEur(minor))}`;
+}
+
+const draftTotal = computed(() => rows.value.reduce((sum, row) => sum + (rowTotal(row) ?? 0), 0));
 
 const fieldNames: Record<string, string> = { variantId: 'Variante', quantityOrdered: 'Menge', unitPrice: 'EK' };
 /** Per-row messages of the positions form, e.g. "Position 2 · EK: Pflichtfeld." */
@@ -330,8 +352,9 @@ const positionBadge = (p: ReceiptPosition) =>
                   <tr>
                     <th class="px-4">Variante</th>
                     <th class="w-28 px-4 text-right">Menge</th>
-                    <th class="w-40 px-4 text-right">EK netto {{ data.currency }}</th>
-                    <th class="px-4 text-right">≈ EUR</th>
+                    <th class="w-40 px-4 text-right">EK netto je Stück ({{ data.currency }})</th>
+                    <th v-if="data.currency !== 'EUR'" class="px-4 text-right">≈ EUR je Stück</th>
+                    <th class="px-4 text-right">Summe</th>
                     <th class="w-10 px-2" />
                   </tr>
                 </thead>
@@ -359,15 +382,17 @@ const positionBadge = (p: ReceiptPosition) =>
                       />
                     </td>
                     <td class="px-4 py-2">
-                      <UInput
+                      <BetragFeld
                         v-model="row.unitPrice"
-                        placeholder="0,00"
                         class="w-full"
                         :aria-label="`EK Position ${index + 1}`"
                         :color="fieldErrors[`positions.${index}.unitPrice`] ? 'error' : undefined"
                       />
                     </td>
-                    <td class="zahl px-4 text-leinen-500">{{ previewEur(row.unitPrice) }}</td>
+                    <td v-if="data.currency !== 'EUR'" class="zahl px-4 text-leinen-500">
+                      {{ unitMinor(row.unitPrice) === null ? '–' : formatMoney(toEur(unitMinor(row.unitPrice) ?? 0)) }}
+                    </td>
+                    <td class="zahl px-4">{{ formatTotal(rowTotal(row)) }}</td>
                     <td class="px-2">
                       <UButton
                         size="xs"
@@ -380,6 +405,15 @@ const positionBadge = (p: ReceiptPosition) =>
                     </td>
                   </tr>
                 </tbody>
+                <tfoot v-if="rows.length > 1" class="border-t border-leinen-200/70">
+                  <tr>
+                    <td :colspan="data.currency !== 'EUR' ? 4 : 3" class="px-4 text-right text-xs text-leinen-500">
+                      Summe aller Positionen
+                    </td>
+                    <td class="zahl px-4 font-medium">{{ formatTotal(draftTotal) }}</td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
               <ul v-if="positionErrors.length" class="space-y-0.5 px-4 pt-3 text-xs text-red-700">
                 <li v-for="text in positionErrors" :key="text">{{ text }}</li>
@@ -399,8 +433,8 @@ const positionBadge = (p: ReceiptPosition) =>
                 <tr>
                   <th class="px-4">Variante</th>
                   <th class="px-4 text-right">Menge</th>
-                  <th class="px-4 text-right">EK netto</th>
-                  <th class="px-4 text-right">EK EUR</th>
+                  <th class="px-4 text-right">EK/Stk netto</th>
+                  <th class="px-4 text-right">EK/Stk EUR</th>
                   <th class="px-4 text-right">NK/Stk</th>
                   <th class="px-4 text-right">Einstand/Stk</th>
                   <th v-if="!isDraft" class="px-4">Lieferung</th>
@@ -456,7 +490,7 @@ const positionBadge = (p: ReceiptPosition) =>
                 <USelectMenu v-model="costForm.kind" :items="kindOptions" value-key="value" class="w-full" />
               </UFormField>
               <UFormField label="Betrag EUR" :error="fieldErrors.amount" class="sm:col-span-1">
-                <UInput v-model="costForm.amount" placeholder="0,00" class="w-full" />
+                <BetragFeld v-model="costForm.amount" class="w-full" />
               </UFormField>
               <UFormField label="Verteilung" class="sm:col-span-2">
                 <USelectMenu v-model="costForm.distributionMethod" :items="methodOptions" value-key="value" class="w-full" />

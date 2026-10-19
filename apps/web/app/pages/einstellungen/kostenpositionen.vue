@@ -250,7 +250,8 @@ async function toggleActive(item: CostItem) {
             :error="fieldErrors.value"
             :help="form.kind === 'fix' ? 'Zum Beispiel 0,85' : 'Zum Beispiel 4,7 für 4,7 Prozent'"
           >
-            <UInput v-model="form.value" class="w-full" />
+            <BetragFeld v-if="form.kind === 'fix'" v-model="form.value" class="w-full" />
+            <UInput v-else v-model="form.value" class="w-full" />
           </UFormField>
 
           <UFormField

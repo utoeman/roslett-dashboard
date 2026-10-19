@@ -91,6 +91,8 @@ export interface CostItem {
 
 export interface ProductDetail extends Product {
   costItems: CostItem[];
+  /** VAT rates valid today in the sales country, per category. */
+  vatRates: Partial<Record<VatCategory, number>>;
 }
 
 export interface Supplier {

@@ -342,7 +342,7 @@ function stockOf(product: Product) {
               :error="fieldErrors.basePriceGross"
               help="Gilt für alle Varianten. Zum Beispiel 39,90"
             >
-              <UInput v-model="form.basePriceGross" class="w-full" placeholder="0,00" />
+              <BetragFeld v-model="form.basePriceGross" class="w-full" />
             </UFormField>
             <UFormField label="MwSt" :error="fieldErrors.vatCategory">
               <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />

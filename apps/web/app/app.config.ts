@@ -1,9 +1,8 @@
 /**
  * Design-Tokens.
  *
- * In Phase 1 nur hinterlegt, noch nicht angewendet – die Oberflaeche entsteht
- * ab Phase 2. Die Werte stehen hier und nicht in einer CSS-Datei, damit
- * Nuxt UI seine Komponentenfarben daraus ableiten kann.
+ * Die Farbskalen stehen in assets/css/main.css; hier wird festgelegt, welche
+ * Skala Nuxt UI fuer welche Rolle nimmt.
  */
 export default defineAppConfig({
   ui: {
@@ -12,20 +11,25 @@ export default defineAppConfig({
       warning: 'trdwarning',
       error: 'trderror',
       success: 'trdsuccess',
-      neutral: 'zinc',
+      info: 'trdinfo',
+      neutral: 'leinen',
     },
   },
 
   /** Rohwerte der Marke, unabhaengig von Nuxt UI. */
   trd: {
     farben: {
-      primary: '#B84C3E',
-      warning: '#EF9F27',
-      error: '#E24B4A',
+      primary: '#4A5A34',
+      grund: '#F3F0EA',
+      warning: '#FBEBD0',
+      error: '#F3DCD6',
+      info: '#E3ECF3',
       success: '#639922',
+      sand: '#C9A27A',
     },
     schrift: {
-      familie: 'Inter',
+      familie: 'Instrument Sans',
+      zahlenFamilie: 'IBM Plex Mono',
       // Zahlenspalten laufen mit gleich breiten Ziffern, damit Betraege
       // untereinander buendig stehen.
       zahlen: 'tabular-nums',

@@ -14,9 +14,9 @@
  * uebergibt.
  */
 
-import type { Cents } from './money.js';
+import type { Cents ,
+  MoneyError} from './money.js';
 import {
-  MoneyError,
   assertCents,
   distributeByWeight,
   round,

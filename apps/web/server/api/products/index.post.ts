@@ -31,8 +31,8 @@ export default defineEventHandler(async (event) => {
               input.sku ??
               (() => {
                 throw badRequest(
-                  'Es muss entweder eine Artikelnummer oder mindestens eine Variante angegeben werden.',
-                  { sku: 'Artikelnummer fehlt.' },
+                  'Es muss entweder eine SKU oder mindestens eine Variante angegeben werden.',
+                  { sku: 'SKU fehlt.' },
                 );
               })(),
             label: 'Standard',
@@ -82,6 +82,6 @@ export default defineEventHandler(async (event) => {
       };
     });
   } catch (error) {
-    throw databaseError(error, 'Artikel anlegen');
+    throw databaseError(error, 'Produkt anlegen');
   }
 });

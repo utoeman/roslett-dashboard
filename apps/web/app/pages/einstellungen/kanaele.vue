@@ -100,29 +100,29 @@ async function toggleActive(channel: Channel) {
         :description="message"
       />
 
-      <div v-if="pending && !data" class="py-12 text-center text-sm text-zinc-500">
+      <div v-if="pending && !data" class="py-12 text-center text-sm text-leinen-500">
         Wird geladen …
       </div>
 
       <div
         v-else-if="!data?.items.length"
-        class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
+        class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 py-16 text-center dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <p class="text-sm font-medium">Noch keine Kanäle angelegt.</p>
-        <p class="mt-1 text-sm text-zinc-500">
+        <p class="mt-1 text-sm text-leinen-500">
           Ein Kanal beschreibt, wo verkauft wird und welche Gebühren dabei anfallen.
         </p>
       </div>
 
       <div
         v-else
-        class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+        class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <table class="trd-tabelle w-full min-w-[44rem] text-sm">
           <thead
-            class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
             <tr>
               <th class="px-4">Kanal</th>
@@ -133,16 +133,16 @@ async function toggleActive(channel: Channel) {
               <th class="px-4 text-right">Aktion</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
+          <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
             <tr
               v-for="channel in data.items"
               :key="channel.id"
-              :class="{ 'text-zinc-400': !channel.active }"
+              :class="{ 'text-leinen-400': !channel.active }"
             >
               <td class="px-4 font-medium">{{ channel.name }}</td>
               <td class="zahl px-4">{{ formatPercent(channel.feePercent) }}</td>
               <td class="zahl px-4">{{ formatMoney(channel.feeFixed) }}</td>
-              <td class="px-4 text-zinc-500">
+              <td class="px-4 text-leinen-500">
                 {{ channel.pricingRule === 'same_margin' ? 'aus Zielmarge' : 'fest' }}
               </td>
               <td class="px-4">

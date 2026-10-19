@@ -4,8 +4,15 @@
 > `../CLAUDE.md`. Ausführlich (API, Phasen, Fachregeln mit Begründung): `README.md`.
 
 Internes Warenwirtschafts- und Kalkulationswerkzeug für The Refined Decor.
-Stand: Phase 2 abgeschlossen, nächste Phase 3 (Wareneingang, FIFO, Retouren, Inventur,
-Kalkulator, Login).
+Stand: Phase 2 abgeschlossen. Am 17.10.2026 mit dem Interview-Modell abgeglichen; Umbau in
+Blöcken 1–6 steht an (Plan in `docs/abgleich.md`). Zeitplan: Roadmap M1–M4 (`docs/trd-zusammenfassung.md`, Abschnitt 1.2).
+
+## Fachliche Quelle
+
+- `docs/domain-model.md` (v2) – **verbindliches Modell**: Entitäten, Buchungstypen, Regeln.
+- `docs/abgleich.md` – Einzelentscheidungen Interview ↔ Code mit Datum.
+- `docs/trd-zusammenfassung.md` – Interview-Protokoll, 8 Screens samt HTML-Quellcode, Design-Tokens.
+  Screens gelten als Vorlage für Inhalt und Abläufe, Zahlen darin sind Demodaten.
 
 ## Stack
 
@@ -13,6 +20,8 @@ Kalkulator, Login).
   und `apps/web` (Nuxt + Nitro-API, Drizzle, Zod-Schemas in `shared/`).
 - Postgres 16 per Docker (`docker-compose.yml`, nur DB); Nuxt läuft außerhalb von Docker.
 - Tests: Vitest.
+- UI: Nuxt UI als Basis + eigene Fachbausteine; Design-Tokens aus dem Interview (Leinengrau/Oliv).
+- Geplant: GitHub Actions (Lint, Typecheck, Tests), Live-Demo auf Vercel + Neon.
 
 ## Befehle
 
@@ -34,8 +43,14 @@ Sichtbare und die Code-Kommentare deutsch. Fehlerschlüssel `fehler`/`felder` bl
 - Geld intern nur als ganzzahlige **Cent**; Umrechnung nur an der Systemgrenze (`money.ts`).
 - Kalkulation **netto**. Einfuhrumsatzsteuer nicht in Selbstkosten, Zoll schon.
 - Marge ≠ Aufschlag, immer getrennt ausweisen.
-- Fremdwährung beim Wareneingang mit Kurs einfrieren.
-- Bestand ist kein Feld, sondern ergibt sich aus dem Buchungsjournal. FIFO-Zuordnungen persistieren.
+- Fremdwährung beim Wareneingang mit Kurs einfrieren (EZB-Kurs am Rechnungsdatum).
+- Bestand ist kein Feld, sondern ergibt sich aus dem Buchungsjournal. FIFO-Zuordnungen
+  (welche Charge, welche Menge) persistieren.
+- Journal unveränderlich: Korrektur nur per Storno-Buchung, die auf das Original zeigt.
+- Einstand wird berechnet, nicht gespeichert; nachträgliche Nebenkosten wirken rückwirkend.
+  Abgeschlossene Monate bleiben unverändert und werden nie wieder geöffnet.
+- Ein Verkaufspreis (brutto) für alle Kanäle; Stückkosten gehen in jede Marge ein.
+- SKU wird automatisch erzeugt und nie geändert.
 - Runden erst am Ende einer Rechenkette.
 
 ## Nachweis

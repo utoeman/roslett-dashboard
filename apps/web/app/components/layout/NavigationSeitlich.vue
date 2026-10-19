@@ -2,8 +2,9 @@
 /**
  * Seitennavigation.
  *
- * Die Reihenfolge folgt dem Arbeitsablauf: erst der Ueberblick, dann die
- * Stammdaten, zuletzt die Einstellungen. Punkte fuer spaetere Phasen sind
+ * Die Reihenfolge folgt dem Arbeitsablauf: Ueberblick, Produkte, die
+ * Bewegungen (Wareneingang, Verkauf, Journal), zuletzt die Einstellungen
+ * (docs/trd-zusammenfassung.md, Abschnitt 4). Punkte fuer spaetere Phasen sind
  * bereits sichtbar, aber als "folgt" gekennzeichnet – so ist erkennbar,
  * wohin das Werkzeug waechst, ohne dass ein Klick ins Leere fuehrt.
  */
@@ -25,23 +26,20 @@ interface NavSection {
 const sections: NavSection[] = [
   {
     title: null,
-    links: [{ name: 'Übersicht', path: '/', icon: 'i-lucide-layout-dashboard' }],
-  },
-  {
-    title: 'Stammdaten',
     links: [
-      { name: 'Artikel', path: '/artikel', icon: 'i-lucide-package' },
-      { name: 'Lieferanten', path: '/einstellungen/lieferanten', icon: 'i-lucide-truck' },
-      { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen', icon: 'i-lucide-receipt' },
-      { name: 'Kanäle', path: '/einstellungen/kanaele', icon: 'i-lucide-store' },
+      { name: 'Übersicht', path: '/', icon: 'i-lucide-layout-dashboard' },
+      { name: 'Produkte', path: '/produkte', icon: 'i-lucide-package' },
+      { name: 'Wareneingang', path: '/wareneingang', icon: 'i-lucide-package-plus', pending: true },
+      { name: 'Verkäufe', path: '/verkaeufe', icon: 'i-lucide-shopping-bag', pending: true },
+      { name: 'Bestandsjournal', path: '/journal', icon: 'i-lucide-arrow-left-right', pending: true },
     ],
   },
   {
-    title: 'Bestand',
+    title: 'Einstellungen',
     links: [
-      { name: 'Wareneingang', path: '/wareneingang', icon: 'i-lucide-package-plus', pending: true },
-      { name: 'Buchungen', path: '/buchungen', icon: 'i-lucide-arrow-left-right', pending: true },
-      { name: 'Inventur', path: '/inventur', icon: 'i-lucide-clipboard-check', pending: true },
+      { name: 'Kanäle', path: '/einstellungen/kanaele', icon: 'i-lucide-store' },
+      { name: 'Lieferanten', path: '/einstellungen/lieferanten', icon: 'i-lucide-truck' },
+      { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen', icon: 'i-lucide-receipt' },
     ],
   },
 ];
@@ -54,7 +52,7 @@ function isActive(path: string): boolean {
 
 <template>
   <nav
-    class="hidden w-56 shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-50/60 px-3 py-4 md:flex dark:border-zinc-800 dark:bg-zinc-900/40"
+    class="hidden w-56 shrink-0 flex-col border-r border-leinen-200/70 bg-leinen-50 px-3 py-4 md:flex dark:border-leinen-800 dark:bg-leinen-900/40"
     aria-label="Hauptnavigation"
   >
     <NuxtLink
@@ -68,7 +66,7 @@ function isActive(path: string): boolean {
     <div v-for="(section, i) in sections" :key="i" class="mb-5">
       <p
         v-if="section.title"
-        class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500"
+        class="mb-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-leinen-400 dark:text-leinen-500"
       >
         {{ section.title }}
       </p>
@@ -76,8 +74,8 @@ function isActive(path: string): boolean {
         <li v-for="link in section.links" :key="link.path">
           <span
             v-if="link.pending"
-            class="flex cursor-default items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-zinc-400 dark:text-zinc-600"
-            :title="`${link.name} folgt in Phase 3`"
+            class="flex cursor-default items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-leinen-400 dark:text-leinen-600"
+            :title="`${link.name} folgt`"
           >
             <UIcon :name="link.icon" class="size-4 shrink-0" />
             {{ link.name }}
@@ -90,7 +88,7 @@ function isActive(path: string): boolean {
             :class="
               isActive(link.path)
                 ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
-                : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/60'
+                : 'text-leinen-600 hover:bg-leinen-100 dark:text-leinen-400 dark:hover:bg-leinen-800/60'
             "
           >
             <UIcon :name="link.icon" class="size-4 shrink-0" />

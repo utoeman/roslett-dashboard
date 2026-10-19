@@ -101,7 +101,7 @@ async function toggleActive(item: CostItem) {
   <div>
     <SeitenKopf
       titel="Kostenpositionen"
-      hinweis="Zuschläge auf den Einstandspreis. Übergreifende Positionen gelten für alle Artikel."
+      hinweis="Zuschläge auf den Einstandspreis. Übergreifende Positionen gelten für alle Produkte."
     >
       <template #aktionen>
         <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog()">
@@ -125,36 +125,36 @@ async function toggleActive(item: CostItem) {
         style="border-width: 0.5px"
       >
         <p class="font-medium">Vorsteuer und Selbstkosten</p>
-        <p class="mt-0.5 text-zinc-600 dark:text-zinc-400">
+        <p class="mt-0.5 text-leinen-600 dark:text-leinen-400">
           Einfuhrumsatzsteuer ist als Vorsteuer abziehbar und zählt nicht zu den
           Selbstkosten. Zoll ist nicht abziehbar und zählt mit. Markieren Sie
           abziehbare Positionen entsprechend.
         </p>
       </div>
 
-      <div v-if="pending && !data" class="py-12 text-center text-sm text-zinc-500">
+      <div v-if="pending && !data" class="py-12 text-center text-sm text-leinen-500">
         Wird geladen …
       </div>
 
       <div
         v-else-if="!data?.items.length"
-        class="rounded-[12px] border border-zinc-200/70 py-16 text-center dark:border-zinc-800"
+        class="rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 py-16 text-center dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <p class="text-sm font-medium">Noch keine Kostenpositionen angelegt.</p>
-        <p class="mt-1 text-sm text-zinc-500">
+        <p class="mt-1 text-sm text-leinen-500">
           Typisch sind Verpackung, Zoll und Einfuhrumsatzsteuer.
         </p>
       </div>
 
       <div
         v-else
-        class="overflow-x-auto rounded-[12px] border border-zinc-200/70 dark:border-zinc-800"
+        class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
         <table class="trd-tabelle w-full min-w-[48rem] text-sm">
           <thead
-            class="border-b border-zinc-200/70 bg-zinc-50/60 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40"
+            class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
             <tr>
               <th class="px-4">Bezeichnung</th>
@@ -166,10 +166,10 @@ async function toggleActive(item: CostItem) {
               <th class="px-4 text-right">Aktion</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-zinc-200/60 dark:divide-zinc-800/70">
-            <tr v-for="item in data.items" :key="item.id" :class="{ 'text-zinc-400': !item.active }">
+          <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
+            <tr v-for="item in data.items" :key="item.id" :class="{ 'text-leinen-400': !item.active }">
               <td class="px-4 font-medium">{{ item.label }}</td>
-              <td class="px-4 text-zinc-500">
+              <td class="px-4 text-leinen-500">
                 {{ item.variantId ? 'Variante' : 'übergreifend' }}
               </td>
               <td class="zahl px-4">
@@ -185,9 +185,9 @@ async function toggleActive(item: CostItem) {
                 >
                   abziehbar
                 </UBadge>
-                <span v-else class="text-zinc-400">–</span>
+                <span v-else class="text-leinen-400">–</span>
               </td>
-              <td class="px-4 text-zinc-500">
+              <td class="px-4 text-leinen-500">
                 {{ item.distributionMethod === 'value' ? 'Warenwert' : 'Stückzahl' }}
               </td>
               <td class="px-4">
@@ -271,7 +271,7 @@ async function toggleActive(item: CostItem) {
           </UFormField>
 
           <UCheckbox v-model="form.inputTaxDeductible" label="Vorsteuerabzugsfähig" />
-          <p class="-mt-2 text-xs text-zinc-500">
+          <p class="-mt-2 text-xs text-leinen-500">
             Abziehbare Positionen belasten die Marge nicht. Trifft auf die
             Einfuhrumsatzsteuer zu, nicht auf Zoll.
           </p>

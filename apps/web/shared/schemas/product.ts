@@ -26,11 +26,11 @@ import {
 export const skuSchema = z
   .string()
   .trim()
-  .min(1, { message: 'Artikelnummer darf nicht leer sein.' })
-  .max(64, { message: 'Artikelnummer ist zu lang (hoechstens 64 Zeichen).' })
+  .min(1, { message: 'SKU darf nicht leer sein.' })
+  .max(64, { message: 'SKU ist zu lang (hoechstens 64 Zeichen).' })
   .regex(/^[A-Za-z0-9._-]+$/, {
     message:
-      'Artikelnummer darf nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich enthalten.',
+      'SKU darf nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich enthalten.',
   });
 
 export const createVariantSchema = z.object({

@@ -9,7 +9,7 @@
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+  <div class="min-h-screen bg-leinen-100 text-leinen-900 dark:bg-leinen-950 dark:text-leinen-100">
     <div class="flex min-h-screen">
       <NavigationSeitlich />
       <div class="min-w-0 flex-1">

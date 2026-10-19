@@ -183,6 +183,21 @@ Diese Regeln sind im Code verankert und dürfen nicht aufgeweicht werden:
   dorthin zurückbuchen, wo die Ware herkam.
 - **Gerundet wird erst am Ende einer Rechenkette**, nicht zwischendrin.
 
+### Beschlossen, noch nicht umgesetzt
+
+Am 17.10.2026 wurde der Code mit dem fachlichen Interview abgeglichen. Verbindlich ist ab
+jetzt `docs/domain-model.md` (v2), die Einzelentscheidungen stehen in `docs/abgleich.md`.
+Die wichtigsten Änderungen gegenüber den Regeln oben:
+
+- **Einstand wird berechnet statt eingefroren.** Nachträgliche Nebenkosten (z. B. ein später
+  Zollbescheid) wirken rückwirkend; der Monatsabschluss hält abgeschlossene Monate stabil,
+  Differenzen erscheinen als „Korrektur Vormonate“.
+- **Zoll und Fracht sind Nebenkosten eines Wareneingangs**, keine Kostenpositionen mehr.
+  Kostenpositionen sind nur noch Stückkosten wie Verpackung und gehen in jede Marge ein.
+- **Ein Verkaufspreis brutto für alle Kanäle**, Kanalpreise entfallen.
+- **SKUs werden automatisch erzeugt** (`TRD-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`) und nie geändert.
+- **Fehlmengen** werden mit Warnung gebucht und beim nächsten Zugang aufgelöst.
+
 ## Tests
 
 ```bash
@@ -201,7 +216,14 @@ Rundung auf Cent.
 
 Abgeschlossen: Phase 1 (Fundament) und Phase 2 (Stammdaten).
 
-- **Phase 3** Bewegung und Kalkulation: Wareneingang, FIFO-Abgänge, Retouren,
-  Inventur, Kalkulator, Dashboard, CSV-Export, Login.
-- **Phase 4** Produktivbetrieb: Dockerfile, `docker-compose.prod.yml`,
-  Sicherungsstrategie, Deployment-Anleitung.
+Als Nächstes folgt der Umbau auf das Domain-Modell v2 in sechs Blöcken:
+
+1. **Grundlagen:** Design-Tokens (Leinengrau/Oliv), Navigation, „Produkte“ statt „Artikel“, GitHub Actions
+2. **Stammdaten:** Kategorie- und Farb-Kürzel, MwSt-Sätze, Preis brutto, SKU-Generator
+3. **Wareneingang & Journal:** Beleg mit Nebenkosten, EZB-Kurs, Buchungstypen, Storno, Fehlmenge
+4. **Verkauf & Marge:** Verkäufe, Gebühren, Porto, Marge je Kanal
+5. **Monatsabschluss**
+6. **Screens:** Wareneingang (Desktop und Handy), Verkäufe, Bestandsjournal, Übersicht
+
+Danach: Login, Live-Demo auf Vercel + Neon mit Demodaten, Etsy-Anbindung, Playwright,
+Barrierefreiheit, PWA. Zeitplan: Roadmap M1–M4 (`docs/trd-zusammenfassung.md`, Abschnitt 1.2).

@@ -9,3 +9,4 @@ export * from './landed-cost.js';
 export * from './fifo.js';
 export * from './pricing.js';
 export * from './sku.js';
+export * from './stock.js';

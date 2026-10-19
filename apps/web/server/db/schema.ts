@@ -6,7 +6,7 @@
  * - Stock is not a column; it is derived from the stock journal.
  */
 
-import { relations, sql } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import {
   boolean,
   date,
@@ -19,6 +19,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
@@ -54,17 +55,18 @@ export const stockEntryKindEnum = pgEnum('stock_entry_kind', [
   'goods_receipt',
   'sale',
   'return',
-  'correction',
-  'stocktake',
   'shrinkage',
+  'own_use',
+  'stocktake',
+  'supplier_return',
+  'reversal',
 ]);
 
-/** Origin of a stock entry; prepared for the Etsy import. */
-export const stockEntrySourceEnum = pgEnum('stock_entry_source', [
-  'manual',
-  'etsy',
-  'correction',
-]);
+export const receiptStateEnum = pgEnum('receipt_state', ['draft', 'posted']);
+
+export const exchangeRateSourceEnum = pgEnum('exchange_rate_source', ['ecb', 'manual']);
+
+export const additionalCostKindEnum = pgEnum('additional_cost_kind', ['freight', 'customs', 'other', 'credit']);
 
 // ---------------------------------------------------------------------------
 // Master data
@@ -162,39 +164,64 @@ export const suppliers = pgTable('suppliers', {
 // ---------------------------------------------------------------------------
 
 /**
- * The exchange rate is frozen at receipt and the EUR amount stored, so past
- * cost of goods never changes with later rates.
- *
- * `quantity_remaining` is the FIFO pointer of this batch, not a stock field.
+ * One goods receipt = one supplier invoice. The invoice date drives FIFO order
+ * and the exchange rate (foreign units per EUR, frozen once set).
+ */
+export const goodsReceipts = pgTable('goods_receipts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  number: text('number').notNull().unique(),
+  supplierId: uuid('supplier_id')
+    .notNull()
+    .references(() => suppliers.id),
+  invoiceNumber: text('invoice_number'),
+  invoiceDate: date('invoice_date').notNull(),
+  currency: text('currency').notNull().default('EUR'),
+  exchangeRate: numeric('exchange_rate', { precision: 14, scale: 6 }).notNull().default('1.000000'),
+  exchangeRateSource: exchangeRateSourceEnum('exchange_rate_source').notNull().default('ecb'),
+  state: receiptStateEnum('state').notNull().default('draft'),
+  createdAt,
+});
+
+/**
+ * A batch is one position of a goods receipt. Delivered quantity and remaining
+ * stock are derived from the journal; landed cost is computed, not stored.
  */
 export const batches = pgTable(
   'batches',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    goodsReceiptId: uuid('goods_receipt_id')
+      .notNull()
+      .references(() => goodsReceipts.id),
     variantId: uuid('variant_id')
       .notNull()
       .references(() => variants.id),
-    supplierId: uuid('supplier_id').references(() => suppliers.id),
-    receivedAt: timestamp('received_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    quantityReceived: integer('quantity_received').notNull(),
-    quantityRemaining: integer('quantity_remaining').notNull(),
-    purchasePriceForeign: money('purchase_price_foreign').notNull(),
-    /** ISO 4217; "EUR" with rate 1 for euro purchases. */
-    currency: text('currency').notNull().default('EUR'),
-    exchangeRate: numeric('exchange_rate', { precision: 14, scale: 6 })
-      .notNull()
-      .default('1.000000'),
-    purchasePriceEur: money('purchase_price_eur').notNull(),
-    additionalCostsEur: money('additional_costs_eur').notNull().default('0'),
-    landedCostEur: money('landed_cost_eur').notNull(),
+    quantityOrdered: integer('quantity_ordered').notNull(),
+    /** Net unit price in minor units of the invoice currency. */
+    unitPriceForeign: integer('unit_price_foreign').notNull(),
+    unitPriceEur: money('unit_price_eur').notNull(),
     note: text('note'),
+    createdAt,
   },
-  (t) => [
-    // FIFO lookup: batches of a variant, oldest first.
-    index('batches_fifo_idx').on(t.variantId, t.receivedAt),
-  ],
+  (t) => [index('batches_variant_idx').on(t.variantId), index('batches_receipt_idx').on(t.goodsReceiptId)],
+);
+
+/** Freight, duty, other costs or credits (negative) of a receipt, also added later. */
+export const additionalCosts = pgTable(
+  'additional_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    goodsReceiptId: uuid('goods_receipt_id')
+      .notNull()
+      .references(() => goodsReceipts.id),
+    kind: additionalCostKindEnum('kind').notNull(),
+    amountEur: money('amount_eur').notNull(),
+    distributionMethod: distributionMethodEnum('distribution_method').notNull().default('value'),
+    incurredOn: date('incurred_on').notNull(),
+    note: text('note'),
+    createdAt,
+  },
+  (t) => [index('additional_costs_receipt_idx').on(t.goodsReceiptId)],
 );
 
 // ---------------------------------------------------------------------------
@@ -262,9 +289,9 @@ export const channelPrices = pgTable(
 // ---------------------------------------------------------------------------
 
 /**
- * The journal is the single source of truth for stock; outgoing quantities
- * are negative. Entries are reversed by a counter entry (`reversed_by_id`),
- * never deleted. The unique `external_reference` prevents duplicate imports.
+ * The journal is immutable and the single source of truth for stock; outgoing
+ * quantities are negative. A reversal is a counter entry pointing to its
+ * original via `reverses_id` (unique, so an entry is reversed at most once).
  */
 export const stockEntries = pgTable(
   'stock_entries',
@@ -275,27 +302,20 @@ export const stockEntries = pgTable(
       .references(() => variants.id),
     kind: stockEntryKindEnum('kind').notNull(),
     quantity: integer('quantity').notNull(),
-    postedAt: timestamp('posted_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    /** Business date; `created_at` is the technical one. */
+    postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
     note: text('note'),
-    source: stockEntrySourceEnum('source').notNull().default('manual'),
-    externalReference: text('external_reference'),
-    reversedById: uuid('reversed_by_id'),
+    reversesId: uuid('reverses_id')
+      .unique()
+      .references((): AnyPgColumn => stockEntries.id),
+    createdAt,
   },
-  (t) => [
-    index('stock_entries_variant_idx').on(t.variantId, t.postedAt),
-    // Partial: many entries without a reference, but each reference only once.
-    uniqueIndex('stock_entries_external_reference_idx')
-      .on(t.externalReference)
-      .where(sql`${t.externalReference} is not null`),
-  ],
+  (t) => [index('stock_entries_variant_idx').on(t.variantId, t.postedAt)],
 );
 
 /**
- * FIFO allocations are persisted, not recomputed, so a return goes back to
- * the exact batch it came from. `landed_cost_eur` is copied so the cost of
- * the transaction survives later batch corrections.
+ * Which batch an entry touches. `batch_id` null is a shortfall, filled in
+ * (with `resolved_at`) once stock arrives. Not part of the journal itself.
  */
 export const batchAllocations = pgTable(
   'batch_allocations',
@@ -304,11 +324,9 @@ export const batchAllocations = pgTable(
     stockEntryId: uuid('stock_entry_id')
       .notNull()
       .references(() => stockEntries.id),
-    batchId: uuid('batch_id')
-      .notNull()
-      .references(() => batches.id),
+    batchId: uuid('batch_id').references(() => batches.id),
     quantity: integer('quantity').notNull(),
-    landedCostEur: money('landed_cost_eur').notNull(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   },
   (t) => [
     index('batch_allocations_stock_entry_idx').on(t.stockEntryId),
@@ -352,19 +370,35 @@ export const variantsRelations = relations(variants, ({ one, many }) => ({
 }));
 
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  goodsReceipts: many(goodsReceipts),
+}));
+
+export const goodsReceiptsRelations = relations(goodsReceipts, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [goodsReceipts.supplierId],
+    references: [suppliers.id],
+  }),
   batches: many(batches),
+  additionalCosts: many(additionalCosts),
 }));
 
 export const batchesRelations = relations(batches, ({ one, many }) => ({
+  goodsReceipt: one(goodsReceipts, {
+    fields: [batches.goodsReceiptId],
+    references: [goodsReceipts.id],
+  }),
   variant: one(variants, {
     fields: [batches.variantId],
     references: [variants.id],
   }),
-  supplier: one(suppliers, {
-    fields: [batches.supplierId],
-    references: [suppliers.id],
-  }),
   allocations: many(batchAllocations),
+}));
+
+export const additionalCostsRelations = relations(additionalCosts, ({ one }) => ({
+  goodsReceipt: one(goodsReceipts, {
+    fields: [additionalCosts.goodsReceiptId],
+    references: [goodsReceipts.id],
+  }),
 }));
 
 export const channelsRelations = relations(channels, ({ many }) => ({
@@ -389,32 +423,26 @@ export const costItemsRelations = relations(costItems, ({ one }) => ({
   }),
 }));
 
-export const stockEntriesRelations = relations(
-  stockEntries,
-  ({ one, many }) => ({
-    variant: one(variants, {
-      fields: [stockEntries.variantId],
-      references: [variants.id],
-    }),
-    reversedBy: one(stockEntries, {
-      fields: [stockEntries.reversedById],
-      references: [stockEntries.id],
-      relationName: 'reversal',
-    }),
-    allocations: many(batchAllocations),
+export const stockEntriesRelations = relations(stockEntries, ({ one, many }) => ({
+  variant: one(variants, {
+    fields: [stockEntries.variantId],
+    references: [variants.id],
   }),
-);
+  reverses: one(stockEntries, {
+    fields: [stockEntries.reversesId],
+    references: [stockEntries.id],
+    relationName: 'reversal',
+  }),
+  allocations: many(batchAllocations),
+}));
 
-export const batchAllocationsRelations = relations(
-  batchAllocations,
-  ({ one }) => ({
-    stockEntry: one(stockEntries, {
-      fields: [batchAllocations.stockEntryId],
-      references: [stockEntries.id],
-    }),
-    batch: one(batches, {
-      fields: [batchAllocations.batchId],
-      references: [batches.id],
-    }),
+export const batchAllocationsRelations = relations(batchAllocations, ({ one }) => ({
+  stockEntry: one(stockEntries, {
+    fields: [batchAllocations.stockEntryId],
+    references: [stockEntries.id],
   }),
-);
+  batch: one(batches, {
+    fields: [batchAllocations.batchId],
+    references: [batches.id],
+  }),
+}));

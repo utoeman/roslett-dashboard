@@ -135,7 +135,13 @@ relative Pfade an.
 | `GET POST /api/categories`, `PATCH /api/categories/:id` | Kategorie-Kürzel; Kürzel fest, sobald verwendet |
 | `GET POST /api/colors`, `PATCH /api/colors/:id` | Farb-Kürzel; Kürzel fest, sobald verwendet |
 | `GET POST /api/vat-rates`, `PATCH /api/vat-rates/:id` | MwSt-Sätze je Lieferland, Kategorie und Gültig-ab |
-| `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten |
+| `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten (mit Standard-Währung) |
+| `GET POST /api/goods-receipts`, `GET PATCH /api/goods-receipts/:id` | Wareneingänge (Lieferantenrechnungen); ändern nur als Entwurf |
+| `POST /api/goods-receipts/:id/costs` | Nebenkosten oder Gutschrift, auch nach dem Buchen; Einstand wirkt rückwirkend |
+| `POST /api/goods-receipts/:id/receive` | Zugang buchen, auch als Teillieferung; löst offene Fehlmengen auf |
+| `GET /api/exchange-rate?currency=&date=` | EZB-Referenzkurs (Fremdwährung je 1 EUR) zum Rechnungsdatum |
+| `GET POST /api/stock-entries` | Bestandsjournal; manuell: Schwund, Eigenverbrauch, Inventur, Rückgabe an Lieferant |
+| `POST /api/stock-entries/:id/reverse` | Storno als Gegenbuchung; nicht möglich, wenn die Ware schon verbraucht ist |
 | `GET POST /api/cost-items`, `PATCH /api/cost-items/:id` | Kostenpositionen |
 | `GET POST /api/channels`, `PATCH /api/channels/:id` | Kanäle |
 

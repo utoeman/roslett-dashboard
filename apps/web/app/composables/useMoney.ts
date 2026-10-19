@@ -1,5 +1,7 @@
 /** Display formatting: cents and rates from the API, German notation. */
 
+import { MoneyError, parseMoney } from '@trd/core';
+
 const moneyFormat = new Intl.NumberFormat('de-DE', {
   style: 'currency',
   currency: 'EUR',
@@ -51,10 +53,21 @@ export function useMoney() {
     }).format(date);
   }
 
-  /** 2150 → "21,50". */
+  /** 123450 → "1.234,50"; the API reads the grouping back. */
   function toInput(cents: number | null | undefined): string {
     if (cents === null || cents === undefined) return '';
-    return (cents / 100).toFixed(2).replace('.', ',');
+    return numberFormat.format(cents / 100);
+  }
+
+  /** Normalises a typed amount ("1234,5" → "1.234,50"); invalid text stays for the server to report. */
+  function tidyInput(text: string): string {
+    if (text.trim() === '') return text;
+    try {
+      return toInput(parseMoney(text));
+    } catch (error) {
+      if (error instanceof MoneyError) return text;
+      throw error;
+    }
   }
 
   /** 0.065 → "6,5". */
@@ -70,6 +83,7 @@ export function useMoney() {
     formatPercent,
     formatDate,
     toInput,
+    tidyInput,
     rateToInput,
   };
 }

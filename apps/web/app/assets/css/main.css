@@ -3,9 +3,11 @@
 
 /*
  * Design tokens (docs/design.md). Nuxt UI expects shades 50–950; the given
- * values are marked, the other shades are derived from them.
+ * values are marked, the other shades are derived from them. `static` emits
+ * every variable: Nuxt UI reads warning/error/success/info only through
+ * variables, so Tailwind would otherwise drop the unused scales.
  */
-@theme {
+@theme static {
   /* primary olive: 100 light #E6EAD9, 500 accent #4A5A34, 700 dark #2F3A20 */
   --color-trd-50:  #f3f5ec;
   --color-trd-100: #e6ead9;

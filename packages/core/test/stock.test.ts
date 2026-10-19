@@ -7,6 +7,7 @@ import {
   planShortfallResolution,
   planStocktake,
   receiptNumber,
+  valueStock,
 } from '../src/stock';
 
 const batch = (id: string, invoiceDate: string, remaining: number) => ({ id, invoiceDate, remaining });
@@ -133,5 +134,33 @@ describe('convertToEur (EZB-Kurs: 1 EUR = x Fremdwährung)', () => {
   it('lehnt Kurse von null oder darunter ab', () => {
     expect(() => convertToEur(100, 0)).toThrow();
     expect(() => convertToEur(100, -1)).toThrow();
+  });
+});
+
+describe('valueStock', () => {
+  const valued = (id: string, invoiceDate: string, remaining: number, landedCostEur: number) => ({
+    id,
+    invoiceDate,
+    remaining,
+    landedCostEur,
+  });
+
+  it('bewertet den Restbestand je Charge mit ihrem Einstand (FIFO)', () => {
+    const result = valueStock([valued('a', '2026-01-10', 4, 906), valued('b', '2026-02-10', 10, 1000)]);
+    expect(result).toEqual({ units: 14, valueEur: 13624, averageCostEur: 973 });
+  });
+
+  it('ignoriert leere Chargen beim Durchschnitt', () => {
+    const result = valueStock([valued('a', '2026-01-10', 0, 500), valued('b', '2026-02-10', 2, 1000)]);
+    expect(result).toEqual({ units: 2, valueEur: 2000, averageCostEur: 1000 });
+  });
+
+  it('nimmt ohne Bestand den Einstand der neuesten Charge', () => {
+    const result = valueStock([valued('b', '2026-02-10', 0, 1100), valued('a', '2026-01-10', 0, 900)]);
+    expect(result).toEqual({ units: 0, valueEur: 0, averageCostEur: 1100 });
+  });
+
+  it('liefert ohne Chargen keinen Einstand', () => {
+    expect(valueStock([])).toEqual({ units: 0, valueEur: 0, averageCostEur: null });
   });
 });

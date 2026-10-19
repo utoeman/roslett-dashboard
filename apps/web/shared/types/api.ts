@@ -45,6 +45,22 @@ export interface Variant {
   priceGross: number | null;
   minimumStock: number;
   archivedAt: string | null;
+  /** Only in product responses; derived from the journal. */
+  inventory?: VariantInventory;
+}
+
+export interface VariantInventory {
+  stock: number;
+  /** Cents; remaining stock valued FIFO at landed cost. */
+  stockValueEur: number;
+  /** Cents; average of remaining stock, else the newest landed cost, null without receipts. */
+  averageCostEur: number | null;
+  belowMinimum: boolean;
+  /** Cents; null without price, VAT rate or landed cost. */
+  priceNetEur: number | null;
+  /** Before channel fees and cost items. */
+  marginEur: number | null;
+  margin: number | null;
 }
 
 export interface Product {
@@ -162,6 +178,45 @@ export interface GoodsReceipt {
     additionalCostsEur: number;
     landedTotalEur: number;
   };
+}
+
+export type StockEntryKind =
+  | 'goods_receipt'
+  | 'sale'
+  | 'return'
+  | 'shrinkage'
+  | 'own_use'
+  | 'stocktake'
+  | 'supplier_return'
+  | 'reversal';
+
+export interface StockEntry {
+  id: string;
+  postedAt: string;
+  kind: StockEntryKind;
+  /** Signed: receipts positive, issues negative. */
+  quantity: number;
+  note: string | null;
+  variant: { id: string; sku: string; label: string; productName: string };
+  batches: { batchId: string | null; receiptNumber: string | null; quantity: number }[];
+  /** Negative while part of an issue is not covered by stock. */
+  openShortfall: number;
+  reversesId: string | null;
+  reversedById: string | null;
+}
+
+export interface BatchOption {
+  id: string;
+  receiptNumber: string | null;
+  invoiceDate: string;
+  remaining: number;
+}
+
+export interface StockSummary {
+  units: number;
+  /** Cents. */
+  valueEur: number;
+  variantsBelowMinimum: number;
 }
 
 /** Envelope of all list responses. */

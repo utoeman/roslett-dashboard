@@ -26,7 +26,7 @@ const sections: NavSection[] = [
       { name: 'Produkte', path: '/produkte', icon: 'i-lucide-package' },
       { name: 'Wareneingang', path: '/wareneingang', icon: 'i-lucide-package-plus' },
       { name: 'Verkäufe', path: '/verkaeufe', icon: 'i-lucide-shopping-bag', pending: true },
-      { name: 'Bestandsjournal', path: '/journal', icon: 'i-lucide-arrow-left-right', pending: true },
+      { name: 'Bestandsjournal', path: '/journal', icon: 'i-lucide-arrow-left-right' },
     ],
   },
   {

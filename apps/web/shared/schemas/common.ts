@@ -5,13 +5,18 @@
  */
 
 import { z } from 'zod';
+import { CURRENCY_CODES } from '../currencies.js';
+
+/** Only currencies with an ECB reference rate (plus EUR). */
+export const currencyCodeSchema = z.enum(CURRENCY_CODES, { error: 'Diese Währung wird nicht unterstützt.' });
 
 export const uuidSchema = z.uuid({ message: 'Keine gueltige Kennung.' });
 
 /** Required, trimmed text with a sensible maximum. */
 export const requiredText = (field: string, max = 200) =>
   z
-    .string()
+    // Also covers a missing field, not only an empty one.
+    .string({ error: `${field} darf nicht leer sein.` })
     .trim()
     .min(1, { message: `${field} darf nicht leer sein.` })
     .max(max, { message: `${field} ist zu lang (hoechstens ${max} Zeichen).` });

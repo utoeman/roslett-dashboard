@@ -3,8 +3,9 @@ import { schema, useDb } from '../../db/client.js';
 import { readId, requireFound } from '../../utils/validation.js';
 import { mapCostItem } from '../../utils/mapping.js';
 import { loadProduct } from '../../utils/products.js';
+import { withInventory } from '../../utils/inventory.js';
 
-/** Product with all variants (including archived) and its applicable cost items. */
+/** Product with all variants (including archived, with stock) and its applicable cost items. */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
   const db = useDb();
@@ -20,5 +21,6 @@ export default defineEventHandler(async (event) => {
     orderBy: [asc(schema.costItems.label)],
   });
 
-  return { ...product, costItems: costItems.map(mapCostItem) };
+  const [withStock] = await withInventory(db, [product]);
+  return { ...withStock, costItems: costItems.map(mapCostItem) };
 });

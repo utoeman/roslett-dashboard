@@ -3,12 +3,13 @@ import { schema, useDb } from '../../db/client.js';
 import { listQuerySchema, uuidSchema } from '../../../shared/schemas/common.js';
 import { readQuery } from '../../utils/validation.js';
 import { mapProduct } from '../../utils/mapping.js';
+import { withInventory } from '../../utils/inventory.js';
 
 const querySchema = listQuerySchema.extend({
   categoryId: uuidSchema.optional(),
 });
 
-/** Products with category and variants; search covers name and SKU. */
+/** Products with category, variants and their stock; search covers name and SKU. */
 export default defineEventHandler(async (event) => {
   const { search, includeArchived, limit, offset, categoryId } = readQuery(event, querySchema);
   const db = useDb();
@@ -50,5 +51,5 @@ export default defineEventHandler(async (event) => {
     .from(schema.products)
     .where(where);
 
-  return { items: rows.map(mapProduct), total, limit, offset };
+  return { items: await withInventory(db, rows.map(mapProduct)), total, limit, offset };
 });

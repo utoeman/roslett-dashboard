@@ -108,18 +108,22 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 
 | Bereich | Inhalt |
 |---|---|
-| Übersicht | Anzahl der Stammdaten je Bereich |
-| Produkte | Liste mit Suche über Name und SKU, Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
-| Produkt-Detail | Stammdaten bearbeiten, Varianten (Farbe, Größe, abweichender Preis) anlegen und archivieren, geltende Kostenpositionen |
+| Übersicht | Lagerwert (FIFO), Stück am Lager, Varianten unter Mindestbestand, Anzahl der Stammdaten |
+| Produkte | Liste mit Suche über Name und SKU, Bestand und Lagerwert, Hinweis unter Mindestbestand; Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
+| Produkt-Detail | Stammdaten bearbeiten, Varianten anlegen und archivieren; je Variante Bestand, Ø Einstand, Lagerwert und Marge vor Gebühren; geltende Kostenpositionen |
 | Wareneingang | Liste der Lieferantenrechnungen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
 | Wareneingang-Detail | Positionen im Entwurf, Nebenkosten (auch nachträglich), Einstand je Stück, Zugang buchen inkl. Teillieferung |
-| Lieferanten | Anlegen, bearbeiten, archivieren |
+| Bestandsjournal | Alle Buchungen mit Filter (Variante, Art, Zeitraum, offene Fehlmengen); Schwund, Eigenverbrauch, Inventur und Rückgabe an Lieferant erfassen; Storno |
+| Lieferanten | Anlegen, bearbeiten, archivieren; Standard-Währung für Wareneingänge |
 | Kostenpositionen | Anlegen, aktiv schalten, Fix- und Prozentpositionen |
 | Kanäle | Anlegen, Gebühren pflegen, aktiv schalten |
 | Kategorien, Farben | SKU-Kürzel anlegen, umbenennen, archivieren; verwendete Kürzel sind gesperrt |
 | MwSt-Sätze | Sätze je Land und Kategorie mit Gültig-ab; der aktuell gültige ist markiert |
 
-Verkäufe und Bestandsjournal sind in der Navigation als „folgt" gekennzeichnet.
+Verkäufe sind in der Navigation als „folgt" gekennzeichnet.
+
+Währungen sind auf EUR und die EZB-Referenzwährungen beschränkt (`shared/currencies.ts`),
+damit es immer einen Tageskurs gibt.
 
 ### API
 
@@ -129,7 +133,7 @@ relative Pfade an.
 | Methode und Pfad | Zweck |
 |---|---|
 | `GET /api/health` | Zustand samt Datenbankverbindung |
-| `GET /api/products` | Liste, Parameter `search` (Name, SKU), `categoryId`, `includeArchived` |
+| `GET /api/products` | Liste mit Bestand je Variante (`inventory`), Parameter `search` (Name, SKU), `categoryId`, `includeArchived` |
 | `POST /api/products` | Anlegen; Produktnummer und SKUs vergibt der Server, ohne Varianten entsteht eine Standardvariante |
 | `GET /api/products/:id` | Detail samt Varianten und geltenden Kostenpositionen |
 | `PATCH /api/products/:id` | Stammdaten ändern, Varianten anlegen; Kategorie, Farbe, Größe und SKU sind fest |
@@ -141,8 +145,10 @@ relative Pfade an.
 | `POST /api/goods-receipts/:id/costs` | Nebenkosten oder Gutschrift, auch nach dem Buchen; Einstand wirkt rückwirkend |
 | `POST /api/goods-receipts/:id/receive` | Zugang buchen, auch als Teillieferung; löst offene Fehlmengen auf |
 | `GET /api/exchange-rate?currency=&date=` | EZB-Referenzkurs (Fremdwährung je 1 EUR) zum Rechnungsdatum |
-| `GET POST /api/stock-entries` | Bestandsjournal; manuell: Schwund, Eigenverbrauch, Inventur, Rückgabe an Lieferant |
+| `GET POST /api/stock-entries` | Bestandsjournal, Filter `variantId`, `kind`, `from`, `to`, `shortfallsOnly`; manuell: Schwund, Eigenverbrauch, Inventur, Rückgabe an Lieferant |
 | `POST /api/stock-entries/:id/reverse` | Storno als Gegenbuchung; nicht möglich, wenn die Ware schon verbraucht ist |
+| `GET /api/batches?variantId=` | Chargen einer Variante mit Restbestand (für Rückgaben) |
+| `GET /api/stock-value` | Stück am Lager, Lagerwert (FIFO), Varianten unter Mindestbestand |
 | `GET POST /api/cost-items`, `PATCH /api/cost-items/:id` | Kostenpositionen |
 | `GET POST /api/channels`, `PATCH /api/channels/:id` | Kanäle |
 
@@ -266,7 +272,7 @@ Benötigte Secrets im Repo: `PRODUCTION_DATABASE_URL` (Release) und `PREVIEW_DAT
 
 ## Weitere Phasen
 
-Abgeschlossen: Phase 1 (Fundament) und Phase 2 (Stammdaten).
+Abgeschlossen: Phase 1 (Fundament), Phase 2 (Stammdaten) und Block 3 (Wareneingang & Journal).
 
 Als Nächstes folgt der Umbau auf das Domain-Modell v2 in sechs Blöcken:
 

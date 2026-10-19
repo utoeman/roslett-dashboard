@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  currencyCodeSchema,
   flagSchema,
   moneySchema,
   listQuerySchema,
@@ -19,6 +20,7 @@ import {
   updateChannelSchema,
   createChannelSchema,
 } from '../shared/schemas/channel.js';
+import { journalQuerySchema } from '../shared/schemas/stock-entry.js';
 import {
   centsToNumeric,
   numericToCents,
@@ -161,6 +163,14 @@ describe('requiredText und optionalText', () => {
 
   it('entfernt umgebende Leerzeichen', () => {
     expect(requiredText('Name').parse('  Vase  ')).toBe('Vase');
+  });
+
+  it('meldet ein fehlendes Pflichtfeld auf Deutsch', () => {
+    const result = requiredText('Notiz').safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe('Notiz darf nicht leer sein.');
+    }
   });
 
   it('macht aus leerem Freitext null', () => {
@@ -375,5 +385,29 @@ describe('Umrechnung an der Datenbankgrenze', () => {
     expect(numericToCents('0.8500')).toBe(85);
     expect(numericToCents('24.9000')).toBe(2490);
     expect(numericToRate('0.0470')).toBeCloseTo(0.047, 10);
+  });
+});
+
+describe('journalQuerySchema – Zeitraum', () => {
+  it('nimmt Von und Bis als ISO-Datum', () => {
+    const query = journalQuerySchema.parse({ from: '2026-10-01', to: '2026-10-31' });
+    expect(query).toMatchObject({ from: '2026-10-01', to: '2026-10-31' });
+  });
+
+  it('lehnt ein ungueltiges Datum ab', () => {
+    expect(journalQuerySchema.safeParse({ from: '01.10.2026' }).success).toBe(false);
+  });
+});
+
+describe('currencyCodeSchema – nur Waehrungen mit EZB-Kurs', () => {
+  it('nimmt EUR und Referenzwaehrungen', () => {
+    expect(currencyCodeSchema.parse('EUR')).toBe('EUR');
+    expect(currencyCodeSchema.parse('TRY')).toBe('TRY');
+  });
+
+  it('lehnt Tippfehler und unbekannte Codes ab', () => {
+    const result = currencyCodeSchema.safeParse('TRL');
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.message).toBe('Diese Währung wird nicht unterstützt.');
   });
 });

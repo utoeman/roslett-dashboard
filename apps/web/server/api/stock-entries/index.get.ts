@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { buildVariantLabel } from '@trd/core';
 import { schema, useDb } from '../../db/client.js';
 import { journalQuerySchema } from '../../../shared/schemas/stock-entry.js';
@@ -6,12 +6,15 @@ import { readQuery } from '../../utils/validation.js';
 
 /** Journal, newest first, with batches, open shortfall and reversal links. */
 export default defineEventHandler(async (event) => {
-  const { limit, offset, variantId, kind, shortfallsOnly } = readQuery(event, journalQuerySchema);
+  const { limit, offset, variantId, kind, shortfallsOnly, from, to } = readQuery(event, journalQuerySchema);
   const db = useDb();
 
   const conditions = [];
   if (variantId) conditions.push(eq(schema.stockEntries.variantId, variantId));
   if (kind) conditions.push(eq(schema.stockEntries.kind, kind));
+  if (from) conditions.push(gte(schema.stockEntries.postedAt, new Date(`${from}T00:00:00Z`)));
+  // Exclusive upper bound on the following day keeps `to` inclusive.
+  if (to) conditions.push(lt(schema.stockEntries.postedAt, new Date(Date.parse(`${to}T00:00:00Z`) + 86_400_000)));
   if (shortfallsOnly) {
     conditions.push(
       // Column reference instead of a literal: relational queries alias the table.

@@ -1,17 +1,23 @@
 <script setup lang="ts">
+import type { StockSummary } from '~~/shared/types/api';
+
 useHead({ title: 'Übersicht' });
 
-// Load the four counts in parallel; `limit: 1` because only `total` is needed.
+const { formatMoney } = useMoney();
+
+// Load counts and stock totals in parallel; `limit: 1` because only `total` is needed.
 const { data, pending, error } = await useAsyncData(
   'overview-metrics',
   async () => {
-    const [products, suppliers, costItems, channels] = await Promise.all([
+    const [stock, products, suppliers, costItems, channels] = await Promise.all([
+      $fetch<StockSummary>('/api/stock-value'),
       $fetch<{ total: number }>('/api/products', { query: { limit: 1 } }),
       $fetch<{ total: number }>('/api/suppliers', { query: { limit: 1 } }),
       $fetch<{ total: number }>('/api/cost-items', { query: { limit: 1 } }),
       $fetch<{ total: number }>('/api/channels', { query: { limit: 1 } }),
     ]);
     return {
+      stock,
       products: products.total,
       suppliers: suppliers.total,
       costItems: costItems.total,
@@ -21,6 +27,9 @@ const { data, pending, error } = await useAsyncData(
 );
 
 const tiles = computed(() => [
+  { name: 'Lagerwert (FIFO)', value: formatMoney(data.value?.stock.valueEur ?? 0), path: '/produkte' },
+  { name: 'Stück am Lager', value: data.value?.stock.units ?? 0, path: '/journal' },
+  { name: 'Unter Mindestbestand', value: data.value?.stock.variantsBelowMinimum ?? 0, path: '/produkte' },
   { name: 'Produkte', value: data.value?.products ?? 0, path: '/produkte' },
   {
     name: 'Lieferanten',
@@ -38,7 +47,7 @@ const tiles = computed(() => [
 
 <template>
   <div>
-    <SeitenKopf titel="Übersicht" hinweis="Stammdaten im Überblick" />
+    <SeitenKopf titel="Übersicht" hinweis="Bestand und Stammdaten im Überblick" />
 
     <div class="px-6 py-4">
       <UAlert
@@ -81,8 +90,8 @@ const tiles = computed(() => [
       >
         <p class="font-medium">Nächster Schritt</p>
         <p class="mt-0.5 text-leinen-600 dark:text-leinen-400">
-          Bestandsführung und Kalkulation folgen in Phase 3: Wareneingang mit
-          Chargen, Abgänge nach FIFO, Retouren, Inventur und der Kalkulator.
+          Als Nächstes folgen Verkäufe mit Abgang nach FIFO und Retouren sowie
+          der Kalkulator mit Kanalgebühren und Kostenpositionen.
         </p>
       </div>
     </div>

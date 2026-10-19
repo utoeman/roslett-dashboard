@@ -35,6 +35,9 @@ const sections: NavSection[] = [
       { name: 'Kanäle', path: '/einstellungen/kanaele', icon: 'i-lucide-store' },
       { name: 'Lieferanten', path: '/einstellungen/lieferanten', icon: 'i-lucide-truck' },
       { name: 'Kostenpositionen', path: '/einstellungen/kostenpositionen', icon: 'i-lucide-receipt' },
+      { name: 'Kategorien', path: '/einstellungen/kategorien', icon: 'i-lucide-tags' },
+      { name: 'Farben', path: '/einstellungen/farben', icon: 'i-lucide-palette' },
+      { name: 'MwSt-Sätze', path: '/einstellungen/mwst', icon: 'i-lucide-percent' },
     ],
   },
 ];

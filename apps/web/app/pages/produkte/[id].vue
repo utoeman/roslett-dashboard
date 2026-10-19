@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProductDetail, Variant } from '~~/shared/types/api';
+import type { Color, List, ProductDetail, Variant } from '~~/shared/types/api';
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));
@@ -19,13 +19,24 @@ const fieldErrors = ref<Record<string, string>>({});
 
 /** Product master data, edited in place. */
 const editing = ref(false);
-const form = reactive({ name: '', category: '', description: '' });
+const form = reactive({
+  name: '',
+  description: '',
+  basePriceGross: '',
+  vatCategory: 'standard' as 'standard' | 'reduced',
+});
+const vatOptions = [
+  { label: 'Normal', value: 'standard' },
+  { label: 'Ermäßigt', value: 'reduced' },
+];
+const vatLabel = (category: string) => (category === 'reduced' ? 'Ermäßigt' : 'Normal');
 
 watchEffect(() => {
   if (data.value) {
     form.name = data.value.name;
-    form.category = data.value.category ?? '';
     form.description = data.value.description ?? '';
+    form.basePriceGross = toInput(data.value.basePriceGross);
+    form.vatCategory = data.value.vatCategory;
   }
 });
 
@@ -38,8 +49,9 @@ async function saveProduct() {
       method: 'PATCH',
       body: {
         name: form.name,
-        category: form.category || null,
         description: form.description || null,
+        basePriceGross: form.basePriceGross || null,
+        vatCategory: form.vatCategory,
       },
     });
     editing.value = false;
@@ -54,22 +66,27 @@ async function saveProduct() {
 }
 
 /** One dialog for create and edit; `editingVariantId` switches to update. */
+const { data: colors } = await useFetch<List<Color>>('/api/colors');
+const colorOptions = computed(
+  () => colors.value?.items.map((c) => ({ label: `${c.code} · ${c.name}`, value: c.id })) ?? [],
+);
+
 const variantDialog = ref(false);
-const editingVariantId = ref<string | null>(null);
+const editingVariant = ref<Variant | null>(null);
 const variantForm = reactive({
-  sku: '',
-  label: '',
-  basePriceNet: '',
+  colorId: undefined as string | undefined,
+  size: '',
+  priceGross: '',
   minimumStock: 0,
 });
 
 function openVariantDialog(variant?: Variant) {
   message.value = null;
   fieldErrors.value = {};
-  editingVariantId.value = variant?.id ?? null;
-  variantForm.sku = variant?.sku ?? '';
-  variantForm.label = variant?.label ?? '';
-  variantForm.basePriceNet = variant ? toInput(variant.basePriceNet) : '';
+  editingVariant.value = variant ?? null;
+  variantForm.colorId = undefined;
+  variantForm.size = '';
+  variantForm.priceGross = variant ? toInput(variant.priceGross) : '';
   variantForm.minimumStock = variant?.minimumStock ?? 0;
   variantDialog.value = true;
 }
@@ -78,18 +95,16 @@ async function saveVariant() {
   saving.value = true;
   message.value = null;
   fieldErrors.value = {};
-  const fields = {
-    sku: variantForm.sku,
-    label: variantForm.label,
-    basePriceNet: variantForm.basePriceNet || null,
+  const common = {
+    priceGross: variantForm.priceGross || null,
     minimumStock: variantForm.minimumStock,
   };
   try {
     await $fetch(`/api/products/${id.value}`, {
       method: 'PATCH',
-      body: editingVariantId.value
-        ? { updatedVariants: [{ id: editingVariantId.value, ...fields }] }
-        : { newVariants: [fields] },
+      body: editingVariant.value
+        ? { updatedVariants: [{ id: editingVariant.value.id, ...common }] }
+        : { newVariants: [{ colorId: variantForm.colorId ?? null, size: variantForm.size || null, ...common }] },
     });
     variantDialog.value = false;
     await refresh();
@@ -152,7 +167,7 @@ const archivedVariants = computed(
     </div>
 
     <div v-else-if="data">
-      <SeitenKopf :titel="data.name" :hinweis="data.category ?? undefined">
+      <SeitenKopf :titel="data.name" :hinweis="`${data.category.name} · Nr. ${data.number}`">
         <template #aktionen>
           <UButton
             to="/produkte"
@@ -201,9 +216,14 @@ const archivedVariants = computed(
             <UFormField label="Name" required :error="fieldErrors.name">
               <UInput v-model="form.name" class="w-full" />
             </UFormField>
-            <UFormField label="Kategorie">
-              <UInput v-model="form.category" class="w-full" />
-            </UFormField>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <UFormField label="Preis brutto" :error="fieldErrors.basePriceGross" help="Zum Beispiel 39,90">
+                <UInput v-model="form.basePriceGross" class="w-full" placeholder="0,00" />
+              </UFormField>
+              <UFormField label="MwSt" :error="fieldErrors.vatCategory">
+                <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />
+              </UFormField>
+            </div>
             <UFormField label="Beschreibung">
               <UTextarea v-model="form.description" :rows="3" class="w-full" />
             </UFormField>
@@ -225,7 +245,19 @@ const archivedVariants = computed(
           <dl v-else class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div>
               <dt class="text-xs text-leinen-500">Kategorie</dt>
-              <dd>{{ data.category ?? '–' }}</dd>
+              <dd>{{ data.category.code }} · {{ data.category.name }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-leinen-500">Produktnummer</dt>
+              <dd class="font-mono tabular-nums">{{ String(data.number).padStart(4, '0') }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-leinen-500">Preis brutto</dt>
+              <dd class="font-mono tabular-nums">{{ formatMoney(data.basePriceGross) }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-leinen-500">MwSt</dt>
+              <dd>{{ vatLabel(data.vatCategory) }}</dd>
             </div>
             <div>
               <dt class="text-xs text-leinen-500">Angelegt</dt>
@@ -266,9 +298,8 @@ const archivedVariants = computed(
             >
               <tr>
                 <th class="px-4">SKU</th>
-                <th class="px-4">Bezeichnung</th>
-                <th class="px-4 text-right">Basispreis netto</th>
-                <th class="px-4 text-right">USt</th>
+                <th class="px-4">Variante</th>
+                <th class="px-4 text-right">Preis brutto</th>
                 <th class="px-4 text-right">Mindestbestand</th>
                 <th class="px-4 text-right">Aktionen</th>
               </tr>
@@ -277,8 +308,10 @@ const archivedVariants = computed(
               <tr v-for="variant in activeVariants" :key="variant.id">
                 <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
                 <td class="px-4">{{ variant.label }}</td>
-                <td class="zahl px-4">{{ formatMoney(variant.basePriceNet) }}</td>
-                <td class="zahl px-4 text-leinen-500">{{ formatPercent(variant.vatRate) }}</td>
+                <td class="zahl px-4">
+                  {{ formatMoney(variant.priceGross ?? data.basePriceGross) }}
+                  <span v-if="variant.priceGross === null" class="text-xs text-leinen-400">(Basis)</span>
+                </td>
                 <td class="zahl px-4 text-leinen-500">{{ variant.minimumStock }}</td>
                 <td class="px-4">
                   <div class="flex justify-end gap-1">
@@ -315,8 +348,7 @@ const archivedVariants = computed(
                     archiviert
                   </UBadge>
                 </td>
-                <td class="zahl px-4">{{ formatMoney(variant.basePriceNet) }}</td>
-                <td class="zahl px-4">{{ formatPercent(variant.vatRate) }}</td>
+                <td class="zahl px-4">{{ formatMoney(variant.priceGross ?? data.basePriceGross) }}</td>
                 <td class="zahl px-4">{{ variant.minimumStock }}</td>
                 <td class="px-4">
                   <div class="flex justify-end">
@@ -424,7 +456,7 @@ const archivedVariants = computed(
 
       <UModal
         v-model:open="variantDialog"
-        :title="editingVariantId ? 'Variante bearbeiten' : 'Variante anlegen'"
+        :title="editingVariant ? 'Variante bearbeiten' : 'Variante anlegen'"
       >
         <template #body>
           <form class="space-y-4" @submit.prevent="saveVariant">
@@ -436,18 +468,43 @@ const archivedVariants = computed(
               class="rounded-[12px]"
               :description="message"
             />
-            <UFormField label="SKU" required :error="fieldErrors.sku">
-              <UInput v-model="variantForm.sku" autofocus class="w-full font-mono" />
-            </UFormField>
-            <UFormField label="Bezeichnung" required :error="fieldErrors.label">
-              <UInput v-model="variantForm.label" class="w-full" />
-            </UFormField>
-            <UFormField
-              label="Basispreis netto"
-              :error="fieldErrors.basePriceNet"
-              help="Optional. Zum Beispiel 24,90"
+            <dl
+              v-if="editingVariant"
+              class="grid grid-cols-2 gap-2 rounded-[8px] bg-leinen-50 px-3 py-2 text-sm dark:bg-leinen-900"
             >
-              <UInput v-model="variantForm.basePriceNet" class="w-full" />
+              <div>
+                <dt class="text-xs text-leinen-500">SKU</dt>
+                <dd class="font-mono text-xs">{{ editingVariant.sku }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-leinen-500">Variante</dt>
+                <dd>{{ editingVariant.label }}</dd>
+              </div>
+            </dl>
+            <template v-else>
+              <UFormField label="Farbe" :error="fieldErrors.colorId" help="Optional.">
+                <USelectMenu
+                  v-model="variantForm.colorId"
+                  :items="colorOptions"
+                  value-key="value"
+                  placeholder="Ohne Farbe"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField label="Größe" :error="fieldErrors.size" help="Optional. Zum Beispiel 45×45 oder M">
+                <UInput v-model="variantForm.size" class="w-full" />
+              </UFormField>
+              <p class="text-xs text-leinen-500">
+                Die SKU wird aus Kategorie, Produktnummer, Farbe und Größe gebildet
+                und ist danach fest.
+              </p>
+            </template>
+            <UFormField
+              label="Preis brutto"
+              :error="fieldErrors.priceGross"
+              help="Nur bei Abweichung vom Produktpreis. Zum Beispiel 44,90"
+            >
+              <UInput v-model="variantForm.priceGross" class="w-full" placeholder="wie Produkt" />
             </UFormField>
             <UFormField label="Mindestbestand" :error="fieldErrors.minimumStock">
               <UInput
@@ -467,7 +524,7 @@ const archivedVariants = computed(
                 Abbrechen
               </UButton>
               <UButton type="submit" :loading="saving" class="rounded-[8px]">
-                {{ editingVariantId ? 'Speichern' : 'Anlegen' }}
+                {{ editingVariant ? 'Speichern' : 'Anlegen' }}
               </UButton>
             </div>
           </form>

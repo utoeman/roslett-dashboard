@@ -88,7 +88,7 @@ unterscheidet. Sie steht in `.gitignore` und darf niemals eingecheckt werden.
 |---|---|
 | `npm start` | Postgres und Entwicklungsserver zusammen; Strg+C beendet beides |
 | `npm run dev` | Nur der Entwicklungsserver, ohne Postgres zu starten |
-| `npm test` | Tests der Kalkulations-Engine einmalig ausführen |
+| `npm test` | Alle Tests einmalig ausführen |
 | `npm run test:watch` | Tests im Beobachtungsmodus |
 | `npm run typecheck` | TypeScript-Prüfung von `packages/core` und der Web-App |
 | `npm run lint` | ESLint über das ganze Repo |
@@ -97,6 +97,7 @@ unterscheidet. Sie steht in `.gitignore` und darf niemals eingecheckt werden.
 | `npm run db:down` | Postgres-Container stoppen |
 | `npm run db:generate` | Migration aus geändertem Schema erzeugen |
 | `npm run db:migrate` | Ausstehende Migrationen anwenden |
+| `npm run db:seed` | Demodaten (7 Produkte aus den Screens) in eine leere Datenbank schreiben |
 
 Nuxt läuft bewusst außerhalb von Docker. Docker Compose startet lokal
 ausschließlich Postgres; der Container für die Anwendung kommt erst in Phase 4.
@@ -108,8 +109,8 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Bereich | Inhalt |
 |---|---|
 | Übersicht | Anzahl der Stammdaten je Bereich |
-| Artikel | Liste mit Suche über Name und Artikelnummer, Anlegen, Detailansicht |
-| Artikel-Detail | Stammdaten bearbeiten, Varianten anlegen und archivieren, geltende Kostenpositionen |
+| Produkte | Liste mit Suche über Name und SKU, Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
+| Produkt-Detail | Stammdaten bearbeiten, Varianten (Farbe, Größe, abweichender Preis) anlegen und archivieren, geltende Kostenpositionen |
 | Lieferanten | Anlegen, bearbeiten, archivieren |
 | Kostenpositionen | Anlegen, aktiv schalten, Fix- und Prozentpositionen |
 | Kanäle | Anlegen, Gebühren pflegen, aktiv schalten |
@@ -125,10 +126,13 @@ relative Pfade an.
 | Methode und Pfad | Zweck |
 |---|---|
 | `GET /api/health` | Zustand samt Datenbankverbindung |
-| `GET /api/products` | Liste, Parameter `search`, `category`, `includeArchived` |
-| `POST /api/products` | Anlegen; ohne Variantenangabe entsteht eine Standardvariante |
+| `GET /api/products` | Liste, Parameter `search` (Name, SKU), `categoryId`, `includeArchived` |
+| `POST /api/products` | Anlegen; Produktnummer und SKUs vergibt der Server, ohne Varianten entsteht eine Standardvariante |
 | `GET /api/products/:id` | Detail samt Varianten und geltenden Kostenpositionen |
-| `PATCH /api/products/:id` | Stammdaten ändern, Varianten anlegen und ändern |
+| `PATCH /api/products/:id` | Stammdaten ändern, Varianten anlegen; Kategorie, Farbe, Größe und SKU sind fest |
+| `GET POST /api/categories`, `PATCH /api/categories/:id` | Kategorie-Kürzel; Kürzel fest, sobald verwendet |
+| `GET POST /api/colors`, `PATCH /api/colors/:id` | Farb-Kürzel; Kürzel fest, sobald verwendet |
+| `GET POST /api/vat-rates`, `PATCH /api/vat-rates/:id` | MwSt-Sätze je Lieferland, Kategorie und Gültig-ab |
 | `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten |
 | `GET POST /api/cost-items`, `PATCH /api/cost-items/:id` | Kostenpositionen |
 | `GET POST /api/channels`, `PATCH /api/channels/:id` | Kanäle |
@@ -178,6 +182,11 @@ npm run db:generate        # erzeugt die SQL-Migration
 # 2. erzeugte Datei prüfen
 npm run db:migrate         # wendet sie an
 ```
+
+Migrationen mit Umbau bestehender Daten werden von Hand geschrieben
+(`npx drizzle-kit generate --custom`); der Snapshot muss danach dem Schema
+entsprechen, `npm run db:generate` meldet dann „No schema changes“.
+Beispiel: `0001_stammdaten_v2.sql` bricht ab, statt vorhandene Produkte zu löschen.
 
 ## Fachliche Grundregeln
 

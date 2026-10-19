@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { List, Product } from '~~/shared/types/api';
+import type { Category, List, Product } from '~~/shared/types/api';
 
 useHead({ title: 'Produkte' });
 
@@ -13,7 +13,7 @@ const perPage = 100;
 
 const searchDebounced = useDebounced(search, 250);
 
-const { data, pending, error, refresh } = await useFetch<List<Product>>(
+const { data, pending, error } = await useFetch<List<Product>>(
   '/api/products',
   {
     query: {
@@ -39,10 +39,20 @@ const saving = ref(false);
 const fieldErrors = ref<Record<string, string>>({});
 const message = ref<string | null>(null);
 
+const { data: categories } = await useFetch<List<Category>>('/api/categories');
+const categoryOptions = computed(
+  () => categories.value?.items.map((c) => ({ label: `${c.code} · ${c.name}`, value: c.id })) ?? [],
+);
+const vatOptions = [
+  { label: 'Normal', value: 'standard' },
+  { label: 'Ermäßigt', value: 'reduced' },
+];
+
 const form = reactive({
   name: '',
-  sku: '',
-  category: '',
+  categoryId: undefined as string | undefined,
+  basePriceGross: '',
+  vatCategory: 'standard' as 'standard' | 'reduced',
 });
 
 async function create() {
@@ -50,19 +60,17 @@ async function create() {
   fieldErrors.value = {};
   message.value = null;
   try {
-    await $fetch('/api/products', {
+    const created = await $fetch<Product>('/api/products', {
       method: 'POST',
       body: {
         name: form.name,
-        sku: form.sku,
-        category: form.category || null,
+        categoryId: form.categoryId,
+        basePriceGross: form.basePriceGross || null,
+        vatCategory: form.vatCategory,
       },
     });
     dialogOpen.value = false;
-    form.name = '';
-    form.sku = '';
-    form.category = '';
-    await refresh();
+    await navigateTo(`/produkte/${created.id}`);
   } catch (err) {
     const { message: text, fields } = readError(err);
     message.value = text;
@@ -94,10 +102,10 @@ function openRow(id: string, event: MouseEvent) {
   navigateTo(`/produkte/${id}`);
 }
 
-/** Price range across all variants. */
+/** Gross price range across all variants. */
 function priceRange(product: Product): string {
   const prices = product.variants
-    .map((variant) => variant.basePriceNet)
+    .map((variant) => variant.priceGross ?? product.basePriceGross)
     .filter((price): price is number => price !== null);
   if (prices.length === 0) return '–';
   const min = Math.min(...prices);
@@ -190,7 +198,7 @@ function priceRange(product: Product): string {
               <th class="px-4">Produkt</th>
               <th class="px-4">Kategorie</th>
               <th class="px-4">Varianten</th>
-              <th class="px-4 text-right">Basispreis netto</th>
+              <th class="px-4 text-right">Preis brutto</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
@@ -221,7 +229,7 @@ function priceRange(product: Product): string {
                   archiviert
                 </UBadge>
               </td>
-              <td class="px-4 text-leinen-500">{{ product.category ?? '–' }}</td>
+              <td class="px-4 text-leinen-500">{{ product.category.name }}</td>
               <td class="px-4 text-leinen-500">
                 <span class="font-mono text-xs">
                   {{ product.variants.map((v) => v.sku).join(', ') }}
@@ -287,23 +295,38 @@ function priceRange(product: Product): string {
           </UFormField>
 
           <UFormField
-            label="SKU"
+            label="Kategorie"
             required
-            :error="fieldErrors.sku"
-            help="Eindeutig. Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich."
+            :error="fieldErrors.categoryId"
+            help="Bestimmt das Kürzel in der SKU und lässt sich später nicht ändern."
           >
-            <UInput v-model="form.sku" class="w-full font-mono" />
+            <USelectMenu
+              v-model="form.categoryId"
+              :items="categoryOptions"
+              value-key="value"
+              placeholder="Kategorie wählen"
+              class="w-full"
+            />
           </UFormField>
 
-          <UFormField label="Kategorie" :error="fieldErrors.category">
-            <UInput v-model="form.category" class="w-full" />
-          </UFormField>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField
+              label="Preis brutto"
+              :error="fieldErrors.basePriceGross"
+              help="Gilt für alle Varianten. Zum Beispiel 39,90"
+            >
+              <UInput v-model="form.basePriceGross" class="w-full" placeholder="0,00" />
+            </UFormField>
+            <UFormField label="MwSt" :error="fieldErrors.vatCategory">
+              <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />
+            </UFormField>
+          </div>
 
           <p
             class="rounded-[8px] bg-leinen-50 px-3 py-2 text-xs text-leinen-600 dark:bg-leinen-900 dark:text-leinen-400"
           >
-            Das Produkt erhält automatisch eine Standardvariante. Weitere
-            Varianten legen Sie anschließend in der Detailansicht an.
+            Produktnummer und SKU werden automatisch vergeben. Farben und Größen
+            legen Sie anschließend als Varianten in der Detailansicht an.
           </p>
 
           <div class="flex justify-end gap-2 pt-2">

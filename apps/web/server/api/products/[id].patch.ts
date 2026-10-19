@@ -8,8 +8,8 @@ import {
 } from '../../../shared/schemas/product.js';
 import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { badRequest, databaseError } from '../../utils/errors.js';
-import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
-import { mapVariant } from '../../utils/mapping.js';
+import { centsToNumeric } from '../../utils/money.js';
+import { buildVariantRows, loadProduct } from '../../utils/products.js';
 
 /** Product fields and variant changes in one call, so the form saves atomically. */
 const bodySchema = updateProductSchema.extend({
@@ -18,107 +18,66 @@ const bodySchema = updateProductSchema.extend({
 });
 
 /**
- * Updates a product in one transaction: if one variant fails (e.g. duplicate
- * SKU), nothing is saved. Variants are archived via `archivedAt`.
+ * Updates a product in one transaction. Category, color, size and SKU are
+ * fixed; variants are archived via `archivedAt`.
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
   const input = await readJsonBody(event, bodySchema);
   const db = useDb();
 
-  requireFound(
+  const existing = requireFound(
     await db.query.products.findFirst({
       where: eq(schema.products.id, id),
-      columns: { id: true },
+      columns: { id: true, number: true },
+      with: { category: { columns: { code: true } } },
     }),
     'Das Produkt',
   );
 
-  const { newVariants, updatedVariants, ...productFields } = input;
+  const { newVariants, updatedVariants, ...fields } = input;
 
   // Missing fields mean "unchanged", not null.
   const productChanges: Record<string, unknown> = {};
-  if (productFields.name !== undefined) productChanges.name = productFields.name;
-  if (productFields.description !== undefined)
-    productChanges.description = productFields.description;
-  if (productFields.category !== undefined)
-    productChanges.category = productFields.category;
-  if (productFields.archivedAt !== undefined)
-    productChanges.archivedAt = productFields.archivedAt;
+  if (fields.name !== undefined) productChanges.name = fields.name;
+  if (fields.description !== undefined) productChanges.description = fields.description;
+  if (fields.basePriceGross !== undefined) productChanges.basePriceGross = centsToNumeric(fields.basePriceGross);
+  if (fields.vatCategory !== undefined) productChanges.vatCategory = fields.vatCategory;
+  if (fields.archivedAt !== undefined) productChanges.archivedAt = fields.archivedAt;
 
   try {
     return await db.transaction(async (tx) => {
       if (Object.keys(productChanges).length > 0) {
-        await tx
-          .update(schema.products)
-          .set(productChanges)
-          .where(eq(schema.products.id, id));
+        await tx.update(schema.products).set(productChanges).where(eq(schema.products.id, id));
       }
 
       if (newVariants && newVariants.length > 0) {
-        await tx.insert(schema.variants).values(
-          newVariants.map((variant) => ({
-            productId: id,
-            sku: variant.sku,
-            label: variant.label,
-            minimumStock: variant.minimumStock ?? 0,
-            basePriceNet: centsToNumeric(variant.basePriceNet ?? null),
-            vatRate: rateToNumeric(variant.vatRate ?? 0.19) ?? '0.1900',
-          })),
-        );
+        await tx
+          .insert(schema.variants)
+          .values(await buildVariantRows(tx, existing, existing.category.code, newVariants, 'newVariants'));
       }
 
       for (const variant of updatedVariants ?? []) {
-        const existing = await tx.query.variants.findFirst({
+        const current = await tx.query.variants.findFirst({
           where: eq(schema.variants.id, variant.id),
-          columns: { id: true, productId: true },
+          columns: { productId: true },
         });
-        if (existing === undefined) {
-          throw badRequest(`Variante ${variant.id} wurde nicht gefunden.`);
-        }
-        // Only variants of this product.
-        if (existing.productId !== id) {
-          throw badRequest('Die Variante gehoert nicht zu diesem Artikel.');
+        if (current === undefined || current.productId !== id) {
+          throw badRequest('Die Variante gehört nicht zu diesem Produkt.');
         }
 
         const changes: Record<string, unknown> = {};
-        if (variant.sku !== undefined) changes.sku = variant.sku;
-        if (variant.label !== undefined) changes.label = variant.label;
-        if (variant.minimumStock !== undefined)
-          changes.minimumStock = variant.minimumStock;
-        if (variant.basePriceNet !== undefined)
-          changes.basePriceNet = centsToNumeric(variant.basePriceNet);
-        if (variant.vatRate !== undefined)
-          changes.vatRate = rateToNumeric(variant.vatRate);
-        if (variant.archivedAt !== undefined)
-          changes.archivedAt = variant.archivedAt;
-
+        if (variant.priceGross !== undefined) changes.priceGross = centsToNumeric(variant.priceGross);
+        if (variant.minimumStock !== undefined) changes.minimumStock = variant.minimumStock;
+        if (variant.archivedAt !== undefined) changes.archivedAt = variant.archivedAt;
         if (Object.keys(changes).length > 0) {
-          await tx
-            .update(schema.variants)
-            .set(changes)
-            .where(eq(schema.variants.id, variant.id));
+          await tx.update(schema.variants).set(changes).where(eq(schema.variants.id, variant.id));
         }
       }
 
-      const updated = await tx.query.products.findFirst({
-        where: eq(schema.products.id, id),
-        with: { variants: true },
-      });
-      if (updated === undefined) {
-        throw new Error('Artikel nach dem Speichern nicht auffindbar.');
-      }
-      return {
-        id: updated.id,
-        name: updated.name,
-        description: updated.description,
-        category: updated.category,
-        archivedAt: updated.archivedAt,
-        createdAt: updated.createdAt,
-        variants: updated.variants.map(mapVariant),
-      };
+      return requireFound(await loadProduct(tx, id), 'Das Produkt');
     });
   } catch (error) {
-    throw databaseError(error, 'Produkt aendern');
+    throw databaseError(error, 'Produkt ändern');
   }
 });

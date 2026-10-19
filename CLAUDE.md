@@ -21,7 +21,10 @@ Blöcken 1–6 steht an (Plan in `docs/abgleich.md`). Zeitplan: Roadmap M1–M4 
 - Postgres 16 per Docker (`docker-compose.yml`, nur DB); Nuxt läuft außerhalb von Docker.
 - Tests: Vitest.
 - UI: Nuxt UI als Basis + eigene Fachbausteine; Design-Tokens aus dem Interview (Leinengrau/Oliv).
-- Geplant: GitHub Actions (Lint, Typecheck, Tests), Live-Demo auf Vercel + Neon.
+- Zugang: ein Passwort für die ganze App (nuxt-auth-utils, `server/middleware/auth.ts`);
+  jede neue API-Route ist automatisch geschützt, Ausnahmen nur in `PUBLIC_PATHS`.
+- CI: GitHub Actions (Lint, Typecheck, Tests, Build). Geplant: Betrieb auf Netlify + Neon,
+  Release per Hand-Workflow, live = Branch `production`.
 
 ## Befehle
 
@@ -29,6 +32,8 @@ Blöcken 1–6 steht an (Plan in `docs/abgleich.md`). Zeitplan: Roadmap M1–M4 
 npm start              # Postgres + Dev-Server (localhost:3000), Strg+C beendet beides
 npm test               # alle Tests
 npm run typecheck
+npm run lint
+npm run passwort:hash  # Hash für NUXT_ACCESS_PASSWORD_HASH (Zugangspasswort)
 npm run db:generate    # Migration aus apps/web/server/db/schema.ts erzeugen
 npm run db:migrate     # Migrationen anwenden – nie automatisch beim Start
 ```

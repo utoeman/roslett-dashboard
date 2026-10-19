@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   // hinter einem Login, Suchmaschinen und Erstladezeit spielen keine Rolle.
   ssr: false,
 
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils'],
 
   // Das Design (Leinengrau/Oliv) ist nur hell entworfen. Ohne Farbmodus-Modul
   // bleibt die App auch bei dunklem System hell.
@@ -36,7 +36,10 @@ export default defineNuxtConfig({
    */
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL ?? '',
-    sessionSecret: process.env.SESSION_SECRET ?? '',
+    // Hash des Zugangspassworts, zur Laufzeit aus NUXT_ACCESS_PASSWORD_HASH.
+    // Leer im Build, damit kein Geheimnis im Server-Bundle landet. Das
+    // Sitzungsgeheimnis liest nuxt-auth-utils selbst aus NUXT_SESSION_PASSWORD.
+    accessPasswordHash: '',
     public: {},
   },
 

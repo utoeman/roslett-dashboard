@@ -8,6 +8,7 @@
  */
 const open = ref(false);
 const route = useRoute();
+const { logout } = useLogout();
 
 const links = [
   { name: 'Übersicht', path: '/' },
@@ -57,6 +58,13 @@ watch(() => route.path, () => { open.value = false; });
       >
         {{ link.name }}
       </NuxtLink>
+      <button
+        type="button"
+        class="block w-full rounded-[8px] px-2 py-2 text-left text-sm text-leinen-500"
+        @click="logout"
+      >
+        Abmelden
+      </button>
     </nav>
   </div>
 </template>

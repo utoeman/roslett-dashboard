@@ -16,7 +16,7 @@ const props = defineProps<{
 
 const { formatMoney, formatPercent } = useMoney();
 
-/** Below this margin the line turns amber. */
+/** Below this margin the box turns amber; at or above it green. */
 const LOW_MARGIN = 0.3;
 
 const priceCents = computed(() => {
@@ -49,23 +49,38 @@ const result = computed(() => {
 const range = (r: { min: number; max: number }, format: (v: number) => string) =>
   r.min === r.max ? format(r.min) : `${format(r.min)} – ${format(r.max)}`;
 
+// Solid surface, border and dark text from the brand scales; the icon repeats the state for colour-blind users.
 const tone = computed(() => {
-  const lowest = result.value?.rate.min;
-  if (lowest === undefined) return 'text-leinen-500';
-  if (lowest < 0) return 'text-red-700';
-  if (lowest < LOW_MARGIN) return 'text-amber-700';
-  return 'text-leinen-600';
+  const lowest = result.value?.rate.min ?? 0;
+  if (lowest < 0) {
+    return { box: 'border-trderror-500 bg-trderror-200 text-trderror-800', iconColor: 'text-trderror-600', icon: 'i-lucide-circle-alert', label: 'Verlust' };
+  }
+  if (lowest < LOW_MARGIN) {
+    return { box: 'border-trdwarning-500 bg-trdwarning-200 text-trdwarning-800', iconColor: 'text-trdwarning-600', icon: 'i-lucide-triangle-alert', label: 'Knapp' };
+  }
+  return { box: 'border-trdsuccess-500 bg-trdsuccess-200 text-trdsuccess-800', iconColor: 'text-trdsuccess-600', icon: 'i-lucide-circle-check', label: 'Gut' };
 });
 </script>
 
 <template>
-  <p v-if="result" class="text-xs" :class="tone" aria-live="polite">
-    Netto {{ formatMoney(result.net) }} · Ø Einstand {{ range(result.cost, formatMoney) }} ·
-    <span class="font-medium">
-      Marge {{ range(result.euro, formatMoney) }} ({{ range(result.rate, (v) => formatPercent(v)) }})
-    </span>
-    vor Gebühren
-  </p>
+  <div
+    v-if="result"
+    class="flex items-start gap-2 rounded-[8px] border-l-4 px-3 py-2 text-sm"
+    :class="tone.box"
+    aria-live="polite"
+  >
+    <UIcon :name="tone.icon" class="mt-0.5 size-5 shrink-0" :class="tone.iconColor" aria-hidden="true" />
+    <div>
+      <p class="font-semibold">
+        {{ tone.label }}: Marge {{ range(result.euro, formatMoney) }} ({{
+          range(result.rate, (v) => formatPercent(v))
+        }})
+      </p>
+      <p class="text-xs">
+        Netto {{ formatMoney(result.net) }} · Ø Einstand {{ range(result.cost, formatMoney) }} · vor Gebühren
+      </p>
+    </div>
+  </div>
   <p v-else-if="priceCents !== null && known.length === 0" class="text-xs text-leinen-500">
     Noch kein Einstand – die Marge erscheint nach dem ersten gebuchten Wareneingang.
   </p>

@@ -76,7 +76,8 @@ const baseCosts = computed(
   () =>
     data.value?.variants
       .filter((v) => v.archivedAt === null && v.priceGross === null)
-      .map((v) => v.inventory?.averageCostEur ?? null) ?? [],
+      .map((v) => ({ landed: v.inventory?.averageCostEur ?? null, purchase: v.inventory?.averagePurchaseEur ?? null })) ??
+    [],
 );
 
 const variantDialog = ref(false);
@@ -557,7 +558,12 @@ const archivedVariants = computed(
               :price="variantForm.priceGross"
               :fallback-cents="data.basePriceGross"
               :vat-rate="data.vatRates[data.vatCategory]"
-              :costs="[editingVariant?.inventory?.averageCostEur ?? null]"
+              :costs="[
+                {
+                  landed: editingVariant?.inventory?.averageCostEur ?? null,
+                  purchase: editingVariant?.inventory?.averagePurchaseEur ?? null,
+                },
+              ]"
             />
             <UFormField label="Mindestbestand" :error="fieldErrors.minimumStock">
               <UInput

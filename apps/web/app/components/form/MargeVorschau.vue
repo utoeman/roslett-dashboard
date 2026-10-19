@@ -10,8 +10,8 @@ const props = defineProps<{
   price: string;
   fallbackCents?: number | null;
   vatRate: number | undefined;
-  /** Average landed cost per variant; null where nothing has been received yet. */
-  costs: (number | null)[];
+  /** Average landed cost and its purchase-price part per variant; null where nothing has been received yet. */
+  costs: { landed: number | null; purchase: number | null }[];
 }>();
 
 const { formatMoney, formatPercent } = useMoney();
@@ -29,18 +29,23 @@ const priceCents = computed(() => {
   }
 });
 
-const known = computed(() => props.costs.filter((c): c is number => c !== null));
+const known = computed(() =>
+  props.costs.flatMap((c) => (c.landed === null ? [] : [{ landed: c.landed, purchase: c.purchase ?? c.landed }])),
+);
+const span = (values: number[]) => ({ min: Math.min(...values), max: Math.max(...values) });
 
 const result = computed(() => {
   if (priceCents.value === null || props.vatRate === undefined || known.value.length === 0) return null;
-  const margins = known.value.map((cost) => marginBeforeFees(priceCents.value ?? 0, props.vatRate ?? 0, cost));
+  const margins = known.value.map((c) => marginBeforeFees(priceCents.value ?? 0, props.vatRate ?? 0, c.landed));
   const pick = (key: 'contributionMarginEur' | 'margin') => {
     const values = margins.map((m) => m[key]);
     return { min: Math.min(...values), max: Math.max(...values) };
   };
   return {
     net: margins[0]?.salesPriceNetEur ?? 0,
-    cost: { min: Math.min(...known.value), max: Math.max(...known.value) },
+    cost: span(known.value.map((c) => c.landed)),
+    purchase: span(known.value.map((c) => c.purchase)),
+    extra: span(known.value.map((c) => c.landed - c.purchase)),
     euro: pick('contributionMarginEur'),
     rate: pick('margin'),
   };
@@ -77,7 +82,8 @@ const tone = computed(() => {
         }})
       </p>
       <p class="text-xs">
-        Netto {{ formatMoney(result.net) }} · Ø Einstand {{ range(result.cost, formatMoney) }} · vor Gebühren
+        Netto {{ formatMoney(result.net) }} · EK {{ range(result.purchase, formatMoney) }} + Nebenkosten
+        {{ range(result.extra, formatMoney) }} = Ø Einstand {{ range(result.cost, formatMoney) }} · vor Gebühren
       </p>
     </div>
   </div>

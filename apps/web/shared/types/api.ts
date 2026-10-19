@@ -55,6 +55,8 @@ export interface VariantInventory {
   stockValueEur: number;
   /** Cents; average of remaining stock, else the newest landed cost, null without receipts. */
   averageCostEur: number | null;
+  /** Cents; purchase price part of `averageCostEur`, without additional costs. */
+  averagePurchaseEur: number | null;
   belowMinimum: boolean;
   /** Cents; null without price, VAT rate or landed cost. */
   priceNetEur: number | null;

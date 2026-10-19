@@ -111,14 +111,15 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Übersicht | Anzahl der Stammdaten je Bereich |
 | Produkte | Liste mit Suche über Name und SKU, Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
 | Produkt-Detail | Stammdaten bearbeiten, Varianten (Farbe, Größe, abweichender Preis) anlegen und archivieren, geltende Kostenpositionen |
+| Wareneingang | Liste der Lieferantenrechnungen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
+| Wareneingang-Detail | Positionen im Entwurf, Nebenkosten (auch nachträglich), Einstand je Stück, Zugang buchen inkl. Teillieferung |
 | Lieferanten | Anlegen, bearbeiten, archivieren |
 | Kostenpositionen | Anlegen, aktiv schalten, Fix- und Prozentpositionen |
 | Kanäle | Anlegen, Gebühren pflegen, aktiv schalten |
 | Kategorien, Farben | SKU-Kürzel anlegen, umbenennen, archivieren; verwendete Kürzel sind gesperrt |
 | MwSt-Sätze | Sätze je Land und Kategorie mit Gültig-ab; der aktuell gültige ist markiert |
 
-Wareneingang, Buchungen und Inventur sind in der Navigation als „folgt"
-gekennzeichnet und entstehen in Phase 3.
+Verkäufe und Bestandsjournal sind in der Navigation als „folgt" gekennzeichnet.
 
 ### API
 

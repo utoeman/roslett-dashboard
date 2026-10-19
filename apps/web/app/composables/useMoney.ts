@@ -19,6 +19,12 @@ export function useMoney() {
     return moneyFormat.format(cents / 100);
   }
 
+  /** Minor units of any currency, e.g. 38000 TRY → "380,00 TRY". */
+  function formatForeign(minor: number | null | undefined, currency: string): string {
+    if (minor === null || minor === undefined) return '–';
+    return new Intl.NumberFormat('de-DE', { style: 'currency', currency, currencyDisplay: 'code' }).format(minor / 100);
+  }
+
   /** Without currency symbol, for columns with their own header. */
   function formatAmount(cents: number | null | undefined): string {
     if (cents === null || cents === undefined) return '–';
@@ -59,6 +65,7 @@ export function useMoney() {
 
   return {
     formatMoney,
+    formatForeign,
     formatAmount,
     formatPercent,
     formatDate,

@@ -97,6 +97,73 @@ export interface Channel {
   active: boolean;
 }
 
+export type DeliveryState = 'open' | 'partial' | 'complete';
+
+export interface GoodsReceiptListItem {
+  id: string;
+  number: string;
+  supplierName: string;
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  currency: string;
+  state: 'draft' | 'posted';
+  positions: number;
+  ordered: number;
+  delivered: number;
+  deliveryState: DeliveryState;
+  /** Cents. */
+  goodsValueEur: number;
+}
+
+export interface ReceiptPosition {
+  id: string;
+  variant: { id: string; sku: string; label: string; productId: string; productName: string };
+  quantityOrdered: number;
+  delivered: number;
+  deliveryState: DeliveryState;
+  /** Minor units of the invoice currency. */
+  unitPriceForeign: number;
+  /** All EUR values in cents; landed cost is per unit and computed. */
+  unitPriceEur: number;
+  additionalCostsEur: number;
+  landedCostEur: number;
+  note: string | null;
+}
+
+export interface AdditionalCost {
+  id: string;
+  kind: 'freight' | 'customs' | 'other' | 'credit';
+  /** Cents; negative for credits. */
+  amountEur: number;
+  distributionMethod: 'value' | 'quantity';
+  incurredOn: string;
+  note: string | null;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  number: string;
+  supplier: { id: string; name: string };
+  invoiceNumber: string | null;
+  invoiceDate: string;
+  currency: string;
+  /** Foreign units per 1 EUR (ECB convention). */
+  exchangeRate: number;
+  exchangeRateSource: 'ecb' | 'manual';
+  state: 'draft' | 'posted';
+  deliveryState: DeliveryState;
+  createdAt: string;
+  positions: ReceiptPosition[];
+  additionalCosts: AdditionalCost[];
+  totals: {
+    quantityOrdered: number;
+    delivered: number;
+    goodsValueEur: number;
+    additionalCostsEur: number;
+    landedTotalEur: number;
+  };
+}
+
 /** Envelope of all list responses. */
 export interface List<T> {
   items: T[];

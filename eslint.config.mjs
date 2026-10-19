@@ -1,5 +1,4 @@
-// Eine Konfiguration fuer das ganze Repo: Web-App (Vue/Nuxt) und packages/core (reines TypeScript).
-// createConfigForNuxt braucht kein erzeugtes .nuxt-Verzeichnis und laeuft deshalb auch in der CI vor dem Build.
+// One config for the web app and packages/core; works without a generated .nuxt directory.
 import { createConfigForNuxt } from '@nuxt/eslint-config/flat';
 
 export default createConfigForNuxt({

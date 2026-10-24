@@ -1,5 +1,5 @@
 /**
- * SKU scheme `TRD-{CAT}-{NNNN}-{COLOR}-{SIZE}`, e.g. `TRD-KIS-0012-SAN-4545`.
+ * SKU scheme `ROS-{CAT}-{NNNN}-{COLOR}-{SIZE}`, e.g. `ROS-KIS-0012-SAN-4545`.
  * Missing color or size segments are omitted. SKUs never change once created.
  */
 
@@ -47,7 +47,7 @@ export function buildSku(parts: {
     throw new SkuError(`Produktnummer muss zwischen 1 und 9999 liegen, erhalten: ${String(productNumber)}`);
   }
 
-  const segments = ['TRD', code(categoryCode, 'Kategorie-Kürzel'), String(productNumber).padStart(4, '0')];
+  const segments = ['ROS', code(categoryCode, 'Kategorie-Kürzel'), String(productNumber).padStart(4, '0')];
   if (colorCode) segments.push(code(colorCode, 'Farb-Kürzel'));
   const sizeSegment = skuSize(size);
   if (sizeSegment) segments.push(sizeSegment);

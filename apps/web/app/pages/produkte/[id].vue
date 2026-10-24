@@ -306,7 +306,7 @@ const archivedVariants = computed(
             </UButton>
           </div>
 
-          <table class="trd-tabelle w-full min-w-[60rem] text-sm">
+          <table class="ros-tabelle w-full min-w-[60rem] text-sm">
             <thead
               class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
             >
@@ -334,7 +334,7 @@ const archivedVariants = computed(
                 <td class="zahl px-4">
                   <NuxtLink
                     :to="`/journal?variantId=${variant.id}`"
-                    class="hover:text-trd-600"
+                    class="hover:text-ros-600"
                     :aria-label="`Journal ${variant.sku}`"
                   >
                     {{ variant.inventory?.stock ?? 0 }}
@@ -439,13 +439,13 @@ const archivedVariants = computed(
             Keine Kostenpositionen hinterlegt.
             <NuxtLink
               to="/einstellungen/kostenpositionen"
-              class="text-trd-600 underline underline-offset-2 dark:text-trd-400"
+              class="text-ros-600 underline underline-offset-2 dark:text-ros-400"
             >
               Jetzt anlegen
             </NuxtLink>
           </p>
 
-          <table v-else class="trd-tabelle w-full min-w-[44rem] text-sm">
+          <table v-else class="ros-tabelle w-full min-w-[44rem] text-sm">
             <thead
               class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
             >

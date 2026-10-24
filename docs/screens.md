@@ -1,8 +1,8 @@
 # Screens
 
-Klickbare Entwürfe aller Kern-Screens, als PDF in [`TRD Dashboard – Screens.pdf`](TRD%20Dashboard%20–%20Screens.pdf). Alle Desktop-Screens sind fluide Seiten (Seitennavigation links, auf schmalen Bildschirmen umbrechend). Alle Zahlen sind **Demodaten**, aber in sich stimmig.
+Klickbare Entwürfe aller Kern-Screens, als PDF in [`Roslett-Dashboard – Screens.pdf`](Roslett-Dashboard%20–%20Screens.pdf). Alle Desktop-Screens sind fluide Seiten (Seitennavigation links, auf schmalen Bildschirmen umbrechend). Alle Zahlen sind **Demodaten**, aber in sich stimmig.
 
-Durchgehendes Beispiel: Variante `TRD-KIS-0012-SAN-4545` (Leinenkissen Sand 45×45) hat eine **Fehlmenge von −1** nach Etsy #3318; sie wird beim Buchen von **WE-2026-014** aufgelöst.
+Durchgehendes Beispiel: Variante `ROS-KIS-0012-SAN-4545` (Leinenkissen Sand 45×45) hat eine **Fehlmenge von −1** nach Etsy #3318; sie wird beim Buchen von **WE-2026-014** aufgelöst.
 
 Gemeinsame Navigation: Übersicht · Produkte · Wareneingang · Verkäufe · Bestandsjournal · Einstellungen.
 
@@ -24,7 +24,7 @@ Gemeinsame Navigation: Übersicht · Produkte · Wareneingang · Verkäufe · Be
 - **Ablauf:** Klick auf Produkt → Produktdetail.
 
 ## Produktdetail
-- **Kopf:** Leinenkissen Sand, `TRD-KIS-0012`, Textil, Basis-VK 39,90 € brutto, MwSt. normal, 86 Stück; Buttons „Bearbeiten“, „Variante hinzufügen“.
+- **Kopf:** Leinenkissen Sand, `ROS-KIS-0012`, Textil, Basis-VK 39,90 € brutto, MwSt. normal, 86 Stück; Buttons „Bearbeiten“, „Variante hinzufügen“.
 - **Tabs (interaktiv):**
   - *Varianten (4):* SKU, Größe, Bestand, Mindest, Lagerwert, Etsy-Variante; Fehlmengen-Zeile hervorgehoben.
   - *Chargen:* Variantenauswahl; Wareneingang, Datum, Lieferant, Menge, Rest, Einstand/Stk, Status (aufgebraucht / Fehlmenge / als Nächstes). Hinweis, dass die Fehlmenge beim Buchen von WE-2026-014 zugeordnet wird.
@@ -71,6 +71,6 @@ Journal-Beispiel 45×45 (rückwärts): Zugang +40 → 40 · Eigenverbrauch −2 
   - Eigener Shop (manuelle Erfassung): 1,5 % + 0,25 €, Versand 4,90 €, frei ab 50,00 €
   - Etsy · [DEIN ETSY-SHOP] (verbunden): 10,5 % + 0,30 €, Versand 4,90 €, frei ab 50,00 €
   - Alles Beispielwerte, mit aktuellen Konditionen abgleichen.
-- **SKU-Schema:** `TRD-{Kategorie}-{Produktnr.}-{Farbe}-{Größe}`; Kategorie-Kürzel KIS Kissen, DCK Decke, TLF Tischläufer, GTS Geschirrtuch-Set, DEC Deko allgemein/Körbe, VAS Vase, KRZ Kerze; Farb-Kürzel SAN Sand, OLI Olive, NAT Natur, TER Terrakotta, STR Streifen, FEI Feige.
+- **SKU-Schema:** `ROS-{Kategorie}-{Produktnr.}-{Farbe}-{Größe}`; Kategorie-Kürzel KIS Kissen, DCK Decke, TLF Tischläufer, GTS Geschirrtuch-Set, DEC Deko allgemein/Körbe, VAS Vase, KRZ Kerze; Farb-Kürzel SAN Sand, OLI Olive, NAT Natur, TER Terrakotta, STR Streifen, FEI Feige.
 - **MwSt.-Sätze nach Lieferland:** DE 19/7 %, AT 20/10 %, NL 21/9 %, FR 20/5,5 % (Gültig-ab im Ausland „[PRÜFEN]“); Hinweis OSS/Etsy mit Steuerberatung klären.
 - **Monatsabschlüsse:** Juli–September abgeschlossen, Oktober offen mit 1 Korrektur Vormonate; Button „Oktober 2026 abschließen“.

@@ -1,6 +1,6 @@
-# TRD-Dashboard
+# Roslett-Dashboard
 
-Internes Warenwirtschafts- und Kalkulationswerkzeug für The Refined Decor.
+Internes Warenwirtschafts- und Kalkulationswerkzeug für Roslett.
 
 Der Stand ist **Phase 2**: Fundament, Kalkulations-Engine, Datenbankschema
 sowie Stammdatenpflege über API und Oberfläche.
@@ -8,7 +8,7 @@ sowie Stammdatenpflege über API und Oberfläche.
 ## Aufbau
 
 ```
-trd-dashboard/
+roslett-dashboard/
   packages/core/     Kalkulations-Engine, reines TypeScript
   apps/web/
     shared/schemas/  Zod-Schemas, von Client und Server gemeinsam genutzt
@@ -239,7 +239,7 @@ Die wichtigsten Änderungen gegenüber den Regeln oben:
 - **Zoll und Fracht sind Nebenkosten eines Wareneingangs**, keine Kostenpositionen mehr.
   Kostenpositionen sind nur noch Stückkosten wie Verpackung und gehen in jede Marge ein.
 - **Ein Verkaufspreis brutto für alle Kanäle**, Kanalpreise entfallen.
-- **SKUs werden automatisch erzeugt** (`TRD-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`) und nie geändert.
+- **SKUs werden automatisch erzeugt** (`ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`) und nie geändert.
 - **Fehlmengen** werden mit Warnung gebucht und beim nächsten Zugang aufgelöst.
 
 ## Tests

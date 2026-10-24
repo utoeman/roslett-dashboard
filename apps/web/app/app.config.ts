@@ -2,17 +2,17 @@
 export default defineAppConfig({
   ui: {
     colors: {
-      primary: 'trd',
-      warning: 'trdwarning',
-      error: 'trderror',
-      success: 'trdsuccess',
-      info: 'trdinfo',
+      primary: 'ros',
+      warning: 'roswarning',
+      error: 'roserror',
+      success: 'rossuccess',
+      info: 'rosinfo',
       neutral: 'leinen',
     },
   },
 
   /** Raw brand values, independent of Nuxt UI. */
-  trd: {
+  ros: {
     farben: {
       primary: '#4A5A34',
       grund: '#F3F0EA',

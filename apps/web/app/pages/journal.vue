@@ -277,7 +277,7 @@ const signed = (quantity: number) => (quantity > 0 ? `+${quantity}` : String(qua
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[56rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[56rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
           >
@@ -303,7 +303,7 @@ const signed = (quantity: number) => (quantity > 0 ? `+${quantity}` : String(qua
                 {{ item.variant.productName }} {{ item.variant.label }}
                 <div class="font-mono text-xs text-leinen-500">{{ item.variant.sku }}</div>
               </td>
-              <td class="zahl px-4 font-medium" :class="item.quantity > 0 ? 'text-trd-700' : 'text-red-700'">
+              <td class="zahl px-4 font-medium" :class="item.quantity > 0 ? 'text-ros-700' : 'text-red-700'">
                 {{ signed(item.quantity) }}
               </td>
               <td class="px-4 text-xs">

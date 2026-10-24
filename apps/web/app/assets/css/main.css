@@ -9,17 +9,17 @@
  */
 @theme static {
   /* primary olive: 100 light #E6EAD9, 500 accent #4A5A34, 700 dark #2F3A20 */
-  --color-trd-50:  #f3f5ec;
-  --color-trd-100: #e6ead9;
-  --color-trd-200: #cdd5b6;
-  --color-trd-300: #a9b788;
-  --color-trd-400: #77885a;
-  --color-trd-500: #4a5a34;
-  --color-trd-600: #3f4d2c;
-  --color-trd-700: #2f3a20;
-  --color-trd-800: #263019;
-  --color-trd-900: #1e2614;
-  --color-trd-950: #10150a;
+  --color-ros-50:  #f3f5ec;
+  --color-ros-100: #e6ead9;
+  --color-ros-200: #cdd5b6;
+  --color-ros-300: #a9b788;
+  --color-ros-400: #77885a;
+  --color-ros-500: #4a5a34;
+  --color-ros-600: #3f4d2c;
+  --color-ros-700: #2f3a20;
+  --color-ros-800: #263019;
+  --color-ros-900: #1e2614;
+  --color-ros-950: #10150a;
 
   /*
    * neutral linen: 50 navigation #FBFAF7, 100 background #F3F0EA,
@@ -38,59 +38,59 @@
   --color-leinen-950: #161512;
 
   /* warning: 100 surface #FBEBD0, 300 border #E8C98F, 600/700 text #8A5300/#6E4200 */
-  --color-trdwarning-50:  #fdf6e8;
-  --color-trdwarning-100: #fbebd0;
-  --color-trdwarning-200: #f3d9a8;
-  --color-trdwarning-300: #e8c98f;
-  --color-trdwarning-400: #d9a24e;
-  --color-trdwarning-500: #b87a1e;
-  --color-trdwarning-600: #8a5300;
-  --color-trdwarning-700: #6e4200;
-  --color-trdwarning-800: #573509;
-  --color-trdwarning-900: #45290a;
-  --color-trdwarning-950: #261604;
+  --color-roswarning-50:  #fdf6e8;
+  --color-roswarning-100: #fbebd0;
+  --color-roswarning-200: #f3d9a8;
+  --color-roswarning-300: #e8c98f;
+  --color-roswarning-400: #d9a24e;
+  --color-roswarning-500: #b87a1e;
+  --color-roswarning-600: #8a5300;
+  --color-roswarning-700: #6e4200;
+  --color-roswarning-800: #573509;
+  --color-roswarning-900: #45290a;
+  --color-roswarning-950: #261604;
 
   /* error = reversal: 100 surface #F3DCD6, 600 text #7A2E1C */
-  --color-trderror-50:  #fbf1ee;
-  --color-trderror-100: #f3dcd6;
-  --color-trderror-200: #e9bdb2;
-  --color-trderror-300: #d99484;
-  --color-trderror-400: #c2654f;
-  --color-trderror-500: #a3432d;
-  --color-trderror-600: #7a2e1c;
-  --color-trderror-700: #642617;
-  --color-trderror-800: #4f1f14;
-  --color-trderror-900: #3f1a11;
-  --color-trderror-950: #220c07;
+  --color-roserror-50:  #fbf1ee;
+  --color-roserror-100: #f3dcd6;
+  --color-roserror-200: #e9bdb2;
+  --color-roserror-300: #d99484;
+  --color-roserror-400: #c2654f;
+  --color-roserror-500: #a3432d;
+  --color-roserror-600: #7a2e1c;
+  --color-roserror-700: #642617;
+  --color-roserror-800: #4f1f14;
+  --color-roserror-900: #3f1a11;
+  --color-roserror-950: #220c07;
 
   /* info = return, open: 100 surface #E3ECF3, 700 text #24435C */
-  --color-trdinfo-50:  #f1f6f9;
-  --color-trdinfo-100: #e3ecf3;
-  --color-trdinfo-200: #c6d7e5;
-  --color-trdinfo-300: #9dbad1;
-  --color-trdinfo-400: #6e96b6;
-  --color-trdinfo-500: #4a7598;
-  --color-trdinfo-600: #355c7b;
-  --color-trdinfo-700: #24435c;
-  --color-trdinfo-800: #1e384c;
-  --color-trdinfo-900: #1a2f40;
-  --color-trdinfo-950: #0f1c26;
+  --color-rosinfo-50:  #f1f6f9;
+  --color-rosinfo-100: #e3ecf3;
+  --color-rosinfo-200: #c6d7e5;
+  --color-rosinfo-300: #9dbad1;
+  --color-rosinfo-400: #6e96b6;
+  --color-rosinfo-500: #4a7598;
+  --color-rosinfo-600: #355c7b;
+  --color-rosinfo-700: #24435c;
+  --color-rosinfo-800: #1e384c;
+  --color-rosinfo-900: #1a2f40;
+  --color-rosinfo-950: #0f1c26;
 
   /* Secondary chart color (Etsy bars). */
   --color-sand: #c9a27a;
 
   /* success #639922 */
-  --color-trdsuccess-50:  #f5faeb;
-  --color-trdsuccess-100: #e8f4d3;
-  --color-trdsuccess-200: #d2eaac;
-  --color-trdsuccess-300: #b3db7b;
-  --color-trdsuccess-400: #94c952;
-  --color-trdsuccess-500: #639922;
-  --color-trdsuccess-600: #588719;
-  --color-trdsuccess-700: #446617;
-  --color-trdsuccess-800: #385218;
-  --color-trdsuccess-900: #314618;
-  --color-trdsuccess-950: #172607;
+  --color-rossuccess-50:  #f5faeb;
+  --color-rossuccess-100: #e8f4d3;
+  --color-rossuccess-200: #d2eaac;
+  --color-rossuccess-300: #b3db7b;
+  --color-rossuccess-400: #94c952;
+  --color-rossuccess-500: #639922;
+  --color-rossuccess-600: #588719;
+  --color-rossuccess-700: #446617;
+  --color-rossuccess-800: #385218;
+  --color-rossuccess-900: #314618;
+  --color-rossuccess-950: #172607;
 
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
@@ -104,9 +104,9 @@
 
 /* 0.5px hairline: one physical pixel on high-density screens. */
 :root {
-  --trd-haarlinie: 0.5px;
-  --trd-zeilenhoehe: 36px;
-  --trd-rahmen: color-mix(in oklab, currentColor 14%, transparent);
+  --ros-haarlinie: 0.5px;
+  --ros-zeilenhoehe: 36px;
+  --ros-rahmen: color-mix(in oklab, currentColor 14%, transparent);
 }
 
 html {
@@ -124,14 +124,14 @@ table td.zahl {
 }
 
 /* Compact density: 36px table rows. */
-.trd-tabelle :where(td, th) {
-  height: var(--trd-zeilenhoehe);
+.ros-tabelle :where(td, th) {
+  height: var(--ros-zeilenhoehe);
   padding-block: 0;
 }
 
 /* Hairlines instead of the default border widths. */
-.trd-haarlinie {
-  border-width: var(--trd-haarlinie);
+.ros-haarlinie {
+  border-width: var(--ros-haarlinie);
 }
 
 @media (prefers-reduced-motion: reduce) {

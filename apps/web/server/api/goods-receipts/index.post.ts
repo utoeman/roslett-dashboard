@@ -1,5 +1,5 @@
 import { and, eq, like, sql } from 'drizzle-orm';
-import { receiptNumber } from '@trd/core';
+import { receiptNumber } from '@roslett/core';
 import { schema, useDb } from '../../db/client.js';
 import { createReceiptSchema } from '../../../shared/schemas/goods-receipt.js';
 import { readJsonBody, requireFound } from '../../utils/validation.js';

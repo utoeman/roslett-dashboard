@@ -1,6 +1,6 @@
 /** Database rows to API objects: money as cents, percentages as rates. */
 
-import { buildVariantLabel } from '@trd/core';
+import { buildVariantLabel } from '@roslett/core';
 import { numericToCents, numericToRate } from './money.js';
 
 type ColorRef = { id: string; code: string; name: string };

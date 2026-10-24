@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
-import { buildVariantLabel } from '@trd/core';
+import { buildVariantLabel } from '@roslett/core';
 import { schema, useDb } from '../../db/client.js';
 import { journalQuerySchema } from '../../../shared/schemas/stock-entry.js';
 import { readQuery } from '../../utils/validation.js';

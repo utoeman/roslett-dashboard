@@ -1,4 +1,4 @@
-# Domain-Modell – TRD Dashboard
+# Domain-Modell – Roslett-Dashboard
 
 Internes Lager- und Kalkulations-Dashboard für den Verkauf von Textilien und Deko (B2C) über den
 eigenen Shop und Etsy. Regelbesteuert, vorsteuerabzugsberechtigt; Einkauf teils in Fremdwährung;
@@ -29,7 +29,7 @@ Tabellen- und Spaltennamen sind englisch (Code-Konvention), Erklärungen deutsch
 | E12 | **EU-Ausland**: Lieferland am Verkauf, MwSt-Satz je Position gespeichert (aus Lieferland + MwSt-Kategorie) | Netto-VK und Marge je Zielland korrekt |
 | E13 | **SKU automatisch erzeugt**, danach nie änderbar; in Etsy nachgetragen | Etsy-Varianten haben noch keine SKUs; stabile Zuordnung |
 | E14 | Geld intern als **ganzzahlige Cent**, Umrechnung nur an der Systemgrenze | Keine Fließkomma-Rundungsfehler |
-| E15 | SKU-Schema `TRD-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, z. B. `TRD-KIS-0012-SAN-4545` | Im Lager lesbar |
+| E15 | SKU-Schema `ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, z. B. `ROS-KIS-0012-SAN-4545` | Im Lager lesbar |
 | E16 | Monatsabschluss **manuell** per Button | Erst wenn alle Belege erfasst sind |
 | E17 | **Kalkulation netto**; Marge und Aufschlag immer getrennt; Einfuhrumsatzsteuer nie im Einstand, Zoll schon | Regelbesteuert, EUSt ist Vorsteuer |
 | E18 | **Stückkosten** (Verpackung, Etiketten …) gehen in jede Marge ein: Selbstkosten = Einstand + Stückkosten | Sonst wirkt die Marge zu gut |
@@ -272,9 +272,9 @@ Die Zuordnung ist kein Journal; beim Auflösen einer Fehlmenge wird ihr die Char
 11. **Marge je Verkaufsposition** = VK netto − Wareneinsatz (FIFO) − Stückkosten − Gebühren
     − Porto + Versanderlös netto − Rabatt netto. Marge in % bezogen auf VK netto; Aufschlag
     getrennt, bezogen auf Selbstkosten.
-12. **SKU-Bildung:** `TRD-` + Kategorie-Code + `-` + Produktnummer 4-stellig + `-` + Farb-Code
+12. **SKU-Bildung:** `ROS-` + Kategorie-Code + `-` + Produktnummer 4-stellig + `-` + Farb-Code
     + `-` + Größe nur Ziffern. Fehlt Farbe oder Größe, entfällt das Segment
-    (z. B. `TRD-VAS-0003-TER`).
+    (z. B. `ROS-VAS-0003-TER`).
 
 **Beispiel rückwirkend:** 100 Kissen à 5 €, 60 verkauft, dann Zollbescheid 50 €.
 Alle 100 kosten rückwirkend 5,50 €; die 60 verkauften zeigen ihre um 0,50 € kleinere Marge;

@@ -12,7 +12,7 @@ import {
   planShortfallResolution,
   type BatchStock,
   type PlannedAllocation,
-} from '@trd/core';
+} from '@roslett/core';
 import type { useDb } from '../db/client.js';
 import { schema } from '../db/client.js';
 import type { Position } from '../../shared/schemas/goods-receipt.js';

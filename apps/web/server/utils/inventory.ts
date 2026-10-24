@@ -4,7 +4,7 @@
  */
 
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
-import { marginBeforeFees, valueStock, type ValuedBatch } from '@trd/core';
+import { marginBeforeFees, valueStock, type ValuedBatch } from '@roslett/core';
 import type { useDb } from '../db/client.js';
 import { schema } from '../db/client.js';
 import type { VariantInventory } from '../../shared/types/api.js';

@@ -14,7 +14,7 @@
 | Formulare | VeeValidate + Zod | Valide Daten Pflicht; Zod-Schema auch serverseitig |
 | Backend | Nuxt Server-Routes (Nitro) als REST-API | Journal und Kalkulation serverseitig |
 | Datenbank | PostgreSQL + Drizzle ORM | Relationale Daten, FIFO braucht saubere Abfragen |
-| Externe APIs | Etsy Open API, EZB-Wechselkurse | Etsy-Verkäufe buchen Bestand ab; Fremdwährung umrechnen |
+| Externe APIs | Shopify Admin API (GraphQL), EZB-Wechselkurse | Verkäufe aller Kanäle kommen über Shopify ([shopify-integration.md](shopify-integration.md)); Fremdwährung umrechnen |
 | Diagramme | Apache ECharts (vue-echarts) | Marge pro Produkt, Lagerwert, Umsatz nach Kanal |
 | Auth | nuxt-auth-utils (Session-Login) | Geschäftsdaten schützen |
 | Mobile | Responsive + PWA | Wareneingang am Handy im Lager |
@@ -25,7 +25,7 @@
 | Betrieb | Netlify + Neon, Release per Workflow | Tool soll wirklich laufen |
 | Doku | README, Domain-Modell, Entscheidungen | Nachvollziehbar, warum etwas so gebaut ist |
 
-Optional: KI-Entwurf für Etsy-Listing-Texte.
+Optional: KI-Entwurf für Listing-Texte.
 
 Bewusst nicht im Dashboard: GSAP, Three.js, Bootstrap, React, AWS/Azure-Dienste. Dezente Übergänge mit Vue `<Transition>`.
 
@@ -47,7 +47,8 @@ Bewusst nicht im Dashboard: GSAP, Three.js, Bootstrap, React, AWS/Azure-Dienste.
 
 **M3 – Geschäftswert (Woche 5–7)**
 - [ ] Margen inkl. MwSt. und Fremdwährung (EZB-Kurs am Rechnungsdatum)
-- [ ] Etsy-Anbindung: Bestellungen abrufen, Bestand abbuchen
+- [ ] Shopify Stufe 0: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export für Shopify
+- [ ] Shopify Stufe 1 (nur lesen, Polling): Bestellungen und Erstattungen aller Kanäle abrufen, FIFO und Marge rechnen
 - [ ] ECharts-Diagramme
 - [ ] Pinia für Filter und Einstellungen
 
@@ -61,6 +62,6 @@ Bewusst nicht im Dashboard: GSAP, Three.js, Bootstrap, React, AWS/Azure-Dienste.
 
 - [ ] MwSt. bei EU-Verkäufen (OSS-Schwelle, Rolle von Etsy als Marktplatz) mit Steuerberatung klären; das Modell speichert den Satz pro Position und ist für beide Fälle offen.
 - [ ] Kürzel-Listen für SKUs final festlegen (Kategorien, Farben).
-- [ ] Sets/Bundles und Eigenfertigung: kommen sie, und wann?
+- [ ] Sets/Bundles: kommen sie, und wann? (Eigenfertigung: entschieden, siehe abgleich.md Schritt 9, C6)
 - [ ] Echte Werte für Kanalgebühren, Versandpreis und Versandkostengrenze.
 - [ ] Optionales KI-Feature (Etsy-Listing-Texte) ja/nein.

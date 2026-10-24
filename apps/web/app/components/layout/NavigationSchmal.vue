@@ -28,8 +28,8 @@ watch(() => route.path, () => { open.value = false; });
   >
     <div class="flex items-center justify-between">
       <NuxtLink to="/" class="flex items-center gap-2">
-        <span class="size-2.5 rounded-full bg-trd-500" aria-hidden="true" />
-        <span class="text-sm font-semibold">The Refined Decor</span>
+        <span class="size-2.5 rounded-full bg-ros-500" aria-hidden="true" />
+        <span class="text-sm font-semibold">Roslett</span>
       </NuxtLink>
       <UButton
         size="sm"
@@ -51,7 +51,7 @@ watch(() => route.path, () => { open.value = false; });
         class="block rounded-[8px] px-2 py-2 text-sm"
         :class="
           route.path === link.path
-            ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
+            ? 'bg-ros-50 font-medium text-ros-700 dark:bg-ros-950/50 dark:text-ros-300'
             : 'text-leinen-600 dark:text-leinen-400'
         "
       >

@@ -120,7 +120,7 @@ function openRow(id: string, event: MouseEvent) {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[48rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[48rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
           >
@@ -141,7 +141,7 @@ function openRow(id: string, event: MouseEvent) {
               @click="openRow(item.id, $event)"
             >
               <td class="px-4">
-                <NuxtLink :to="`/wareneingang/${item.id}`" class="font-mono font-medium group-hover:text-trd-600">
+                <NuxtLink :to="`/wareneingang/${item.id}`" class="font-mono font-medium group-hover:text-ros-600">
                   {{ item.number }}
                 </NuxtLink>
               </td>

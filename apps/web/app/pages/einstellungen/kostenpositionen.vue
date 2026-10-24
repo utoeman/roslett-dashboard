@@ -116,7 +116,7 @@ async function toggleActive(item: CostItem) {
       />
 
       <div
-        class="mb-4 rounded-[12px] border border-trdwarning-200 bg-trdwarning-50/50 px-4 py-3 text-sm dark:border-trdwarning-900 dark:bg-trdwarning-950/30"
+        class="mb-4 rounded-[12px] border border-roswarning-200 bg-roswarning-50/50 px-4 py-3 text-sm dark:border-roswarning-900 dark:bg-roswarning-950/30"
         style="border-width: 0.5px"
       >
         <p class="font-medium">Vorsteuer und Selbstkosten</p>
@@ -147,7 +147,7 @@ async function toggleActive(item: CostItem) {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[48rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[48rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >

@@ -13,7 +13,7 @@ Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 | Verkaufspreis | Basis-VK **brutto am Produkt**, Variante kann optional einen eigenen Preis haben |
 | Kategorie | Kürzel-Liste (KIS, DCK, TLF, GTS, DEC, VAS, KRZ), in den Einstellungen pflegbar; jedes Kürzel gehört zur Gruppe Textil oder Deko |
 | Merkmale | Farbe (aus Kürzel-Liste) und Größe als eigene Felder; Variantenname wird daraus gebildet |
-| SKU | wird automatisch erzeugt nach `TRD-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, danach nie änderbar |
+| SKU | wird automatisch erzeugt nach `ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, danach nie änderbar |
 | MwSt | MwSt-Kategorie am Produkt (normal/ermäßigt), Sätze je Lieferland in eigener Tabelle; ersetzt `vat_rate` an der Variante |
 | Aktiv/Archiv | `archived_at` bleibt; Variante archivieren nur bei Bestand 0 |
 | Mindestbestand | bleibt (`minimum_stock`) |

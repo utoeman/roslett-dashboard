@@ -202,7 +202,7 @@ function stockOf(product: Product) {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
-        <table class="trd-tabelle w-full min-w-[48rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[48rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
@@ -229,7 +229,7 @@ function stockOf(product: Product) {
               <td class="px-4">
                 <NuxtLink
                   :to="`/produkte/${product.id}`"
-                  class="font-medium transition-colors group-hover:text-trd-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500 dark:group-hover:text-trd-400"
+                  class="font-medium transition-colors group-hover:text-ros-600 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ros-500 dark:group-hover:text-ros-400"
                 >
                   {{ product.name }}
                 </NuxtLink>

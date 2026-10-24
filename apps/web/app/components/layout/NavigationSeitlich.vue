@@ -57,10 +57,10 @@ function isActive(path: string): boolean {
   >
     <NuxtLink
       to="/"
-      class="mb-6 flex items-center gap-2 px-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trd-500"
+      class="mb-6 flex items-center gap-2 px-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ros-500"
     >
-      <span class="size-2.5 rounded-full bg-trd-500" aria-hidden="true" />
-      <span class="text-sm font-semibold tracking-tight">The Refined Decor</span>
+      <span class="size-2.5 rounded-full bg-ros-500" aria-hidden="true" />
+      <span class="text-sm font-semibold tracking-tight">Roslett</span>
     </NuxtLink>
 
     <div v-for="(section, i) in sections" :key="i" class="mb-5">
@@ -84,10 +84,10 @@ function isActive(path: string): boolean {
           <NuxtLink
             v-else
             :to="link.path"
-            class="flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500"
+            class="flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ros-500"
             :class="
               isActive(link.path)
-                ? 'bg-trd-50 font-medium text-trd-700 dark:bg-trd-950/50 dark:text-trd-300'
+                ? 'bg-ros-50 font-medium text-ros-700 dark:bg-ros-950/50 dark:text-ros-300'
                 : 'text-leinen-600 hover:bg-leinen-100 dark:text-leinen-400 dark:hover:bg-leinen-800/60'
             "
           >
@@ -100,7 +100,7 @@ function isActive(path: string): boolean {
 
     <button
       type="button"
-      class="mt-auto flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-leinen-500 transition-colors hover:bg-leinen-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-trd-500"
+      class="mt-auto flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-sm text-leinen-500 transition-colors hover:bg-leinen-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ros-500"
       @click="logout"
     >
       <UIcon name="i-lucide-log-out" class="size-4 shrink-0" />

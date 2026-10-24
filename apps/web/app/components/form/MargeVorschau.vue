@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoneyError, marginBeforeFees, parseMoney } from '@trd/core';
+import { MoneyError, marginBeforeFees, parseMoney } from '@roslett/core';
 
 /**
  * Live margin before fees while a gross price is typed: net price minus the
@@ -59,12 +59,12 @@ const range = (r: { min: number; max: number }, format: (v: number) => string) =
 const tone = computed(() => {
   const lowest = result.value?.rate.min ?? 0;
   if (lowest < 0) {
-    return { box: 'border-trderror-500 bg-trderror-200 text-trderror-800', iconColor: 'text-trderror-600', icon: 'i-lucide-circle-alert', label: 'Verlust' };
+    return { box: 'border-roserror-500 bg-roserror-200 text-roserror-800', iconColor: 'text-roserror-600', icon: 'i-lucide-circle-alert', label: 'Verlust' };
   }
   if (lowest < LOW_MARGIN) {
-    return { box: 'border-trdwarning-500 bg-trdwarning-200 text-trdwarning-800', iconColor: 'text-trdwarning-600', icon: 'i-lucide-triangle-alert', label: 'Knapp' };
+    return { box: 'border-roswarning-500 bg-roswarning-200 text-roswarning-800', iconColor: 'text-roswarning-600', icon: 'i-lucide-triangle-alert', label: 'Knapp' };
   }
-  return { box: 'border-trdsuccess-500 bg-trdsuccess-200 text-trdsuccess-800', iconColor: 'text-trdsuccess-600', icon: 'i-lucide-circle-check', label: 'Gut' };
+  return { box: 'border-rossuccess-500 bg-rossuccess-200 text-rossuccess-800', iconColor: 'text-rossuccess-600', icon: 'i-lucide-circle-check', label: 'Gut' };
 });
 </script>
 

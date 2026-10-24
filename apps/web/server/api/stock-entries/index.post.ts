@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { StockError, planIssue, planStocktake, type PlannedAllocation } from '@trd/core';
+import { StockError, planIssue, planStocktake, type PlannedAllocation } from '@roslett/core';
 import { schema, useDb } from '../../db/client.js';
 import { manualEntrySchema } from '../../../shared/schemas/stock-entry.js';
 import { readJsonBody, requireFound } from '../../utils/validation.js';

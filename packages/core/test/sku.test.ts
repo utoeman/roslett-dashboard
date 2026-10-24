@@ -4,18 +4,18 @@ import { SkuError, buildSku, buildVariantLabel, skuSize } from '../src/sku';
 describe('buildSku', () => {
   it('baut die volle SKU', () => {
     expect(buildSku({ categoryCode: 'KIS', productNumber: 12, colorCode: 'SAN', size: '45×45' })).toBe(
-      'TRD-KIS-0012-SAN-4545',
+      'ROS-KIS-0012-SAN-4545',
     );
   });
 
   it('laesst fehlende Farbe oder Groesse weg', () => {
-    expect(buildSku({ categoryCode: 'KRZ', productNumber: 3 })).toBe('TRD-KRZ-0003');
-    expect(buildSku({ categoryCode: 'KRZ', productNumber: 3, colorCode: 'NAT' })).toBe('TRD-KRZ-0003-NAT');
-    expect(buildSku({ categoryCode: 'VAS', productNumber: 7, size: 'Ø 20' })).toBe('TRD-VAS-0007-20');
+    expect(buildSku({ categoryCode: 'KRZ', productNumber: 3 })).toBe('ROS-KRZ-0003');
+    expect(buildSku({ categoryCode: 'KRZ', productNumber: 3, colorCode: 'NAT' })).toBe('ROS-KRZ-0003-NAT');
+    expect(buildSku({ categoryCode: 'VAS', productNumber: 7, size: 'Ø 20' })).toBe('ROS-VAS-0007-20');
   });
 
   it('normalisiert Kleinbuchstaben in Kuerzeln', () => {
-    expect(buildSku({ categoryCode: 'kis', productNumber: 1, colorCode: 'san' })).toBe('TRD-KIS-0001-SAN');
+    expect(buildSku({ categoryCode: 'kis', productNumber: 1, colorCode: 'san' })).toBe('ROS-KIS-0001-SAN');
   });
 
   it('lehnt ungueltige Kuerzel ab', () => {
@@ -24,7 +24,7 @@ describe('buildSku', () => {
   });
 
   it('verlangt eine Produktnummer von 1 bis 9999', () => {
-    expect(buildSku({ categoryCode: 'KIS', productNumber: 9999 })).toBe('TRD-KIS-9999');
+    expect(buildSku({ categoryCode: 'KIS', productNumber: 9999 })).toBe('ROS-KIS-9999');
     expect(() => buildSku({ categoryCode: 'KIS', productNumber: 0 })).toThrow(/Produktnummer/);
     expect(() => buildSku({ categoryCode: 'KIS', productNumber: 10000 })).toThrow(/Produktnummer/);
     expect(() => buildSku({ categoryCode: 'KIS', productNumber: 1.5 })).toThrow(/Produktnummer/);

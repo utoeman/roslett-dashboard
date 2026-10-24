@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoneyError, convertToEur, parseMoney } from '@trd/core';
+import { MoneyError, convertToEur, parseMoney } from '@roslett/core';
 import type { AdditionalCost, GoodsReceipt, List, Product, ReceiptPosition } from '~~/shared/types/api';
 
 const route = useRoute();
@@ -345,7 +345,7 @@ const positionBadge = (p: ReceiptPosition) =>
             </div>
 
             <form v-if="isDraft" @submit.prevent="savePositions">
-              <table class="trd-tabelle w-full min-w-[44rem] text-sm">
+              <table class="ros-tabelle w-full min-w-[44rem] text-sm">
                 <thead
                   class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
                 >
@@ -426,7 +426,7 @@ const positionBadge = (p: ReceiptPosition) =>
               </div>
             </form>
 
-            <table v-if="data.positions.length" class="trd-tabelle w-full min-w-[44rem] text-sm">
+            <table v-if="data.positions.length" class="ros-tabelle w-full min-w-[44rem] text-sm">
               <thead
                 class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
               >
@@ -443,7 +443,7 @@ const positionBadge = (p: ReceiptPosition) =>
               <tbody class="divide-y divide-leinen-200/60">
                 <tr v-for="p in data.positions" :key="p.id">
                   <td class="px-4">
-                    <NuxtLink :to="`/produkte/${p.variant.productId}`" class="hover:text-trd-600">
+                    <NuxtLink :to="`/produkte/${p.variant.productId}`" class="hover:text-ros-600">
                       {{ p.variant.productName }} {{ p.variant.label }}
                     </NuxtLink>
                     <div class="font-mono text-xs text-leinen-500">{{ p.variant.sku }}</div>
@@ -473,7 +473,7 @@ const positionBadge = (p: ReceiptPosition) =>
                 ändert sich dann rückwirkend. Einfuhrumsatzsteuer gehört nicht hierher.
               </p>
             </div>
-            <table v-if="data.additionalCosts.length" class="trd-tabelle w-full text-sm">
+            <table v-if="data.additionalCosts.length" class="ros-tabelle w-full text-sm">
               <tbody class="divide-y divide-leinen-200/60 border-t border-leinen-200/70">
                 <tr v-for="c in data.additionalCosts" :key="c.id">
                   <td class="px-4">{{ kindLabels[c.kind] }}</td>

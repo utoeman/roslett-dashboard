@@ -37,8 +37,8 @@ async function login() {
   <main class="flex min-h-screen items-center justify-center bg-leinen-100 px-6 text-leinen-900">
     <div class="w-full max-w-sm rounded-[12px] border border-leinen-200/70 bg-leinen-50 p-6">
       <div class="mb-6 flex items-center gap-2">
-        <span class="size-2.5 rounded-full bg-trd-500" aria-hidden="true" />
-        <h1 class="text-sm font-semibold tracking-tight">The Refined Decor</h1>
+        <span class="size-2.5 rounded-full bg-ros-500" aria-hidden="true" />
+        <h1 class="text-sm font-semibold tracking-tight">Roslett</h1>
       </div>
 
       <form class="space-y-4" @submit.prevent="login">

@@ -1,5 +1,5 @@
 import { desc, sql } from 'drizzle-orm';
-import { deliveryState } from '@trd/core';
+import { deliveryState } from '@roslett/core';
 import { schema, useDb } from '../../db/client.js';
 import { listQuerySchema } from '../../../shared/schemas/common.js';
 import { readQuery } from '../../utils/validation.js';

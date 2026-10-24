@@ -1,7 +1,7 @@
 /** Loading products and building variant rows with generated SKUs. */
 
 import { asc, eq, inArray } from 'drizzle-orm';
-import { SkuError, buildSku } from '@trd/core';
+import { SkuError, buildSku } from '@roslett/core';
 import type { useDb } from '../db/client.js';
 import { schema } from '../db/client.js';
 import type { CreateVariant } from '../../shared/schemas/product.js';

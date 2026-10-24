@@ -1,6 +1,6 @@
 # Changelog
 
-Alle Releases des TRD-Dashboards, neueste zuerst.
+Alle Releases des Roslett-Dashboards, neueste zuerst.
 
 ## v0.4.0 (2026-10-19)
 

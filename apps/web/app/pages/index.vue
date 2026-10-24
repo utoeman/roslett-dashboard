@@ -65,7 +65,7 @@ const tiles = computed(() => [
           v-for="tile in tiles"
           :key="tile.name"
           :to="tile.path"
-          class="group cursor-pointer rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 px-4 py-3 transition-colors hover:border-trd-300 hover:bg-trd-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trd-500 dark:border-leinen-800 dark:hover:border-trd-800 dark:hover:bg-trd-950/20"
+          class="group cursor-pointer rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 px-4 py-3 transition-colors hover:border-ros-300 hover:bg-ros-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ros-500 dark:border-leinen-800 dark:hover:border-ros-800 dark:hover:bg-ros-950/20"
           style="border-width: 0.5px"
         >
           <p class="text-xs uppercase tracking-wide text-leinen-500">{{ tile.name }}</p>
@@ -77,7 +77,7 @@ const tiles = computed(() => [
             <!-- The arrow signals that the tile is a link. -->
             <UIcon
               name="i-lucide-arrow-right"
-              class="size-4 text-leinen-300 transition-colors group-hover:text-trd-500 dark:text-leinen-700"
+              class="size-4 text-leinen-300 transition-colors group-hover:text-ros-500 dark:text-leinen-700"
               aria-hidden="true"
             />
           </div>

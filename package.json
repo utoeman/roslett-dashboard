@@ -1,5 +1,5 @@
 {
-  "name": "trd-dashboard",
+  "name": "roslett-dashboard",
   "private": true,
   "version": "0.4.0",
   "type": "module",
@@ -9,17 +9,17 @@
   ],
   "scripts": {
     "start": "bash scripts/start.sh",
-    "dev": "npm run dev --workspace @trd/web",
-    "build": "npm run build --workspace @trd/web",
+    "dev": "npm run dev --workspace @roslett/web",
+    "build": "npm run build --workspace @roslett/web",
     "lint": "eslint .",
     "passwort:hash": "node scripts/passwort-hash.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && npm run typecheck --workspace @trd/web",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && npm run typecheck --workspace @roslett/web",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:generate": "npm run db:generate --workspace @trd/web",
-    "db:migrate": "npm run db:migrate --workspace @trd/web",
+    "db:generate": "npm run db:generate --workspace @roslett/web",
+    "db:migrate": "npm run db:migrate --workspace @roslett/web",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.ts"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 /** Display formatting: cents and rates from the API, German notation. */
 
-import { MoneyError, parseMoney } from '@trd/core';
+import { MoneyError, parseMoney } from '@roslett/core';
 
 const moneyFormat = new Intl.NumberFormat('de-DE', {
   style: 'currency',

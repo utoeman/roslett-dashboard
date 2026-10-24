@@ -105,3 +105,58 @@ Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 | Paketmanager | **npm** (Workspaces) bleibt; Pläne werden korrigiert |
 | Betrieb | **Netlify + Neon** (zunächst Vercel geplant); Docker nur für die lokale DB |
 | CI | GitHub Actions (Lint, Typecheck, Tests) – wird ergänzt |
+
+## Schritt 9: Shopify-Spezifikation ↔ Ist-Stand (im Interview entschieden 25.10.2026)
+
+Grundlage: `roslett-dashboard-spezifikation.md` (Stand 24.10.2026), übernommen und angepasst
+als [shopify-integration.md](shopify-integration.md). Bei Widerspruch gilt diese Tabelle.
+
+| # | Punkt | Spezifikation | Entscheidung |
+|---|---|---|---|
+| A1 | SKU-Schema | `KH-LINA-4545-NAT`, „noch festzulegen“ | bleibt `ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}` (E15); Produktnummer statt Name, damit Umbenennen die SKU nicht entwertet |
+| A2 | Schlüssel | `sku` als Primärschlüssel | `uuid` bleibt Primärschlüssel, `sku` eindeutig und unveränderlich |
+| A3 | Wechselkurs | Zollwert-Kurs | bleibt EZB-Referenzkurs am Rechnungsdatum (Schritt 2); Zoll wird als Euro-Betrag aus dem Zollbescheid erfasst |
+| A4 | Etsy, Amazon | nur über Shopify (Sync-Apps) | **übernommen**: keine direkte Etsy-/Amazon-Anbindung; Etsy-IDs und Etsy-API-Gebühren entfallen, Gebühren pauschal je Kanal |
+| A5 | Mengenhoheit | Shopify besitzt die Bestandsmenge | **übernommen ab Shopify-Anbindung**; das Journal bleibt Wertgrundlage (FIFO), Mengen kommen aus Shopify-Bestellungen bzw. werden relativ gepusht. Bis dahin bleibt das Dashboard Master |
+| A6 | Preis je Kanal | ein Preis, kalkuliert auf den teuersten Kanal | deckt sich mit Schritt 4; `channel_prices` und `pricing_rule` entfallen weiterhin (im Schema noch vorhanden) |
+| A7 | MwSt | fest `/ 1.19` | Satz aus `vat_rates` (Lieferland + MwSt-Kategorie), je Position gespeichert (E12) |
+| A8 | Shop-Plattform | Shopify | **Shopify**; Projekt-`CLAUDE.md` angepasst |
+| A9 | Hosting | Hetzner CAX31 + Ploi | bleibt **Netlify + Neon** (Schritt 8, läuft); Webhooks als Netlify Function, nächtlicher Abgleich als Scheduled Function. Wechsel nur bei echtem Bedarf |
+| A10 | Wareneinsatz | „historisch fix“ | bleibt rückwirkend bis zum Monatsabschluss (E6), danach „Korrektur Vormonate“ (E7) – erfüllt dasselbe Ziel |
+| A11 | Geldformat | `NUMERIC(10,4)` | bleibt `NUMERIC(14,4)` wie im Code; E14 („Cent“) in `domain-model.md` ist veraltet |
+
+Lücken der Spezifikation:
+
+| # | Punkt | Entscheidung |
+|---|---|---|
+| B1 | Mengenabweichung im Abgleich | Prüfliste mit Vorschlag (Inventur: Plus → neueste Charge, Minus → FIFO), Buchung per Klick mit Notiz |
+| B2 | Verkauf ohne passende Charge | wird gebucht, Warnung; nächster Zugang ordnet zu (E8) |
+| B3 | Erstattung ohne Wiedereinlagerung | nur Erlös mindern, keine Bestandsbuchung; Wareneinsatz bleibt als Retourenverlust |
+| B4 | Storno, Bestelländerung | werden mit abgerufen (`reversal` bzw. Positionsabgleich) |
+| B6 | Änderung eines Dashboard-Felds in Shopify | Warnung „in Shopify geändert“, nächster Push (mit Vorschau) überschreibt |
+| B7 | Einstandspreis-Push | gewichteter Durchschnitt offener Chargen; nach jedem Wareneingang und nächtlich für geänderte Varianten |
+| B8 | Einfuhrumsatzsteuer | Info-Feld am Wareneingang, nicht im Einstand |
+| B9 | Unbekannte Bestellquelle | wird gebucht, Kanal leer, Warnung; Zuordnung in den Einstellungen, Gebühren danach nachgerechnet |
+| B10 | Zugang nach Shopify | per Klick mit Vorschau (`+Menge`, relativ), vorgezogen in Stufe 2 |
+
+Recht (Grundlage: Erkenntnisse RA Croon, 24.10.2026):
+
+| # | Punkt | Entscheidung |
+|---|---|---|
+| C1/C2 | Herstellerangaben | Roslett ist Quasi-Herstellerin (eigene Marke): **einmal zentral** in den Einstellungen (Name, ladungsfähige Geschäftsadresse, E-Mail); keine Lieferanten- oder Einführer-Felder |
+| C3 | Kennung auf dem Etikett | SKU als Artikelnummer |
+| C4 | Kundendaten | werden nicht gespeichert; Bestelldaten sofort auf Nummer, Datum, Lieferland, Positionen, Beträge gekürzt |
+| C5 | Faserzusammensetzung | an der Variante, bis zu zwei Teile („Faser“, optional „Faser Füllung“) |
+| C6 | Eigenfertigung | Ware kommt gemischt (Zukauf und Eigenfertigung). Neuer Beleg-Typ **Produktion** wie Wareneingang: Menge je Variante, Kosten Stoff, Nählohn, Zubehör, Fracht, Zoll; Verteilung und FIFO wie bisher. Kein Stofflager. Wird **vor** der Shopify-Anbindung gebaut |
+| C7 | Pflicht-Unterlagen (Prüfberichte, Risikoanalyse, Beschwerden) | später, nicht im Dashboard bis auf Weiteres |
+| C8 | Absatzgebiet | ganze EU ab Start; Dashboard pflegt Pflichttexte nur auf Deutsch, Übersetzungen in Shopify; OSS mit Steuerberatung klären |
+
+Umsetzung:
+
+| # | Punkt | Entscheidung |
+|---|---|---|
+| D1 | Abruf in Stufe 1 | Polling alle 15 Minuten (Scheduled Function) + Button „Jetzt abrufen“; Webhooks ab Stufe 2 |
+| D2 | Entwicklung | gegen einen Shopify Development Store |
+| D3 | Echter Shop | noch nicht angelegt |
+| D4 | Erstimport | ab Anbindung, keine Altbestellungen |
+| D5 | Erstanlage der Produkte | CSV-Export im Shopify-Format aus dem Dashboard |

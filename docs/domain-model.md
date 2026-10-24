@@ -28,7 +28,7 @@ Tabellen- und Spaltennamen sind englisch (Code-Konvention), Erklärungen deutsch
 | E11 | **Versand je Bestellung**: Versanderlös (0 ab Grenzwert) und Porto (Standard je Kanal, überschreibbar); anteilig nach Warenwert auf Positionen | Versandkostenfrei ab Warenwert je Kanal |
 | E12 | **EU-Ausland**: Lieferland am Verkauf, MwSt-Satz je Position gespeichert (aus Lieferland + MwSt-Kategorie) | Netto-VK und Marge je Zielland korrekt |
 | E13 | **SKU automatisch erzeugt**, danach nie änderbar; in Etsy nachgetragen | Etsy-Varianten haben noch keine SKUs; stabile Zuordnung |
-| E14 | Geld intern als **ganzzahlige Cent**, Umrechnung nur an der Systemgrenze | Keine Fließkomma-Rundungsfehler |
+| E14 | Geld als **`NUMERIC(14,4)`** (exakte Dezimalzahl, nie Fließkomma), gerundet erst bei der Anzeige | Keine Fließkomma-Rundungsfehler |
 | E15 | SKU-Schema `ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, z. B. `ROS-KIS-0012-SAN-4545` | Im Lager lesbar |
 | E16 | Monatsabschluss **manuell** per Button | Erst wenn alle Belege erfasst sind |
 | E17 | **Kalkulation netto**; Marge und Aufschlag immer getrennt; Einfuhrumsatzsteuer nie im Einstand, Zoll schon | Regelbesteuert, EUSt ist Vorsteuer |

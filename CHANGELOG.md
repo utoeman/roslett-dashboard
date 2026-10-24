@@ -2,6 +2,10 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.4.1 (2026-10-24)
+
+Keine nennenswerten Änderungen.
+
 ## v0.4.0 (2026-10-19)
 
 ### Neu
@@ -43,5 +47,6 @@ Alle Releases des Roslett-Dashboards, neueste zuerst.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 

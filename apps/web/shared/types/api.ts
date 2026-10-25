@@ -44,6 +44,11 @@ export interface Variant {
   /** Cents; null means the product's base price applies. */
   priceGross: number | null;
   minimumStock: number;
+  fiber: string | null;
+  fiberFilling: string | null;
+  /** ISO 3166 alpha-2. */
+  originCountry: string | null;
+  hsCode: string | null;
   archivedAt: string | null;
   /** Only in product responses; derived from the journal. */
   inventory?: VariantInventory;
@@ -74,9 +79,18 @@ export interface Product {
   /** Cents. */
   basePriceGross: number | null;
   vatCategory: VatCategory;
+  careNotes: string | null;
+  safetyNotes: string | null;
   archivedAt: string | null;
   createdAt: string;
   variants: Variant[];
+}
+
+export interface CompanySettings {
+  manufacturerName: string;
+  manufacturerAddress: string;
+  manufacturerEmail: string;
+  updatedAt: string;
 }
 
 export interface CostItem {

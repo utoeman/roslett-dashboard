@@ -110,7 +110,7 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 |---|---|
 | Übersicht | Lagerwert (FIFO), Stück am Lager, Varianten unter Mindestbestand, Anzahl der Stammdaten |
 | Produkte | Liste mit Suche über Name und SKU, Bestand und Lagerwert, Hinweis unter Mindestbestand; Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
-| Produkt-Detail | Stammdaten bearbeiten, Varianten anlegen und archivieren; je Variante Bestand, Ø Einstand, Lagerwert und Marge vor Gebühren; beim Preis eintippen live die Marge; geltende Kostenpositionen |
+| Produkt-Detail | Stammdaten mit Pflege- und Sicherheitshinweisen bearbeiten, Varianten anlegen und archivieren, je Variante Faser, Herkunft und HS-Code; je Variante Bestand, Ø Einstand, Lagerwert und Marge vor Gebühren; beim Preis eintippen live die Marge; geltende Kostenpositionen |
 | Wareneingang | Liste der Lieferantenrechnungen und Produktionen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
 | Wareneingang-Detail | Positionen im Entwurf, Nebenkosten (auch nachträglich), Einstand je Stück, Zugang buchen inkl. Teillieferung |
 | Bestandsjournal | Alle Buchungen mit Filter (Variante, Art, Zeitraum, offene Fehlmengen); Schwund, Eigenverbrauch, Inventur und Rückgabe an Lieferant erfassen; Storno |
@@ -119,6 +119,7 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Kanäle | Anlegen, Gebühren pflegen, aktiv schalten |
 | Kategorien, Farben | SKU-Kürzel anlegen, umbenennen, archivieren; verwendete Kürzel sind gesperrt |
 | MwSt-Sätze | Sätze je Land und Kategorie mit Gültig-ab; der aktuell gültige ist markiert |
+| Hersteller | Herstellerangaben (Name, Geschäftsadresse, E-Mail) für Etikett und Shop |
 
 Verkäufe sind in der Navigation als „folgt" gekennzeichnet.
 
@@ -142,6 +143,7 @@ relative Pfade an.
 | `GET POST /api/categories`, `PATCH /api/categories/:id` | Kategorie-Kürzel; Kürzel fest, sobald verwendet |
 | `GET POST /api/colors`, `PATCH /api/colors/:id` | Farb-Kürzel; Kürzel fest, sobald verwendet |
 | `GET POST /api/vat-rates`, `PATCH /api/vat-rates/:id` | MwSt-Sätze je Lieferland, Kategorie und Gültig-ab |
+| `GET PUT /api/company-settings` | Herstellerangaben (eine Zeile) |
 | `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten (mit Standard-Währung) |
 | `GET POST /api/goods-receipts`, `GET PATCH /api/goods-receipts/:id` | Wareneingänge (Lieferantenrechnungen); ändern nur als Entwurf |
 | `POST /api/goods-receipts/:id/costs` | Nebenkosten oder Gutschrift, auch nach dem Buchen; Einstand wirkt rückwirkend |

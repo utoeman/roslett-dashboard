@@ -24,7 +24,11 @@ const form = reactive({
   description: '',
   basePriceGross: '',
   vatCategory: 'standard' as 'standard' | 'reduced',
+  careNotes: '',
+  safetyNotes: '',
 });
+// Fiber labelling only applies to textiles; origin and HS code to everything.
+const isTextile = computed(() => data.value?.category.group === 'textile');
 const vatOptions = [
   { label: 'Normal', value: 'standard' },
   { label: 'Ermäßigt', value: 'reduced' },
@@ -37,6 +41,8 @@ watchEffect(() => {
     form.description = data.value.description ?? '';
     form.basePriceGross = toInput(data.value.basePriceGross);
     form.vatCategory = data.value.vatCategory;
+    form.careNotes = data.value.careNotes ?? '';
+    form.safetyNotes = data.value.safetyNotes ?? '';
   }
 });
 
@@ -52,6 +58,8 @@ async function saveProduct() {
         description: form.description || null,
         basePriceGross: form.basePriceGross || null,
         vatCategory: form.vatCategory,
+        careNotes: form.careNotes,
+        safetyNotes: form.safetyNotes,
       },
     });
     editing.value = false;
@@ -87,6 +95,10 @@ const variantForm = reactive({
   size: '',
   priceGross: '',
   minimumStock: 0,
+  fiber: '',
+  fiberFilling: '',
+  originCountry: '',
+  hsCode: '',
 });
 
 function openVariantDialog(variant?: Variant) {
@@ -97,6 +109,10 @@ function openVariantDialog(variant?: Variant) {
   variantForm.size = '';
   variantForm.priceGross = variant ? toInput(variant.priceGross) : '';
   variantForm.minimumStock = variant?.minimumStock ?? 0;
+  variantForm.fiber = variant?.fiber ?? '';
+  variantForm.fiberFilling = variant?.fiberFilling ?? '';
+  variantForm.originCountry = variant?.originCountry ?? '';
+  variantForm.hsCode = variant?.hsCode ?? '';
   variantDialog.value = true;
 }
 
@@ -107,6 +123,10 @@ async function saveVariant() {
   const common = {
     priceGross: variantForm.priceGross || null,
     minimumStock: variantForm.minimumStock,
+    fiber: variantForm.fiber,
+    fiberFilling: variantForm.fiberFilling,
+    originCountry: variantForm.originCountry,
+    hsCode: variantForm.hsCode,
   };
   try {
     await $fetch(`/api/products/${id.value}`, {
@@ -241,6 +261,14 @@ const archivedVariants = computed(
             <UFormField label="Beschreibung">
               <UTextarea v-model="form.description" :rows="3" class="w-full" />
             </UFormField>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <UFormField label="Pflegehinweise" :error="fieldErrors.careNotes" help="Für die Verpackung, auf Deutsch.">
+                <UTextarea v-model="form.careNotes" :rows="3" class="w-full" />
+              </UFormField>
+              <UFormField label="Sicherheitshinweise" :error="fieldErrors.safetyNotes" help="Nur wenn nötig.">
+                <UTextarea v-model="form.safetyNotes" :rows="3" class="w-full" />
+              </UFormField>
+            </div>
             <div class="flex justify-end gap-2">
               <UButton
                 color="neutral"
@@ -280,6 +308,14 @@ const archivedVariants = computed(
             <div class="sm:col-span-2">
               <dt class="text-xs text-leinen-500">Beschreibung</dt>
               <dd>{{ data.description ?? '–' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-leinen-500">Pflegehinweise</dt>
+              <dd class="whitespace-pre-line">{{ data.careNotes ?? '–' }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-leinen-500">Sicherheitshinweise</dt>
+              <dd class="whitespace-pre-line">{{ data.safetyNotes ?? '–' }}</dd>
             </div>
           </dl>
         </section>
@@ -326,7 +362,12 @@ const archivedVariants = computed(
             <tbody class="divide-y divide-leinen-200/60 dark:divide-leinen-800/70">
               <tr v-for="variant in activeVariants" :key="variant.id">
                 <td class="px-4 font-mono text-xs">{{ variant.sku }}</td>
-                <td class="px-4">{{ variant.label }}</td>
+                <td class="px-4">
+                  {{ variant.label }}
+                  <div v-if="variant.fiber" class="text-xs text-leinen-500">
+                    {{ variant.fiber }}<template v-if="variant.fiberFilling"> · Füllung {{ variant.fiberFilling }}</template>
+                  </div>
+                </td>
                 <td class="zahl px-4">
                   {{ formatMoney(variant.priceGross ?? data.basePriceGross) }}
                   <span v-if="variant.priceGross === null" class="text-xs text-leinen-400">(Basis)</span>
@@ -574,6 +615,26 @@ const archivedVariants = computed(
                 class="w-full"
               />
             </UFormField>
+            <div v-if="isTextile" class="grid gap-4 sm:grid-cols-2">
+              <UFormField label="Faser" :error="fieldErrors.fiber" help="Zum Beispiel 100 % Leinen">
+                <UInput v-model="variantForm.fiber" class="w-full" />
+              </UFormField>
+              <UFormField
+                label="Faser Füllung"
+                :error="fieldErrors.fiberFilling"
+                help="Nur bei gefüllten Teilen mit getrennter Angabe."
+              >
+                <UInput v-model="variantForm.fiberFilling" class="w-full" />
+              </UFormField>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <UFormField label="Herkunftsland" :error="fieldErrors.originCountry" help="Ländercode, zum Beispiel TR">
+                <UInput v-model="variantForm.originCountry" maxlength="2" class="w-full font-mono uppercase" />
+              </UFormField>
+              <UFormField label="HS-Code" :error="fieldErrors.hsCode" help="Zolltarifnummer, zum Beispiel 6304 92 00">
+                <UInput v-model="variantForm.hsCode" class="w-full font-mono" />
+              </UFormField>
+            </div>
             <div class="flex justify-end gap-2 pt-2">
               <UButton
                 color="neutral"

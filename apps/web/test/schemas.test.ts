@@ -10,7 +10,13 @@ import {
   requiredText,
   percentSchema,
 } from '../shared/schemas/common.js';
-import { createProductSchema, updateProductSchema, updateVariantSchema } from '../shared/schemas/product.js';
+import {
+  createProductSchema,
+  createVariantSchema,
+  updateProductSchema,
+  updateVariantSchema,
+} from '../shared/schemas/product.js';
+import { companySettingsSchema } from '../shared/schemas/company.js';
 import { createCategorySchema, createVatRateSchema } from '../shared/schemas/master-data.js';
 import {
   updateCostItemSchema,
@@ -351,6 +357,52 @@ describe('createProductSchema', () => {
     expect('categoryId' in updateProductSchema.parse({ categoryId })).toBe(false);
     const v = updateVariantSchema.parse({ id: categoryId, size: 'XL', colorId: categoryId });
     expect('size' in v || 'colorId' in v).toBe(false);
+  });
+
+  it('nimmt Pflege- und Sicherheitshinweise am Produkt', () => {
+    const e = updateProductSchema.parse({ careNotes: ' 30 °C Schonwaschgang ', safetyNotes: '' });
+    expect(e.careNotes).toBe('30 °C Schonwaschgang');
+    expect(e.safetyNotes).toBeNull();
+  });
+});
+
+describe('Textilangaben an der Variante', () => {
+  const id = '0b0f6d0e-6a3b-4f1e-9a5c-2d7e8f9a0b1c';
+
+  it('nimmt Faser, Füllung, Herkunft und HS-Code beim Anlegen und Ändern', () => {
+    const input = { fiber: '100 % Leinen', fiberFilling: '100 % Polyester', originCountry: 'tr', hsCode: '6304 92 00' };
+    expect(createVariantSchema.parse({ size: '50×50', ...input })).toMatchObject({
+      fiber: '100 % Leinen',
+      fiberFilling: '100 % Polyester',
+      originCountry: 'TR',
+      hsCode: '63049200',
+    });
+    expect(updateVariantSchema.parse({ id, ...input }).hsCode).toBe('63049200');
+  });
+
+  it('macht leere Angaben zu null', () => {
+    const v = updateVariantSchema.parse({ id, fiber: '', fiberFilling: '', originCountry: '', hsCode: '' });
+    expect(v).toMatchObject({ fiber: null, fiberFilling: null, originCountry: null, hsCode: null });
+  });
+
+  it('lehnt falsche Ländercodes und HS-Codes ab', () => {
+    expect(updateVariantSchema.safeParse({ id, originCountry: 'TUR' }).success).toBe(false);
+    expect(updateVariantSchema.safeParse({ id, hsCode: '6304' }).success).toBe(false);
+    expect(updateVariantSchema.safeParse({ id, hsCode: '6304AB00' }).success).toBe(false);
+  });
+});
+
+describe('companySettingsSchema – Herstellerangaben', () => {
+  const valid = { manufacturerName: 'Roslett', manufacturerAddress: 'Musterstraße 1\n10115 Berlin', manufacturerEmail: 'info@example.com' };
+
+  it('nimmt vollständige Angaben', () => {
+    expect(companySettingsSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('verlangt Name, Adresse und eine gültige E-Mail', () => {
+    expect(companySettingsSchema.safeParse({ ...valid, manufacturerName: '' }).success).toBe(false);
+    expect(companySettingsSchema.safeParse({ ...valid, manufacturerAddress: ' ' }).success).toBe(false);
+    expect(companySettingsSchema.safeParse({ ...valid, manufacturerEmail: 'keine-mail' }).success).toBe(false);
   });
 });
 

@@ -36,6 +36,13 @@
       "when": 1792941519220,
       "tag": "0004_produktion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792943011856,
+      "tag": "0005_hersteller_textil",
+      "breakpoints": true
     }
   ]
 }

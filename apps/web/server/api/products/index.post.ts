@@ -35,6 +35,8 @@ export default defineEventHandler(async (event) => {
           categoryId: category.id,
           basePriceGross: centsToNumeric(input.basePriceGross ?? null),
           vatCategory: input.vatCategory,
+          careNotes: input.careNotes ?? null,
+          safetyNotes: input.safetyNotes ?? null,
         })
         .returning({ id: schema.products.id, number: schema.products.number });
       const saved = requireFound(created, 'Das Produkt');

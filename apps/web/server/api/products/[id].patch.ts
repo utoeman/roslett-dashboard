@@ -43,6 +43,8 @@ export default defineEventHandler(async (event) => {
   if (fields.description !== undefined) productChanges.description = fields.description;
   if (fields.basePriceGross !== undefined) productChanges.basePriceGross = centsToNumeric(fields.basePriceGross);
   if (fields.vatCategory !== undefined) productChanges.vatCategory = fields.vatCategory;
+  if (fields.careNotes !== undefined) productChanges.careNotes = fields.careNotes;
+  if (fields.safetyNotes !== undefined) productChanges.safetyNotes = fields.safetyNotes;
   if (fields.archivedAt !== undefined) productChanges.archivedAt = fields.archivedAt;
 
   try {
@@ -70,6 +72,9 @@ export default defineEventHandler(async (event) => {
         if (variant.priceGross !== undefined) changes.priceGross = centsToNumeric(variant.priceGross);
         if (variant.minimumStock !== undefined) changes.minimumStock = variant.minimumStock;
         if (variant.archivedAt !== undefined) changes.archivedAt = variant.archivedAt;
+        for (const key of ['fiber', 'fiberFilling', 'originCountry', 'hsCode'] as const) {
+          if (variant[key] !== undefined) changes[key] = variant[key];
+        }
         if (Object.keys(changes).length > 0) {
           await tx.update(schema.variants).set(changes).where(eq(schema.variants.id, variant.id));
         }

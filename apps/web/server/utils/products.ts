@@ -78,6 +78,10 @@ export async function buildVariantRows(
       sku,
       priceGross: centsToNumeric(variant.priceGross ?? null),
       minimumStock: variant.minimumStock ?? 0,
+      fiber: variant.fiber ?? null,
+      fiberFilling: variant.fiberFilling ?? null,
+      originCountry: variant.originCountry ?? null,
+      hsCode: variant.hsCode ?? null,
     };
   });
 }

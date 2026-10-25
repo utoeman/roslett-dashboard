@@ -13,18 +13,52 @@ const minimumStockSchema = z.coerce
   .int({ message: 'Mindestbestand muss eine ganze Zahl sein.' })
   .min(0, { message: 'Mindestbestand darf nicht negativ sein.' });
 
+/** ISO 3166 code, e.g. "TR"; empty becomes null. */
+const originCountrySchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .transform((v) => (v === '' ? null : v))
+  .refine((v) => v === null || /^[A-Z]{2}$/.test(v), {
+    message: 'Herkunftsland muss ein zweistelliger Ländercode sein, etwa TR.',
+  })
+  .nullable()
+  .optional();
+
+/** Customs tariff number: 6 (HS) to 10 (TARIC) digits; spaces and dots are dropped. */
+const hsCodeSchema = z
+  .string()
+  .transform((v) => v.replace(/[\s.]/g, ''))
+  .transform((v) => (v === '' ? null : v))
+  .refine((v) => v === null || /^\d{6,10}$/.test(v), {
+    message: 'HS-Code muss aus 6 bis 10 Ziffern bestehen, etwa 6304 92 00.',
+  })
+  .nullable()
+  .optional();
+
+/** Textile labelling and customs data; changeable, unlike color and size. */
+const textileFields = {
+  fiber: optionalText(200),
+  /** Only for filled items whose cover and filling are labelled separately. */
+  fiberFilling: optionalText(200),
+  originCountry: originCountrySchema,
+  hsCode: hsCodeSchema,
+};
+
 export const createVariantSchema = z.object({
   colorId: uuidSchema.nullable().optional(),
   size: optionalText(30),
   /** Gross price in cents; empty means the product's base price applies. */
   priceGross: moneySchema('Preis').nullable().optional(),
   minimumStock: minimumStockSchema.default(0),
+  ...textileFields,
 });
 
 export const updateVariantSchema = z.object({
   id: uuidSchema,
   priceGross: moneySchema('Preis').nullable().optional(),
   minimumStock: minimumStockSchema.optional(),
+  ...textileFields,
   /** A timestamp archives, null restores. */
   archivedAt: z.coerce.date().nullable().optional(),
 });
@@ -35,6 +69,8 @@ export const createProductSchema = z.object({
   categoryId: uuidSchema,
   basePriceGross: moneySchema('Basispreis').nullable().optional(),
   vatCategory: vatCategorySchema.default('standard'),
+  careNotes: optionalText(),
+  safetyNotes: optionalText(),
   /** Without variants the API creates a default one. */
   variants: z.array(createVariantSchema).optional(),
 });
@@ -45,6 +81,9 @@ export const updateProductSchema = z.object({
   description: optionalText(),
   basePriceGross: moneySchema('Basispreis').nullable().optional(),
   vatCategory: vatCategorySchema.optional(),
+  /** Printed on the packaging (care and safety instructions). */
+  careNotes: optionalText(),
+  safetyNotes: optionalText(),
   archivedAt: z.coerce.date().nullable().optional(),
 });
 

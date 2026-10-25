@@ -6,9 +6,10 @@
  * - Stock is not a column; it is derived from the stock journal.
  */
 
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -125,6 +126,9 @@ export const products = pgTable('products', {
   /** Gross sales price for all variants and channels. */
   basePriceGross: money('base_price_gross'),
   vatCategory: vatCategoryEnum('vat_category').notNull().default('standard'),
+  /** Printed on the packaging, German only (translations live in Shopify). */
+  careNotes: text('care_notes'),
+  safetyNotes: text('safety_notes'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
@@ -147,6 +151,13 @@ export const variants = pgTable(
     /** Overrides the product's base price when set. */
     priceGross: money('price_gross'),
     minimumStock: integer('minimum_stock').notNull().default(0),
+    /** Textile labelling, e.g. "100 % Leinen"; filling only when labelled separately. */
+    fiber: text('fiber'),
+    fiberFilling: text('fiber_filling'),
+    /** ISO 3166 alpha-2. */
+    originCountry: text('origin_country'),
+    /** Customs tariff number, 6 to 10 digits. */
+    hsCode: text('hs_code'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt,
   },
@@ -167,6 +178,19 @@ export const suppliers = pgTable('suppliers', {
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
+
+/** Single row (id 1): Roslett's manufacturer details for labels and Shopify. */
+export const companySettings = pgTable(
+  'company_settings',
+  {
+    id: integer('id').primaryKey().default(1),
+    manufacturerName: text('manufacturer_name').notNull(),
+    manufacturerAddress: text('manufacturer_address').notNull(),
+    manufacturerEmail: text('manufacturer_email').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check('company_settings_single_row', sql`${t.id} = 1`)],
+);
 
 // ---------------------------------------------------------------------------
 // Goods receipt

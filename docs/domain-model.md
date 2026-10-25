@@ -74,6 +74,7 @@ Start: SAN Sand, OLI Olive, NAT Natur, TER Terrakotta, STR Streifen, FEI Feige.
 | category_id | → categories | nach Anlage der ersten Variante nicht mehr änderbar (SKU) |
 | base_price_gross | Geld | Basis-VK brutto für alle Varianten und Kanäle |
 | vat_category | enum `standard`, `reduced` | |
+| care_notes, safety_notes | text, optional | Pflege- und Sicherheitshinweise für die Verpackung, nur Deutsch (C8) |
 | archived_at, created_at | timestamp | |
 
 **variants** – jedes Produkt hat mindestens eine Variante
@@ -85,9 +86,22 @@ Start: SAN Sand, OLI Olive, NAT Natur, TER Terrakotta, STR Streifen, FEI Feige.
 | sku | text, eindeutig | automatisch erzeugt, nie änderbar (E13, E15) |
 | price_gross | Geld, optional | Abweichung vom Basis-VK |
 | minimum_stock | int | Nachbestell-Hinweis, Standard 0 |
+| fiber | text, optional | Faserzusammensetzung, z. B. „100 % Leinen“ (C5) |
+| fiber_filling | text, optional | nur bei gefüllten Teilen mit getrennter Angabe (C5) |
+| origin_country | char(2), optional | Herkunftsland (ISO 3166), Zoll und Marktplätze |
+| hs_code | text, optional | Zolltarifnummer, 6–10 Ziffern ohne Leerzeichen |
 | archived_at, created_at | timestamp | Archivieren nur bei Bestand 0 |
 
 Eindeutig: `product_id + color_id + size`. Der Anzeigename wird aus Farbe und Größe gebildet.
+Faser, Herkunft und HS-Code bleiben änderbar; Farbe und Größe nicht (SKU).
+
+**company_settings** – genau eine Zeile (`id = 1`, per CHECK erzwungen)
+| Spalte | Typ | Hinweis |
+|---|---|---|
+| manufacturer_name | text | Roslett als Quasi-Herstellerin (C1/C2) |
+| manufacturer_address | text | ladungsfähige Geschäftsadresse, keine Privatadresse |
+| manufacturer_email | text | |
+| updated_at | timestamp | |
 
 **vat_rates**
 | Spalte | Typ | Hinweis |

@@ -11,6 +11,10 @@ type VariantRow = {
   size: string | null;
   priceGross: string | null;
   minimumStock: number;
+  fiber: string | null;
+  fiberFilling: string | null;
+  originCountry: string | null;
+  hsCode: string | null;
   archivedAt: Date | null;
   color: ColorRef | null;
 };
@@ -24,6 +28,10 @@ export function mapVariant(row: VariantRow) {
     label: buildVariantLabel(row.color?.name, row.size),
     priceGross: numericToCents(row.priceGross),
     minimumStock: row.minimumStock,
+    fiber: row.fiber,
+    fiberFilling: row.fiberFilling,
+    originCountry: row.originCountry,
+    hsCode: row.hsCode,
     archivedAt: row.archivedAt,
   };
 }
@@ -35,6 +43,8 @@ type ProductRow = {
   description: string | null;
   basePriceGross: string | null;
   vatCategory: 'standard' | 'reduced';
+  careNotes: string | null;
+  safetyNotes: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   category: { id: string; code: string; name: string; group: 'textile' | 'decor' };
@@ -55,6 +65,8 @@ export function mapProduct(row: ProductRow) {
     },
     basePriceGross: numericToCents(row.basePriceGross),
     vatCategory: row.vatCategory,
+    careNotes: row.careNotes,
+    safetyNotes: row.safetyNotes,
     archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     variants: row.variants.map(mapVariant),

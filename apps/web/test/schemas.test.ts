@@ -21,6 +21,7 @@ import {
   createChannelSchema,
 } from '../shared/schemas/channel.js';
 import { journalQuerySchema } from '../shared/schemas/stock-entry.js';
+import { additionalCostSchema, createReceiptSchema } from '../shared/schemas/goods-receipt.js';
 import {
   centsToNumeric,
   numericToCents,
@@ -409,5 +410,25 @@ describe('currencyCodeSchema – nur Waehrungen mit EZB-Kurs', () => {
     const result = currencyCodeSchema.safeParse('TRL');
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.issues[0]?.message).toBe('Diese Währung wird nicht unterstützt.');
+  });
+});
+
+describe('createReceiptSchema – Art des Belegs', () => {
+  const base = { supplierId: '00000000-0000-4000-8000-000000000001', invoiceDate: '2026-10-25' };
+
+  it('ist ohne Angabe ein Zukauf', () => {
+    expect(createReceiptSchema.parse(base).kind).toBe('purchase');
+  });
+
+  it('nimmt Produktion an und lehnt Unbekanntes ab', () => {
+    expect(createReceiptSchema.parse({ ...base, kind: 'production' }).kind).toBe('production');
+    expect(createReceiptSchema.safeParse({ ...base, kind: 'gift' }).success).toBe(false);
+  });
+});
+
+describe('additionalCostSchema – Kostenarten', () => {
+  it('kennt Stoff und Zubehör für die Produktion', () => {
+    expect(additionalCostSchema.parse({ kind: 'fabric', amount: '120,50' }).amount).toBe(12050);
+    expect(additionalCostSchema.parse({ kind: 'accessories', amount: '8' }).kind).toBe('accessories');
   });
 });

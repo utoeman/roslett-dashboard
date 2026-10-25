@@ -7,6 +7,7 @@ import {
   planShortfallResolution,
   planStocktake,
   receiptNumber,
+  receiptPrefix,
   valueStock,
 } from '../src/stock';
 
@@ -121,6 +122,18 @@ describe('receiptNumber', () => {
   it('bildet WE-Jahr-laufende Nummer', () => {
     expect(receiptNumber(2026, 14)).toBe('WE-2026-014');
     expect(receiptNumber(2026, 1234)).toBe('WE-2026-1234');
+  });
+
+  it('bildet für Produktion PR-Jahr-laufende Nummer', () => {
+    expect(receiptNumber(2026, 3, 'production')).toBe('PR-2026-003');
+    expect(receiptNumber(2026, 3, 'purchase')).toBe('WE-2026-003');
+  });
+});
+
+describe('receiptPrefix', () => {
+  it('liefert das Präfix je Art', () => {
+    expect(receiptPrefix('purchase')).toBe('WE');
+    expect(receiptPrefix('production')).toBe('PR');
   });
 });
 

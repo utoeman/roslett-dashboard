@@ -265,6 +265,7 @@ export async function loadReceipt(db: Reader, id: string) {
 
   return {
     id: receipt.id,
+    kind: receipt.kind,
     number: receipt.number,
     supplier: receipt.supplier,
     invoiceNumber: receipt.invoiceNumber,

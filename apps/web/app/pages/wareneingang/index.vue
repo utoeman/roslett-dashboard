@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GoodsReceipt, GoodsReceiptListItem, List, Supplier } from '~~/shared/types/api';
+import type { GoodsReceipt, GoodsReceiptListItem, List, ReceiptKind, Supplier } from '~~/shared/types/api';
 
 useHead({ title: 'Wareneingang' });
 
@@ -17,6 +17,7 @@ const saving = ref(false);
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 const form = reactive({
+  kind: 'purchase' as ReceiptKind,
   supplierId: undefined as string | undefined,
   invoiceNumber: '',
   invoiceDate: today(),
@@ -33,10 +34,12 @@ watch(
   },
 );
 
-function openDialog() {
+const isProduction = computed(() => form.kind === 'production');
+
+function openDialog(kind: ReceiptKind = 'purchase') {
   message.value = null;
   fieldErrors.value = {};
-  Object.assign(form, { supplierId: undefined, invoiceNumber: '', invoiceDate: today(), currency: '', exchangeRate: '' });
+  Object.assign(form, { kind, supplierId: undefined, invoiceNumber: '', invoiceDate: today(), currency: '', exchangeRate: '' });
   dialogOpen.value = true;
 }
 
@@ -48,6 +51,7 @@ async function create() {
     const created = await $fetch<GoodsReceipt>('/api/goods-receipts', {
       method: 'POST',
       body: {
+        kind: form.kind,
         supplierId: form.supplierId,
         invoiceNumber: form.invoiceNumber || null,
         invoiceDate: form.invoiceDate,
@@ -82,9 +86,15 @@ function openRow(id: string, event: MouseEvent) {
 
 <template>
   <div>
-    <SeitenKopf titel="Wareneingang" hinweis="Lieferantenrechnungen mit Positionen, Nebenkosten und Zugängen.">
+    <SeitenKopf
+      titel="Wareneingang"
+      hinweis="Lieferantenrechnungen und eigene Produktion mit Positionen, Nebenkosten und Zugängen."
+    >
       <template #aktionen>
-        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog">
+        <UButton icon="i-lucide-scissors" size="sm" variant="outline" class="rounded-[8px]" @click="openDialog('production')">
+          Produktion anlegen
+        </UButton>
+        <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog()">
           Wareneingang anlegen
         </UButton>
       </template>
@@ -110,7 +120,7 @@ function openRow(id: string, event: MouseEvent) {
       >
         <p class="text-sm font-medium">Noch kein Wareneingang erfasst.</p>
         <p class="mt-1 text-sm text-leinen-500">Erfassen Sie die erste Lieferantenrechnung mit ihren Positionen.</p>
-        <UButton icon="i-lucide-plus" size="sm" class="mt-4 rounded-[8px]" @click="openDialog">
+        <UButton icon="i-lucide-plus" size="sm" class="mt-4 rounded-[8px]" @click="openDialog()">
           Wareneingang anlegen
         </UButton>
       </div>
@@ -126,7 +136,7 @@ function openRow(id: string, event: MouseEvent) {
           >
             <tr>
               <th class="px-4">Nummer</th>
-              <th class="px-4">Lieferant</th>
+              <th class="px-4">Lieferant / Näherei</th>
               <th class="px-4">Rechnung</th>
               <th class="px-4 text-right">Geliefert</th>
               <th class="px-4 text-right">Warenwert</th>
@@ -145,7 +155,12 @@ function openRow(id: string, event: MouseEvent) {
                   {{ item.number }}
                 </NuxtLink>
               </td>
-              <td class="px-4">{{ item.supplierName }}</td>
+              <td class="px-4">
+                {{ item.supplierName }}
+                <UBadge v-if="item.kind === 'production'" size="sm" color="neutral" variant="subtle" class="ml-1 rounded-[8px]">
+                  Produktion
+                </UBadge>
+              </td>
               <td class="px-4 text-leinen-500">
                 {{ item.invoiceNumber ?? '–' }} · {{ formatDate(item.invoiceDate) }}
                 <span v-if="item.currency !== 'EUR'" class="ml-1 font-mono text-xs">{{ item.currency }}</span>
@@ -163,7 +178,7 @@ function openRow(id: string, event: MouseEvent) {
       </div>
     </div>
 
-    <UModal v-model:open="dialogOpen" title="Wareneingang anlegen">
+    <UModal v-model:open="dialogOpen" :title="isProduction ? 'Produktion anlegen' : 'Wareneingang anlegen'">
       <template #body>
         <form class="space-y-4" @submit.prevent="create">
           <UAlert
@@ -174,12 +189,17 @@ function openRow(id: string, event: MouseEvent) {
             class="rounded-[12px]"
             :description="message"
           />
-          <UFormField label="Lieferant" required :error="fieldErrors.supplierId">
+          <UFormField
+            :label="isProduction ? 'Näherei' : 'Lieferant'"
+            required
+            :error="fieldErrors.supplierId"
+            :help="isProduction ? 'Nählohn je Stück kommt in die Positionen, Stoff und Zubehör in die Nebenkosten.' : undefined"
+          >
             <USelectMenu
               v-model="form.supplierId"
               :items="supplierOptions"
               value-key="value"
-              placeholder="Lieferant wählen"
+              :placeholder="isProduction ? 'Näherei wählen (angelegt als Lieferant)' : 'Lieferant wählen'"
               class="w-full"
             />
           </UFormField>

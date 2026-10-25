@@ -21,7 +21,14 @@ export const positionSchema = z.object({
   note: optionalText(500),
 });
 
+export const receiptKinds = ['purchase', 'production'] as const;
+
+export const additionalCostKinds = ['freight', 'customs', 'fabric', 'accessories', 'other', 'credit'] as const;
+
 export const createReceiptSchema = z.object({
+  /** Fixed at creation, it decides the number sequence (WE/PR). */
+  kind: z.enum(receiptKinds, { message: 'Unbekannte Art.' }).default('purchase'),
+  /** Supplier for a purchase, sewing workshop for a production. */
   supplierId: uuidSchema,
   invoiceNumber: optionalText(100),
   invoiceDate: isoDateSchema,
@@ -42,7 +49,7 @@ export const updateReceiptSchema = z.object({
 });
 
 export const additionalCostSchema = z.object({
-  kind: z.enum(['freight', 'customs', 'other', 'credit'], { message: 'Unbekannte Art.' }),
+  kind: z.enum(additionalCostKinds, { message: 'Unbekannte Art.' }),
   /** Entered positive; a credit is stored negative. */
   amount: moneySchema('Betrag').refine((cents) => cents > 0, { message: 'Betrag muss größer als null sein.' }),
   distributionMethod: z.enum(['value', 'quantity']).default('value'),

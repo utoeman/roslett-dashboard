@@ -28,7 +28,7 @@ Tabellen- und Spaltennamen sind englisch (Code-Konvention), Erklärungen deutsch
 | E11 | **Versand je Bestellung**: Versanderlös (0 ab Grenzwert) und Porto (Standard je Kanal, überschreibbar); anteilig nach Warenwert auf Positionen | Versandkostenfrei ab Warenwert je Kanal |
 | E12 | **EU-Ausland**: Lieferland am Verkauf, MwSt-Satz je Position gespeichert (aus Lieferland + MwSt-Kategorie) | Netto-VK und Marge je Zielland korrekt |
 | E13 | **SKU automatisch erzeugt**, danach nie änderbar; in Etsy nachgetragen | Etsy-Varianten haben noch keine SKUs; stabile Zuordnung |
-| E14 | Geld als **`NUMERIC(14,4)`** (exakte Dezimalzahl, nie Fließkomma), gerundet erst bei der Anzeige | Keine Fließkomma-Rundungsfehler |
+| E14 | Geld intern als **ganzzahlige Cent** (`packages/core`), gespeichert als `NUMERIC(14,4)`; Umrechnung nur an der Systemgrenze | Keine Fließkomma-Rundungsfehler |
 | E15 | SKU-Schema `ROS-{KAT}-{PRODNR}-{FARBE}-{GROESSE}`, z. B. `ROS-KIS-0012-SAN-4545` | Im Lager lesbar |
 | E16 | Monatsabschluss **manuell** per Button | Erst wenn alle Belege erfasst sind |
 | E17 | **Kalkulation netto**; Marge und Aufschlag immer getrennt; Einfuhrumsatzsteuer nie im Einstand, Zoll schon | Regelbesteuert, EUSt ist Vorsteuer |
@@ -125,11 +125,12 @@ Nebenkosten eines Wareneingangs, EUSt wird gar nicht erfasst (E17).
 
 ### Einkauf
 
-**goods_receipts** – ein Wareneingang = eine Lieferantenrechnung
+**goods_receipts** – ein Wareneingang = eine Lieferantenrechnung, eine Produktion = eine Nählohnrechnung
 | Spalte | Typ | Hinweis |
 |---|---|---|
-| number | text, eindeutig | z. B. `WE-2026-014` |
-| supplier_id | → suppliers | |
+| kind | enum `purchase`, `production` | Zukauf oder Eigenfertigung (C6), beim Anlegen fest |
+| number | text, eindeutig | `WE-2026-014` (Zukauf) bzw. `PR-2026-003` (Produktion), je Art eigene Folge |
+| supplier_id | → suppliers | Lieferant bzw. Näherei |
 | invoice_number | text | |
 | invoice_date | date | bestimmt FIFO-Reihenfolge und Kurs |
 | currency | char(3) | `EUR`, `USD`, `TRY` … |
@@ -139,6 +140,10 @@ Nebenkosten eines Wareneingangs, EUSt wird gar nicht erfasst (E17).
 | created_at | timestamp | |
 
 Lieferstatus (offen / teilgeliefert / vollständig) wird aus den Zugängen berechnet.
+
+Eine **Produktion** nutzt dieselbe Struktur: Nählohn je Stück ist der Positionspreis
+(auch in Fremdwährung), Stoff und Zubehör sind Nebenkosten (Verteilung meist nach Stückzahl),
+dazu Fracht und Zoll. Kein Stofflager; Zugang, FIFO und Einstand wie beim Zukauf.
 
 **batches** – Charge = eine Position eines Wareneingangs
 | Spalte | Typ | Hinweis |
@@ -156,7 +161,7 @@ Geliefert = Summe der Zugangsbuchungen. Restmenge = Summe aller Zuordnungen der 
 | Spalte | Typ | Hinweis |
 |---|---|---|
 | goods_receipt_id | → goods_receipts | |
-| kind | enum `freight`, `customs`, `other`, `credit` | `credit` negativ |
+| kind | enum `freight`, `customs`, `fabric`, `accessories`, `other`, `credit` | `credit` negativ; `fabric`/`accessories` für Produktion |
 | amount_eur | Geld | |
 | distribution_method | enum `value`, `quantity` | Standard `value` (E5) |
 | incurred_on | date | |
@@ -248,8 +253,9 @@ Die Zuordnung ist kein Journal; beim Auflösen einer Fehlmenge wird ihr die Char
 | `stocktake` | Inventur | ± | Plus: neueste Charge · Minus: FIFO |
 | `supplier_return` | Rückgabe an Lieferant | − | konkrete Charge |
 | `reversal` | Storno | Gegenbuchung | wie Original |
-| *später* `material_use` | Materialverbrauch | − | FIFO (Eigenfertigung) |
-| *später* `production_receipt` | Fertigungszugang | + | neue Fertigungs-Charge |
+
+Eigenfertigung braucht keinen eigenen Buchungstyp: Der Zugang einer Produktion ist ein
+`goods_receipt` auf eine Charge mit Art `production` (C6, kein Stofflager).
 
 ---
 
@@ -317,6 +323,7 @@ erDiagram
         int minimum_stock
     }
     goods_receipts {
+        enum kind
         text number
         date invoice_date
         char currency
@@ -360,7 +367,6 @@ erDiagram
 
 - Etsy-Anbindung (Bestellungen importieren, exakte Gebühren, `etsy_listing_id`/`etsy_product_id` an der Variante)
 - Sets/Bundles (Stückliste pro Variante)
-- Eigenfertigung (`material_use`, `production_receipt`)
 
 ## 7. Offene Punkte
 

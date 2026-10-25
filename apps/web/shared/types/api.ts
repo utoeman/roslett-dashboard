@@ -119,8 +119,11 @@ export interface Channel {
 
 export type DeliveryState = 'open' | 'partial' | 'complete';
 
+export type ReceiptKind = 'purchase' | 'production';
+
 export interface GoodsReceiptListItem {
   id: string;
+  kind: ReceiptKind;
   number: string;
   supplierName: string;
   invoiceNumber: string | null;
@@ -152,7 +155,7 @@ export interface ReceiptPosition {
 
 export interface AdditionalCost {
   id: string;
-  kind: 'freight' | 'customs' | 'other' | 'credit';
+  kind: 'freight' | 'customs' | 'fabric' | 'accessories' | 'other' | 'credit';
   /** Cents; negative for credits. */
   amountEur: number;
   distributionMethod: 'value' | 'quantity';
@@ -162,6 +165,7 @@ export interface AdditionalCost {
 
 export interface GoodsReceipt {
   id: string;
+  kind: ReceiptKind;
   number: string;
   supplier: { id: string; name: string };
   invoiceNumber: string | null;

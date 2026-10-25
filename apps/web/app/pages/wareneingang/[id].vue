@@ -23,6 +23,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 // Plain string: Nuxt's typed routes recurse too deep on template-literal URLs.
 const api = (suffix = ''): string => `/api/goods-receipts/${id.value}${suffix}`;
 const isDraft = computed(() => data.value?.state === 'draft');
+// A production is a receipt with the sewing wage as unit price.
+const isProduction = computed(() => data.value?.kind === 'production');
+const priceLabel = computed(() => (isProduction.value ? 'Nählohn' : 'EK'));
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 const saving = ref(false);
@@ -129,15 +132,15 @@ function formatTotal(minor: number | null): string {
 
 const draftTotal = computed(() => rows.value.reduce((sum, row) => sum + (rowTotal(row) ?? 0), 0));
 
-const fieldNames: Record<string, string> = { variantId: 'Variante', quantityOrdered: 'Menge', unitPrice: 'EK' };
 /** Per-row messages of the positions form, e.g. "Position 2 · EK: Pflichtfeld." */
-const positionErrors = computed(() =>
-  Object.entries(fieldErrors.value).flatMap(([key, text]) => {
+const positionErrors = computed(() => {
+  const fieldNames: Record<string, string> = { variantId: 'Variante', quantityOrdered: 'Menge', unitPrice: priceLabel.value };
+  return Object.entries(fieldErrors.value).flatMap(([key, text]) => {
     const match = /^positions\.(\d+)\.(\w+)$/.exec(key);
     if (!match) return [];
     return [`Position ${Number(match[1]) + 1} · ${fieldNames[match[2] ?? ''] ?? match[2]}: ${text}`];
-  }),
-);
+  });
+});
 
 function savePositions() {
   return run(() =>
@@ -161,10 +164,17 @@ function savePositions() {
 const kindLabels: Record<AdditionalCost['kind'], string> = {
   freight: 'Fracht',
   customs: 'Zoll',
+  fabric: 'Stoff',
+  accessories: 'Zubehör',
   other: 'Sonstiges',
   credit: 'Gutschrift',
 };
-const kindOptions = Object.entries(kindLabels).map(([value, label]) => ({ value, label }));
+const productionOnly = new Set<string>(['fabric', 'accessories']);
+const kindOptions = computed(() =>
+  Object.entries(kindLabels)
+    .filter(([value]) => isProduction.value || !productionOnly.has(value))
+    .map(([value, label]) => ({ value, label })),
+);
 const methodOptions = [
   { label: 'nach Warenwert', value: 'value' },
   { label: 'nach Stückzahl', value: 'quantity' },
@@ -311,7 +321,7 @@ const positionBadge = (p: ReceiptPosition) =>
 
             <dl v-else class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               <div>
-                <dt class="text-xs text-leinen-500">Lieferant</dt>
+                <dt class="text-xs text-leinen-500">{{ isProduction ? 'Näherei' : 'Lieferant' }}</dt>
                 <dd>{{ data.supplier.name }}</dd>
               </div>
               <div>
@@ -352,7 +362,7 @@ const positionBadge = (p: ReceiptPosition) =>
                   <tr>
                     <th class="px-4">Variante</th>
                     <th class="w-28 px-4 text-right">Menge</th>
-                    <th class="w-40 px-4 text-right">EK netto je Stück ({{ data.currency }})</th>
+                    <th class="w-40 px-4 text-right">{{ priceLabel }} netto je Stück ({{ data.currency }})</th>
                     <th v-if="data.currency !== 'EUR'" class="px-4 text-right">≈ EUR je Stück</th>
                     <th class="px-4 text-right">Summe</th>
                     <th class="w-10 px-2" />
@@ -385,7 +395,7 @@ const positionBadge = (p: ReceiptPosition) =>
                       <BetragFeld
                         v-model="row.unitPrice"
                         class="w-full"
-                        :aria-label="`EK Position ${index + 1}`"
+                        :aria-label="`${priceLabel} Position ${index + 1}`"
                         :color="fieldErrors[`positions.${index}.unitPrice`] ? 'error' : undefined"
                       />
                     </td>
@@ -433,8 +443,8 @@ const positionBadge = (p: ReceiptPosition) =>
                 <tr>
                   <th class="px-4">Variante</th>
                   <th class="px-4 text-right">Menge</th>
-                  <th class="px-4 text-right">EK/Stk netto</th>
-                  <th class="px-4 text-right">EK/Stk EUR</th>
+                  <th class="px-4 text-right">{{ priceLabel }}/Stk netto</th>
+                  <th class="px-4 text-right">{{ priceLabel }}/Stk EUR</th>
                   <th class="px-4 text-right">NK/Stk</th>
                   <th class="px-4 text-right">Einstand/Stk</th>
                   <th v-if="!isDraft" class="px-4">Lieferung</th>
@@ -469,7 +479,7 @@ const positionBadge = (p: ReceiptPosition) =>
             <div class="px-4 py-3">
               <h2 class="text-sm font-semibold">Nebenkosten</h2>
               <p class="mt-0.5 text-xs text-leinen-500">
-                Fracht, Zoll und Gutschriften verteilen sich auf alle Positionen – auch nachträglich, der Einstand
+                {{ isProduction ? 'Stoff, Zubehör, Fracht und Zoll' : 'Fracht, Zoll und Gutschriften' }} verteilen sich auf alle Positionen – auch nachträglich, der Einstand
                 ändert sich dann rückwirkend. Einfuhrumsatzsteuer gehört nicht hierher.
               </p>
             </div>

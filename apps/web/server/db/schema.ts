@@ -64,9 +64,18 @@ export const stockEntryKindEnum = pgEnum('stock_entry_kind', [
 
 export const receiptStateEnum = pgEnum('receipt_state', ['draft', 'posted']);
 
+export const receiptKindEnum = pgEnum('receipt_kind', ['purchase', 'production']);
+
 export const exchangeRateSourceEnum = pgEnum('exchange_rate_source', ['ecb', 'manual']);
 
-export const additionalCostKindEnum = pgEnum('additional_cost_kind', ['freight', 'customs', 'other', 'credit']);
+export const additionalCostKindEnum = pgEnum('additional_cost_kind', [
+  'freight',
+  'customs',
+  'fabric',
+  'accessories',
+  'other',
+  'credit',
+]);
 
 // ---------------------------------------------------------------------------
 // Master data
@@ -166,9 +175,12 @@ export const suppliers = pgTable('suppliers', {
 /**
  * One goods receipt = one supplier invoice. The invoice date drives FIFO order
  * and the exchange rate (foreign units per EUR, frozen once set).
+ * A production uses the same structure: sewing wage as unit price, fabric and
+ * accessories as additional costs.
  */
 export const goodsReceipts = pgTable('goods_receipts', {
   id: uuid('id').primaryKey().defaultRandom(),
+  kind: receiptKindEnum('kind').notNull().default('purchase'),
   number: text('number').notNull().unique(),
   supplierId: uuid('supplier_id')
     .notNull()

@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
   const rows = await db
     .select({
       id: schema.goodsReceipts.id,
+      kind: schema.goodsReceipts.kind,
       number: schema.goodsReceipts.number,
       supplierName: schema.suppliers.name,
       invoiceNumber: schema.goodsReceipts.invoiceNumber,

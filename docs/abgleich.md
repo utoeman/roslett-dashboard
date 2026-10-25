@@ -123,7 +123,7 @@ als [shopify-integration.md](shopify-integration.md). Bei Widerspruch gilt diese
 | A8 | Shop-Plattform | Shopify | **Shopify**; Projekt-`CLAUDE.md` angepasst |
 | A9 | Hosting | Hetzner CAX31 + Ploi | bleibt **Netlify + Neon** (Schritt 8, läuft); Webhooks als Netlify Function, nächtlicher Abgleich als Scheduled Function. Wechsel nur bei echtem Bedarf |
 | A10 | Wareneinsatz | „historisch fix“ | bleibt rückwirkend bis zum Monatsabschluss (E6), danach „Korrektur Vormonate“ (E7) – erfüllt dasselbe Ziel |
-| A11 | Geldformat | `NUMERIC(10,4)` | bleibt `NUMERIC(14,4)` wie im Code; E14 („Cent“) in `domain-model.md` ist veraltet |
+| A11 | Geldformat | `NUMERIC(10,4)` | bleibt wie im Code: Rechnen in ganzzahligen Cent (E14), Speichern als `NUMERIC(14,4)` |
 
 Lücken der Spezifikation:
 

@@ -108,8 +108,15 @@ export function deliveryState(ordered: number, delivered: number): DeliveryState
   return delivered >= ordered ? 'complete' : 'partial';
 }
 
-export function receiptNumber(year: number, sequence: number): string {
-  return `WE-${year}-${String(sequence).padStart(3, '0')}`;
+/** Purchase from a supplier or own production; production numbers run separately. */
+export type ReceiptKind = 'purchase' | 'production';
+
+export function receiptPrefix(kind: ReceiptKind): string {
+  return kind === 'production' ? 'PR' : 'WE';
+}
+
+export function receiptNumber(year: number, sequence: number, kind: ReceiptKind = 'purchase'): string {
+  return `${receiptPrefix(kind)}-${year}-${String(sequence).padStart(3, '0')}`;
 }
 
 /** ECB convention: `foreignPerEur` units of foreign currency buy 1 EUR. */

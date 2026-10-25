@@ -29,6 +29,13 @@
       "when": 1792869841747,
       "tag": "0003_sku_prefix_roslett",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792941519220,
+      "tag": "0004_produktion",
+      "breakpoints": true
     }
   ]
 }

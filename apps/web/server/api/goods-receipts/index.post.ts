@@ -1,5 +1,5 @@
 import { and, eq, like, sql } from 'drizzle-orm';
-import { receiptNumber } from '@roslett/core';
+import { receiptNumber, receiptPrefix } from '@roslett/core';
 import { schema, useDb } from '../../db/client.js';
 import { createReceiptSchema } from '../../../shared/schemas/goods-receipt.js';
 import { readJsonBody, requireFound } from '../../utils/validation.js';
@@ -7,7 +7,7 @@ import { badRequest, databaseError } from '../../utils/errors.js';
 import { fetchEcbRate } from '../../utils/ecb.js';
 import { assertVariants, loadReceipt, positionRows } from '../../utils/stock.js';
 
-/** Creates a draft receipt; the number is WE-<invoice year>-<sequence>. */
+/** Creates a draft receipt; the number is WE- or PR-<invoice year>-<sequence>. */
 export default defineEventHandler(async (event) => {
   const input = await readJsonBody(event, createReceiptSchema);
   const db = useDb();
@@ -30,12 +30,13 @@ export default defineEventHandler(async (event) => {
       const [last] = await tx
         .select({ max: sql<number>`coalesce(max(substring(${schema.goodsReceipts.number} from 9)::int), 0)::int` })
         .from(schema.goodsReceipts)
-        .where(and(like(schema.goodsReceipts.number, `WE-${year}-%`)));
+        .where(and(like(schema.goodsReceipts.number, `${receiptPrefix(input.kind)}-${year}-%`)));
 
       const [created] = await tx
         .insert(schema.goodsReceipts)
         .values({
-          number: receiptNumber(year, (last?.max ?? 0) + 1),
+          kind: input.kind,
+          number: receiptNumber(year, (last?.max ?? 0) + 1, input.kind),
           supplierId: supplier.id,
           invoiceNumber: input.invoiceNumber ?? null,
           invoiceDate: input.invoiceDate,

@@ -111,7 +111,7 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Übersicht | Lagerwert (FIFO), Stück am Lager, Varianten unter Mindestbestand, Anzahl der Stammdaten |
 | Produkte | Liste mit Suche über Name und SKU, Bestand und Lagerwert, Hinweis unter Mindestbestand; Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
 | Produkt-Detail | Stammdaten bearbeiten, Varianten anlegen und archivieren; je Variante Bestand, Ø Einstand, Lagerwert und Marge vor Gebühren; beim Preis eintippen live die Marge; geltende Kostenpositionen |
-| Wareneingang | Liste der Lieferantenrechnungen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
+| Wareneingang | Liste der Lieferantenrechnungen und Produktionen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
 | Wareneingang-Detail | Positionen im Entwurf, Nebenkosten (auch nachträglich), Einstand je Stück, Zugang buchen inkl. Teillieferung |
 | Bestandsjournal | Alle Buchungen mit Filter (Variante, Art, Zeitraum, offene Fehlmengen); Schwund, Eigenverbrauch, Inventur und Rückgabe an Lieferant erfassen; Storno |
 | Lieferanten | Anlegen, bearbeiten, archivieren; Standard-Währung für Wareneingänge |

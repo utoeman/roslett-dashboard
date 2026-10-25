@@ -130,6 +130,7 @@ function stockOf(product: Product) {
   <div>
     <SeitenKopf titel="Produkte" :hinweis="listHint">
       <template #aktionen>
+        <ShopifyExport />
         <UButton
           icon="i-lucide-plus"
           size="sm"

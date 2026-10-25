@@ -47,7 +47,7 @@ Bewusst nicht im Dashboard: GSAP, Three.js, Bootstrap, React, AWS/Azure-Dienste.
 
 **M3 – Geschäftswert (Woche 5–7)**
 - [ ] Margen inkl. MwSt. und Fremdwährung (EZB-Kurs am Rechnungsdatum)
-- [ ] Shopify Stufe 0: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export für Shopify
+- [x] Shopify Stufe 0: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export für Shopify
 - [ ] Shopify Stufe 1 (nur lesen, Polling): Bestellungen und Erstattungen aller Kanäle abrufen, FIFO und Marge rechnen
 - [ ] ECharts-Diagramme
 - [ ] Pinia für Filter und Einstellungen

@@ -2,6 +2,18 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.5.0 (2026-10-25)
+
+### Neu
+
+- shopify product csv export (#26)
+- manufacturer and textile fields (#25)
+- production receipts (#24)
+
+### Doku
+
+- add Shopify integration spec and step 9 decisions (#23)
+
 ## v0.4.1 (2026-10-24)
 
 Keine nennenswerten Änderungen.
@@ -47,6 +59,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

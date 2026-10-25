@@ -172,6 +172,17 @@ Prüfberichte, Risikoanalyse und Beschwerdeverzeichnis (10 Jahre) vorerst außer
 
 Bis Stufe 3 steht, werden Produkte per CSV aus dem Dashboard angelegt bzw. aktualisiert.
 
+**CSV-Export (Stufe 0, umgesetzt):** Produktliste → „Shopify-CSV“. Eine Zeile je aktiver
+Variante, Produktangaben nur in der ersten Zeile; Status `draft`, nicht veröffentlicht.
+Handle = Name + Produktnummer (`leinenkissen-sand-0012`). Optionen „Farbe“ und „Größe“
+(fehlender Wert: „Standard“, ohne beide: Shopify-Standardvariante). Preis brutto, „Cost per
+item“ = gewichteter Durchschnitt offener Chargen (Abschnitt 6). Produktmetafelder
+`custom.fiber`, `custom.fiber_filling`, `custom.care_instructions`, `custom.safety_information`,
+`custom.manufacturer` – in Shopify vorher als Metafelddefinitionen anlegen.
+Grenzen des Shopify-CSV: **keine Variantenmetafelder** (Faser nur, wenn sie bei allen Varianten
+gleich ist, sonst Hinweis), **kein HS-Code und kein Herkunftsland**, Bestandsmengen werden
+bewusst nicht exportiert (würden absolut setzen, Invariante 2). Diese Werte kommen mit Stufe 3.
+
 ## 11. Nicht im Umfang
 
 Bild-Upload über die API, absolutes Setzen von Beständen, direkte Etsy-/Amazon-Anbindung,

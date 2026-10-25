@@ -109,7 +109,7 @@ Erreichbar unter http://localhost:3000 nach `npm run dev`:
 | Bereich | Inhalt |
 |---|---|
 | Übersicht | Lagerwert (FIFO), Stück am Lager, Varianten unter Mindestbestand, Anzahl der Stammdaten |
-| Produkte | Liste mit Suche über Name und SKU, Bestand und Lagerwert, Hinweis unter Mindestbestand; Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie |
+| Produkte | Liste mit Suche über Name und SKU, Bestand und Lagerwert, Hinweis unter Mindestbestand; Anlegen mit Kategorie, Preis brutto und MwSt-Kategorie; Export als Shopify-CSV mit Hinweisen auf fehlende Angaben |
 | Produkt-Detail | Stammdaten mit Pflege- und Sicherheitshinweisen bearbeiten, Varianten anlegen und archivieren, je Variante Faser, Herkunft und HS-Code; je Variante Bestand, Ø Einstand, Lagerwert und Marge vor Gebühren; beim Preis eintippen live die Marge; geltende Kostenpositionen |
 | Wareneingang | Liste der Lieferantenrechnungen und Produktionen mit Lieferstand; Anlegen mit EZB-Kurs zum Rechnungsdatum |
 | Wareneingang-Detail | Positionen im Entwurf, Nebenkosten (auch nachträglich), Einstand je Stück, Zugang buchen inkl. Teillieferung |
@@ -144,6 +144,7 @@ relative Pfade an.
 | `GET POST /api/colors`, `PATCH /api/colors/:id` | Farb-Kürzel; Kürzel fest, sobald verwendet |
 | `GET POST /api/vat-rates`, `PATCH /api/vat-rates/:id` | MwSt-Sätze je Lieferland, Kategorie und Gültig-ab |
 | `GET PUT /api/company-settings` | Herstellerangaben (eine Zeile) |
+| `GET /api/export/shopify-products` | aktive Produkte als Shopify-CSV plus Hinweise |
 | `GET POST /api/suppliers`, `PATCH /api/suppliers/:id` | Lieferanten (mit Standard-Währung) |
 | `GET POST /api/goods-receipts`, `GET PATCH /api/goods-receipts/:id` | Wareneingänge (Lieferantenrechnungen); ändern nur als Entwurf |
 | `POST /api/goods-receipts/:id/costs` | Nebenkosten oder Gutschrift, auch nach dem Buchen; Einstand wirkt rückwirkend |

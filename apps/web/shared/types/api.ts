@@ -128,6 +128,11 @@ export interface Channel {
   /** Cents. */
   feeFixed: number | null;
   pricingRule: 'same_margin' | 'fixed';
+  /** Cents. */
+  shippingPriceGross: number | null;
+  /** Goods value gross from which shipping is free; null = never. */
+  freeShippingFrom: number | null;
+  defaultPostage: number | null;
   active: boolean;
 }
 

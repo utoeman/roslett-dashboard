@@ -156,7 +156,24 @@ Umsetzung:
 | # | Punkt | Entscheidung |
 |---|---|---|
 | D1 | Abruf in Stufe 1 | Polling alle 15 Minuten (Scheduled Function) + Button „Jetzt abrufen“; Webhooks ab Stufe 2 |
-| D2 | Entwicklung | gegen einen Shopify Development Store |
-| D3 | Echter Shop | noch nicht angelegt |
+| D2 | Entwicklung | gegen einen Shopify Development Store (`roslett-dev.myshopify.com`, Tarif Basic, ohne Testdaten und Feature-Preview; angelegt 26.10.2026) |
+| D3 | Echter Shop | angelegt (Testphase), bleibt bis zum Start unberührt |
+
+## Schritt 10: Verkaufsmodell, Shopify Stufe 1a (entschieden 26.10.2026)
+
+Drei PRs: 1a-1 Datenmodell und Kern, 1a-2 Oberfläche, 1a-3 Erstattung, Retoure, Storno.
+Release nach 1a-3.
+
+| # | Punkt | Entscheidung |
+|---|---|---|
+| F1 | Manuelle Erfassung | ja: Bestellung von Hand erfassen (Test ohne Shopify, Verkäufe außerhalb von Shopify) |
+| F2 | Erstattungen | eigene Tabelle `refunds` (Verkauf, Position optional, Menge, Betrag brutto, Wiedereinlagerung, Datum); kommt mit 1a-3 |
+| F3 | Kanal am Verkauf | optional (B9); in der manuellen Erfassung Pflicht. Zuordnung Shopify-Quelle → Kanal kommt mit 1b |
+| F4 | Lieferland ohne MwSt-Satz | manuelle Erfassung lehnt ab; Import (1b) bucht mit Warnung |
+| F5 | `channel_prices`, `pricing_rule` | bleiben vorerst im Schema, Aufräumen in einem eigenen PR |
+| F6 | Monatssperre | noch nicht geprüft; kommt mit dem Monatsabschluss |
+| F7 | Bestellsumme für die Pauschalgebühr | Warenwert brutto − Rabatt brutto + Versanderlös brutto |
+| F8 | Porto, Gebühren | gelten als Nettokosten; Rabatt und Versanderlös werden mit dem MwSt-Satz der jeweiligen Position auf netto gerechnet |
+| F9 | Versanderlös und Porto | Vorbelegung aus dem Kanal (versandkostenfrei ab Warenwert brutto), je Bestellung überschreibbar |
 | D4 | Erstimport | ab Anbindung, keine Altbestellungen |
 | D5 | Erstanlage der Produkte | CSV-Export im Shopify-Format aus dem Dashboard |

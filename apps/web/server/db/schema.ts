@@ -78,6 +78,13 @@ export const additionalCostKindEnum = pgEnum('additional_cost_kind', [
   'credit',
 ]);
 
+/** Return state is derived from the journal, not stored. */
+export const saleStatusEnum = pgEnum('sale_status', ['open', 'shipped', 'cancelled']);
+
+export const feeKindEnum = pgEnum('fee_kind', ['transaction', 'payment', 'listing', 'advertising', 'other']);
+
+export const feeSourceEnum = pgEnum('fee_source', ['flat', 'api']);
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -295,6 +302,11 @@ export const channels = pgTable('channels', {
     .default('0'),
   feeFixed: money('fee_fixed').notNull().default('0'),
   pricingRule: pricingRuleEnum('pricing_rule').notNull().default('same_margin'),
+  /** Shipping charged to customers, free from `free_shipping_from` (goods value gross). */
+  shippingPriceGross: money('shipping_price_gross').notNull().default('0'),
+  freeShippingFrom: money('free_shipping_from'),
+  /** Actual postage, default for new sales. */
+  defaultPostage: money('default_postage').notNull().default('0'),
   active: boolean('active').notNull().default(true),
 });
 
@@ -321,6 +333,71 @@ export const channelPrices = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Sales
+// ---------------------------------------------------------------------------
+
+/**
+ * One order. No customer data (C4). The channel may be unknown for imported
+ * orders (B9); manual entries always have one.
+ */
+export const sales = pgTable(
+  'sales',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    channelId: uuid('channel_id').references(() => channels.id),
+    externalOrderNumber: text('external_order_number').notNull(),
+    orderedAt: timestamp('ordered_at', { withTimezone: true }).notNull(),
+    /** ISO 3166 alpha-2. */
+    deliveryCountry: text('delivery_country').notNull(),
+    shippingRevenueGross: money('shipping_revenue_gross').notNull().default('0'),
+    postageCost: money('postage_cost').notNull().default('0'),
+    discountGross: money('discount_gross').notNull().default('0'),
+    status: saleStatusEnum('status').notNull().default('open'),
+    createdAt,
+  },
+  (t) => [
+    uniqueIndex('sales_channel_order_idx').on(t.channelId, t.externalOrderNumber),
+    index('sales_ordered_at_idx').on(t.orderedAt),
+  ],
+);
+
+/** The VAT rate is frozen at the time of sale (E12). */
+export const saleItems = pgTable(
+  'sale_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    saleId: uuid('sale_id')
+      .notNull()
+      .references(() => sales.id),
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => variants.id),
+    quantity: integer('quantity').notNull(),
+    unitPriceGross: money('unit_price_gross').notNull(),
+    vatRate: numeric('vat_rate', { precision: 5, scale: 4 }).notNull(),
+  },
+  (t) => [
+    index('sale_items_sale_idx').on(t.saleId),
+    index('sale_items_variant_idx').on(t.variantId),
+    check('sale_items_quantity_positive', sql`${t.quantity} > 0`),
+  ],
+);
+
+export const fees = pgTable(
+  'fees',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    saleId: uuid('sale_id')
+      .notNull()
+      .references(() => sales.id),
+    kind: feeKindEnum('kind').notNull(),
+    amount: money('amount').notNull(),
+    source: feeSourceEnum('source').notNull(),
+  },
+  (t) => [index('fees_sale_idx').on(t.saleId)],
+);
+
+// ---------------------------------------------------------------------------
 // Stock journal
 // ---------------------------------------------------------------------------
 
@@ -341,12 +418,16 @@ export const stockEntries = pgTable(
     /** Business date; `created_at` is the technical one. */
     postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
     note: text('note'),
+    saleItemId: uuid('sale_item_id').references(() => saleItems.id),
     reversesId: uuid('reverses_id')
       .unique()
       .references((): AnyPgColumn => stockEntries.id),
     createdAt,
   },
-  (t) => [index('stock_entries_variant_idx').on(t.variantId, t.postedAt)],
+  (t) => [
+    index('stock_entries_variant_idx').on(t.variantId, t.postedAt),
+    index('stock_entries_sale_item_idx').on(t.saleItemId),
+  ],
 );
 
 /**
@@ -439,6 +520,35 @@ export const additionalCostsRelations = relations(additionalCosts, ({ one }) => 
 
 export const channelsRelations = relations(channels, ({ many }) => ({
   channelPrices: many(channelPrices),
+  sales: many(sales),
+}));
+
+export const salesRelations = relations(sales, ({ one, many }) => ({
+  channel: one(channels, {
+    fields: [sales.channelId],
+    references: [channels.id],
+  }),
+  items: many(saleItems),
+  fees: many(fees),
+}));
+
+export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({
+  sale: one(sales, {
+    fields: [saleItems.saleId],
+    references: [sales.id],
+  }),
+  variant: one(variants, {
+    fields: [saleItems.variantId],
+    references: [variants.id],
+  }),
+  stockEntries: many(stockEntries),
+}));
+
+export const feesRelations = relations(fees, ({ one }) => ({
+  sale: one(sales, {
+    fields: [fees.saleId],
+    references: [sales.id],
+  }),
 }));
 
 export const channelPricesRelations = relations(channelPrices, ({ one }) => ({
@@ -468,6 +578,10 @@ export const stockEntriesRelations = relations(stockEntries, ({ one, many }) => 
     fields: [stockEntries.reversesId],
     references: [stockEntries.id],
     relationName: 'reversal',
+  }),
+  saleItem: one(saleItems, {
+    fields: [stockEntries.saleItemId],
+    references: [saleItems.id],
   }),
   allocations: many(batchAllocations),
 }));

@@ -15,6 +15,9 @@ export default defineEventHandler(async (event) => {
         feePercent: rateToNumeric(input.feePercent) ?? '0',
         feeFixed: centsToNumeric(input.feeFixed) ?? '0',
         pricingRule: input.pricingRule,
+        shippingPriceGross: centsToNumeric(input.shippingPriceGross) ?? '0',
+        freeShippingFrom: centsToNumeric(input.freeShippingFrom),
+        defaultPostage: centsToNumeric(input.defaultPostage) ?? '0',
         active: input.active,
       })
       .returning();

@@ -27,6 +27,7 @@ import {
   createChannelSchema,
 } from '../shared/schemas/channel.js';
 import { journalQuerySchema } from '../shared/schemas/stock-entry.js';
+import { createSaleSchema } from '../shared/schemas/sale.js';
 import { additionalCostSchema, createReceiptSchema } from '../shared/schemas/goods-receipt.js';
 import {
   centsToNumeric,
@@ -482,5 +483,49 @@ describe('additionalCostSchema – Kostenarten', () => {
   it('kennt Stoff und Zubehör für die Produktion', () => {
     expect(additionalCostSchema.parse({ kind: 'fabric', amount: '120,50' }).amount).toBe(12050);
     expect(additionalCostSchema.parse({ kind: 'accessories', amount: '8' }).kind).toBe('accessories');
+  });
+});
+
+describe('Kanal – Versand und Porto', () => {
+  it('setzt ohne Angabe Versand 0, keine Grenze und Porto 0', () => {
+    const k = createChannelSchema.parse({ name: 'Shop' });
+    expect(k.shippingPriceGross).toBe(0);
+    expect(k.freeShippingFrom).toBeNull();
+    expect(k.defaultPostage).toBe(0);
+  });
+
+  it('nimmt Beträge an und lässt die Grenze beim Ändern auf leer setzen', () => {
+    const k = createChannelSchema.parse({ name: 'Shop', shippingPriceGross: '4,90', freeShippingFrom: '50', defaultPostage: '3,95' });
+    expect(k).toMatchObject({ shippingPriceGross: 490, freeShippingFrom: 5000, defaultPostage: 395 });
+    expect(updateChannelSchema.parse({ freeShippingFrom: null })).toEqual({ freeShippingFrom: null });
+  });
+});
+
+describe('createSaleSchema', () => {
+  const base = {
+    channelId: '00000000-0000-4000-8000-000000000001',
+    externalOrderNumber: '#1001',
+    orderedAt: '2026-10-26',
+    items: [{ variantId: '00000000-0000-4000-8000-000000000002', quantity: '2', unitPriceGross: '39,90' }],
+  };
+
+  it('setzt Lieferland DE und Rabatt 0; Versand und Porto bleiben offen für die Kanal-Vorbelegung', () => {
+    const s = createSaleSchema.parse(base);
+    expect(s.deliveryCountry).toBe('DE');
+    expect(s.discountGross).toBe(0);
+    expect(s.shippingRevenueGross).toBeUndefined();
+    expect(s.postageCost).toBeUndefined();
+    expect(s.items[0]).toMatchObject({ quantity: 2, unitPriceGross: 3990 });
+  });
+
+  it('schreibt den Ländercode groß und lehnt Unsinn ab', () => {
+    expect(createSaleSchema.parse({ ...base, deliveryCountry: 'at' }).deliveryCountry).toBe('AT');
+    expect(createSaleSchema.safeParse({ ...base, deliveryCountry: 'Österreich' }).success).toBe(false);
+  });
+
+  it('lehnt negative Beträge und leere Bestellungen ab', () => {
+    expect(createSaleSchema.safeParse({ ...base, discountGross: '-1' }).success).toBe(false);
+    expect(createSaleSchema.safeParse({ ...base, items: [] }).success).toBe(false);
+    expect(createSaleSchema.safeParse({ ...base, externalOrderNumber: ' ' }).success).toBe(false);
   });
 });

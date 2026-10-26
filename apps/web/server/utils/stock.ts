@@ -56,6 +56,7 @@ export async function postEntry(
     quantity: number;
     postedAt?: string;
     note?: string | null;
+    saleItemId?: string;
     reversesId?: string;
     allocations: readonly (PlannedAllocation & { resolvedAt?: Date })[];
   },
@@ -72,6 +73,7 @@ export async function postEntry(
       quantity: entry.quantity,
       postedAt: entry.postedAt ? new Date(`${entry.postedAt}T12:00:00Z`) : new Date(),
       note: entry.note ?? null,
+      saleItemId: entry.saleItemId ?? null,
       reversesId: entry.reversesId ?? null,
     })
     .returning({ id: schema.stockEntries.id });

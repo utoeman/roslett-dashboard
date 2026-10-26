@@ -189,8 +189,8 @@ Geliefert = Summe der Zugangsbuchungen. Restmenge = Summe aller Zuordnungen der 
 **sales** – eine Bestellung
 | Spalte | Typ | Hinweis |
 |---|---|---|
-| channel_id | → channels | |
-| external_order_number | text | eindeutig zusammen mit `channel_id` (kein Doppelimport) |
+| channel_id | → channels, optional | leer bei unbekannter Shopify-Quelle (B9); manuell Pflicht |
+| external_order_number | text | eindeutig zusammen mit `channel_id` (kein Doppelimport); Import ohne Kanal ist über die Shopify-ID eindeutig (1b) |
 | ordered_at | timestamp | |
 | delivery_country | char(2) | (E12) |
 | shipping_revenue_gross | Geld | 0 bei versandkostenfrei |
@@ -215,6 +215,16 @@ Geliefert = Summe der Zugangsbuchungen. Restmenge = Summe aller Zuordnungen der 
 | kind | enum `transaction`, `payment`, `listing`, `advertising`, `other` | |
 | amount | Geld | |
 | source | enum `flat`, `api` | |
+
+**refunds** – Erstattungen (Schritt 10, F2)
+| Spalte | Typ | Hinweis |
+|---|---|---|
+| sale_id | → sales | |
+| sale_item_id | → sale_items, optional | leer = Erstattung auf die ganze Bestellung (Kulanz) |
+| quantity | int | 0 bei reiner Geld-Erstattung |
+| amount_gross | Geld | mindert den Erlös |
+| restocked | bool | ja → `return`-Buchung auf die Chargen der Position |
+| refunded_at | timestamp | |
 
 ### Bestandsjournal
 

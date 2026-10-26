@@ -26,6 +26,12 @@ export default defineEventHandler(async (event) => {
   if (input.feeFixed !== undefined)
     changes.feeFixed = centsToNumeric(input.feeFixed);
   if (input.pricingRule !== undefined) changes.pricingRule = input.pricingRule;
+  if (input.shippingPriceGross !== undefined)
+    changes.shippingPriceGross = centsToNumeric(input.shippingPriceGross);
+  if (input.freeShippingFrom !== undefined)
+    changes.freeShippingFrom = centsToNumeric(input.freeShippingFrom);
+  if (input.defaultPostage !== undefined)
+    changes.defaultPostage = centsToNumeric(input.defaultPostage);
   if (input.active !== undefined) changes.active = input.active;
 
   if (Object.keys(changes).length === 0) {

@@ -14,6 +14,10 @@ export const createChannelSchema = z.object({
   /** Fixed fee per sale in cents. */
   feeFixed: moneySchema('Fixgebuehr').default(0),
   pricingRule: pricingRuleSchema.default('same_margin'),
+  shippingPriceGross: moneySchema('Versandpreis').default(0),
+  /** Goods value gross from which shipping is free; empty = never. */
+  freeShippingFrom: moneySchema('Versandkostenfrei ab').nullable().default(null),
+  defaultPostage: moneySchema('Porto').default(0),
   active: flagSchema().default(true),
 });
 
@@ -26,6 +30,9 @@ export const updateChannelSchema = z.object({
   feePercent: percentSchema('Gebuehr').optional(),
   feeFixed: moneySchema('Fixgebuehr').optional(),
   pricingRule: pricingRuleSchema.optional(),
+  shippingPriceGross: moneySchema('Versandpreis').optional(),
+  freeShippingFrom: moneySchema('Versandkostenfrei ab').nullable().optional(),
+  defaultPostage: moneySchema('Porto').optional(),
   active: flagSchema().optional(),
 });
 

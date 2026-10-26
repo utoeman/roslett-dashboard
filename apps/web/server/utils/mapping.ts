@@ -123,6 +123,9 @@ type ChannelRow = {
   feePercent: string;
   feeFixed: string;
   pricingRule: 'same_margin' | 'fixed';
+  shippingPriceGross: string;
+  freeShippingFrom: string | null;
+  defaultPostage: string;
   active: boolean;
 };
 
@@ -133,6 +136,9 @@ export function mapChannel(row: ChannelRow) {
     feePercent: numericToRate(row.feePercent),
     feeFixed: numericToCents(row.feeFixed),
     pricingRule: row.pricingRule,
+    shippingPriceGross: numericToCents(row.shippingPriceGross),
+    freeShippingFrom: numericToCents(row.freeShippingFrom),
+    defaultPostage: numericToCents(row.defaultPostage),
     active: row.active,
   };
 }

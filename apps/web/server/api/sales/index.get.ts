@@ -3,15 +3,23 @@ import { schema, useDb } from '../../db/client.js';
 import { saleQuerySchema } from '../../../shared/schemas/sale.js';
 import { readQuery } from '../../utils/validation.js';
 import { numericToCents } from '../../utils/money.js';
+import { loadSales } from '../../utils/sales.js';
 
-/** Sales, newest first, with pieces, goods value and open shortfalls. Margins are on the detail view. */
+const openShortfall = sql<number>`coalesce((
+  select -sum(a.quantity) from batch_allocations a
+  join stock_entries e on e.id = a.stock_entry_id
+  join sale_items i on i.id = e.sale_item_id
+  where i.sale_id = sales.id and a.batch_id is null and a.resolved_at is null), 0)::int`;
+
+/** Sales, newest first, with pieces, goods value, open shortfalls and margin. */
 export default defineEventHandler(async (event) => {
-  const { search, channelId, status, limit, offset } = readQuery(event, saleQuerySchema);
+  const { search, channelId, status, shortfallOnly, limit, offset } = readQuery(event, saleQuerySchema);
   const db = useDb();
 
   const filters: SQL[] = [];
   if (channelId) filters.push(eq(schema.sales.channelId, channelId));
   if (status) filters.push(eq(schema.sales.status, status));
+  if (shortfallOnly) filters.push(sql`${openShortfall} > 0`);
   if (search) {
     const pattern = `%${search}%`;
     filters.push(sql`(${schema.sales.externalOrderNumber} ilike ${pattern} or exists (
@@ -30,11 +38,7 @@ export default defineEventHandler(async (event) => {
       status: schema.sales.status,
       pieces: sql<number>`coalesce((select sum(i.quantity) from sale_items i where i.sale_id = sales.id), 0)::int`,
       goodsGross: sql<string>`coalesce((select sum(i.quantity * i.unit_price_gross) from sale_items i where i.sale_id = sales.id), 0)`,
-      shortfall: sql<number>`coalesce((
-        select -sum(a.quantity) from batch_allocations a
-        join stock_entries e on e.id = a.stock_entry_id
-        join sale_items i on i.id = e.sale_item_id
-        where i.sale_id = sales.id and a.batch_id is null and a.resolved_at is null), 0)::int`,
+      shortfall: openShortfall,
     })
     .from(schema.sales)
     .leftJoin(schema.channels, eq(schema.channels.id, schema.sales.channelId))
@@ -48,8 +52,15 @@ export default defineEventHandler(async (event) => {
     .from(schema.sales)
     .where(where);
 
+  const margins = new Map((await loadSales(db, rows.map((r) => r.id))).map((s) => [s.id, s.totals]));
+
   return {
-    items: rows.map(({ goodsGross, ...row }) => ({ ...row, goodsGross: numericToCents(goodsGross) ?? 0 })),
+    items: rows.map(({ goodsGross, ...row }) => ({
+      ...row,
+      goodsGross: numericToCents(goodsGross) ?? 0,
+      contributionMarginEur: margins.get(row.id)?.contributionMarginEur ?? null,
+      margin: margins.get(row.id)?.margin ?? null,
+    })),
     total,
     limit,
     offset,

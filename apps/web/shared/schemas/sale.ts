@@ -1,7 +1,7 @@
 /** Sales (orders) entered by hand; Shopify imports use the same shape later. */
 
 import { z } from 'zod';
-import { listQuerySchema, moneySchema, requiredText, uuidSchema } from './common.js';
+import { flagSchema, listQuerySchema, moneySchema, requiredText, uuidSchema } from './common.js';
 import { isoDateSchema } from './goods-receipt.js';
 
 const quantitySchema = z.coerce
@@ -43,6 +43,12 @@ export const createSaleSchema = z.object({
 export const saleQuerySchema = listQuerySchema.pick({ search: true, limit: true, offset: true }).extend({
   channelId: uuidSchema.optional(),
   status: z.enum(saleStatuses).optional(),
+  shortfallOnly: flagSchema().default(false),
+});
+
+/** Cancelling is a reversal with its own route (1a-3), not a status change. */
+export const updateSaleSchema = z.object({
+  status: z.enum(['open', 'shipped'], { message: 'Status muss offen oder versendet sein.' }),
 });
 
 export type CreateSale = z.infer<typeof createSaleSchema>;

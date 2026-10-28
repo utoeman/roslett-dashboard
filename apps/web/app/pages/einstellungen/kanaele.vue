@@ -19,6 +19,9 @@ const form = reactive({
   feePercent: '',
   feeFixed: '',
   pricingRule: 'same_margin' as 'same_margin' | 'fixed',
+  shippingPriceGross: '',
+  freeShippingFrom: '',
+  defaultPostage: '',
 });
 
 const ruleOptions = [
@@ -34,6 +37,9 @@ function openDialog(channel?: Channel) {
   form.feePercent = channel ? rateToInput(channel.feePercent) : '';
   form.feeFixed = channel && channel.feeFixed ? toInput(channel.feeFixed) : '';
   form.pricingRule = channel?.pricingRule ?? 'same_margin';
+  form.shippingPriceGross = channel?.shippingPriceGross ? toInput(channel.shippingPriceGross) : '';
+  form.freeShippingFrom = channel?.freeShippingFrom ? toInput(channel.freeShippingFrom) : '';
+  form.defaultPostage = channel?.defaultPostage ? toInput(channel.defaultPostage) : '';
   dialogOpen.value = true;
 }
 
@@ -46,6 +52,10 @@ async function save() {
     feePercent: form.feePercent || 0,
     feeFixed: form.feeFixed || 0,
     pricingRule: form.pricingRule,
+    shippingPriceGross: form.shippingPriceGross || 0,
+    // Empty means shipping is never free.
+    freeShippingFrom: form.freeShippingFrom || null,
+    defaultPostage: form.defaultPostage || 0,
   };
   try {
     if (editingId.value) {
@@ -81,7 +91,7 @@ async function toggleActive(channel: Channel) {
   <div>
     <SeitenKopf
       titel="Kanäle"
-      hinweis="Verkaufswege mit ihren Gebühren. Grundlage für die Preisrückrechnung."
+      hinweis="Verkaufswege mit Gebühren, Versand und Porto. Grundlage für Preisrückrechnung und Marge je Verkauf."
     >
       <template #aktionen>
         <UButton icon="i-lucide-plus" size="sm" class="rounded-[8px]" @click="openDialog()">
@@ -120,7 +130,7 @@ async function toggleActive(channel: Channel) {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
-        <table class="ros-tabelle w-full min-w-[44rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[60rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
@@ -128,6 +138,9 @@ async function toggleActive(channel: Channel) {
               <th class="px-4">Kanal</th>
               <th class="px-4 text-right">Gebühr prozentual</th>
               <th class="px-4 text-right">Gebühr fix</th>
+              <th class="px-4 text-right">Versand</th>
+              <th class="px-4 text-right">Frei ab</th>
+              <th class="px-4 text-right">Porto</th>
               <th class="px-4">Preisregel</th>
               <th class="px-4">Status</th>
               <th class="px-4 text-right">Aktion</th>
@@ -142,6 +155,9 @@ async function toggleActive(channel: Channel) {
               <td class="px-4 font-medium">{{ channel.name }}</td>
               <td class="zahl px-4">{{ formatPercent(channel.feePercent) }}</td>
               <td class="zahl px-4">{{ formatMoney(channel.feeFixed) }}</td>
+              <td class="zahl px-4">{{ formatMoney(channel.shippingPriceGross) }}</td>
+              <td class="zahl px-4">{{ channel.freeShippingFrom === null ? 'nie' : formatMoney(channel.freeShippingFrom) }}</td>
+              <td class="zahl px-4">{{ formatMoney(channel.defaultPostage) }}</td>
               <td class="px-4 text-leinen-500">
                 {{ channel.pricingRule === 'same_margin' ? 'aus Zielmarge' : 'fest' }}
               </td>
@@ -212,6 +228,17 @@ async function toggleActive(channel: Channel) {
           >
             <BetragFeld v-model="form.feeFixed" class="w-full" />
           </UFormField>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UFormField label="Versandpreis" :error="fieldErrors.shippingPriceGross" help="Brutto, zahlt der Kunde">
+              <BetragFeld v-model="form.shippingPriceGross" class="w-full" />
+            </UFormField>
+            <UFormField label="Versandkostenfrei ab" :error="fieldErrors.freeShippingFrom" help="Warenwert brutto; leer = nie">
+              <BetragFeld v-model="form.freeShippingFrom" class="w-full" />
+            </UFormField>
+            <UFormField label="Porto" :error="fieldErrors.defaultPostage" help="Tatsächliche Kosten je Paket">
+              <BetragFeld v-model="form.defaultPostage" class="w-full" />
+            </UFormField>
+          </div>
           <UFormField label="Preisregel">
             <USelectMenu
               v-model="form.pricingRule"

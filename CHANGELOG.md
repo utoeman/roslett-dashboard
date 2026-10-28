@@ -2,6 +2,14 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.6.0 (2026-10-28)
+
+### Neu
+
+- refunds, returns and cancellation (#30)
+- sales pages (#29)
+- sales model (#28)
+
 ## v0.5.0 (2026-10-25)
 
 ### Neu
@@ -59,6 +67,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

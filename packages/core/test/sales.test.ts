@@ -128,6 +128,43 @@ describe('saleMargins', () => {
     expect(result.totals.margin).toBe(0);
   });
 
+  it('mindert den Erlös um die Erstattung der Position, netto mit deren Satz', () => {
+    const result = saleMargins({
+      ...noExtras,
+      lines: [line('a', 2, 1190, { costOfGoodsEur: 500, refundGross: 1190 }), line('b', 1, 2380)],
+    });
+    expect(result.lines.map((l) => l.refundNetEur)).toEqual([1000, 0]);
+    expect(result.lines[0]?.contributionMarginEur).toBe(2000 - 500 - 1000);
+    // Margin relates to what is left of the revenue: 500 / (2000 − 1000).
+    expect(result.lines[0]?.margin).toBe(0.5);
+    expect(result.totals.refundNetEur).toBe(1000);
+  });
+
+  it('verteilt eine Erstattung auf die ganze Bestellung nach Warenwert', () => {
+    const result = saleMargins({
+      ...noExtras,
+      orderRefundGross: 476,
+      lines: [line('a', 1, 3570), line('b', 1, 1190)],
+    });
+    // 357 / 1.19 = 300, 119 / 1.19 = 100
+    expect(result.lines.map((l) => l.refundNetEur)).toEqual([300, 100]);
+  });
+
+  it('lässt nach einem Storno nur die stehenbleibenden Gebühren als Verlust', () => {
+    const result = saleMargins({
+      shippingRevenueGross: 490,
+      postageCost: 395,
+      discountGross: 0,
+      feesEur: 286,
+      cancelled: true,
+      // Cost of goods is 0 because the reversal books the goods back.
+      lines: [line('a', 1, 8990, { vatRate: 0.21, unitCostItemsEur: 40 })],
+    });
+    expect(result.totals.contributionMarginEur).toBe(-286);
+    expect(result.totals.margin).toBe(0);
+    expect(result.lines[0]?.revenueNetEur).toBe(7430);
+  });
+
   it('lehnt ungültige Eingaben ab', () => {
     expect(() => saleMargins({ ...noExtras, lines: [] })).toThrow(SalesError);
     expect(() => saleMargins({ ...noExtras, lines: [line('a', 0, 1000)] })).toThrow(SalesError);

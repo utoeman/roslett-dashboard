@@ -397,6 +397,34 @@ export const fees = pgTable(
   (t) => [index('fees_sale_idx').on(t.saleId)],
 );
 
+/**
+ * A refund lowers revenue. With `restocked` the goods come back onto the
+ * line's batches (a `return` entry); `damaged` adds shrinkage right away.
+ * Without a line it is a goodwill refund on the whole order.
+ */
+export const refunds = pgTable(
+  'refunds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    saleId: uuid('sale_id')
+      .notNull()
+      .references(() => sales.id),
+    saleItemId: uuid('sale_item_id').references(() => saleItems.id),
+    quantity: integer('quantity').notNull().default(0),
+    amountGross: money('amount_gross').notNull(),
+    restocked: boolean('restocked').notNull().default(false),
+    damaged: boolean('damaged').notNull().default(false),
+    refundedAt: timestamp('refunded_at', { withTimezone: true }).notNull(),
+    note: text('note'),
+    createdAt,
+  },
+  (t) => [
+    index('refunds_sale_idx').on(t.saleId),
+    check('refunds_quantity_not_negative', sql`${t.quantity} >= 0`),
+    check('refunds_damaged_needs_restock', sql`not ${t.damaged} or ${t.restocked}`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Stock journal
 // ---------------------------------------------------------------------------
@@ -530,6 +558,18 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
   }),
   items: many(saleItems),
   fees: many(fees),
+  refunds: many(refunds),
+}));
+
+export const refundsRelations = relations(refunds, ({ one }) => ({
+  sale: one(sales, {
+    fields: [refunds.saleId],
+    references: [sales.id],
+  }),
+  saleItem: one(saleItems, {
+    fields: [refunds.saleItemId],
+    references: [saleItems.id],
+  }),
 }));
 
 export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({
@@ -542,6 +582,7 @@ export const saleItemsRelations = relations(saleItems, ({ one, many }) => ({
     references: [variants.id],
   }),
   stockEntries: many(stockEntries),
+  refunds: many(refunds),
 }));
 
 export const feesRelations = relations(fees, ({ one }) => ({

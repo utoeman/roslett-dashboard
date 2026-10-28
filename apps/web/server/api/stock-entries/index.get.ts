@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
     with: {
       variant: { with: { color: true, product: { columns: { name: true } } } },
       allocations: { with: { batch: { with: { goodsReceipt: { columns: { number: true } } } } } },
+      saleItem: { columns: { saleId: true } },
     },
   });
 
@@ -70,6 +71,7 @@ export default defineEventHandler(async (event) => {
         .reduce((sum, a) => sum + a.quantity, 0),
       reversesId: e.reversesId,
       reversedById: reversedBy.find((r) => r.reversesId === e.id)?.id ?? null,
+      saleId: e.saleItem?.saleId ?? null,
     })),
     total,
     limit,

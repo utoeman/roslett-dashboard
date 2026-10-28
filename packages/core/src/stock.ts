@@ -101,6 +101,45 @@ export function planShortfallResolution(
   });
 }
 
+export interface ReturnSource {
+  /** Batch the line was issued from; null for its still open shortfall. */
+  readonly batchId: string | null;
+  readonly invoiceDate: string;
+  /** Units from this source not returned yet. */
+  readonly returnable: number;
+}
+
+export interface PlannedReturn {
+  /** Units that only close the line's open shortfall; they never were in a batch. */
+  readonly closedShortfall: number;
+  readonly toBatches: PlannedAllocation[];
+}
+
+/** A return goes back where the line came from: open shortfall first, then batches newest first. */
+export function planReturn(sources: readonly ReturnSource[], quantity: number): PlannedReturn {
+  assertQuantity(quantity);
+  const available = sources.reduce((total, s) => total + Math.max(0, s.returnable), 0);
+  if (available < quantity) {
+    throw new StockError(`Es können nur noch ${available} Stück zurückgenommen werden.`);
+  }
+  const shortfall = sources.reduce((total, s) => total + (s.batchId === null ? Math.max(0, s.returnable) : 0), 0);
+  const closedShortfall = Math.min(shortfall, quantity);
+  let open = quantity - closedShortfall;
+
+  const batches = sources.flatMap((s) =>
+    s.batchId === null ? [] : [{ id: s.batchId, invoiceDate: s.invoiceDate, remaining: s.returnable }],
+  );
+  const toBatches: PlannedAllocation[] = [];
+  for (const batch of fifoOrder(batches).reverse()) {
+    if (open === 0) break;
+    if (batch.remaining <= 0) continue;
+    const taken = Math.min(batch.remaining, open);
+    toBatches.push({ batchId: batch.id, quantity: taken });
+    open -= taken;
+  }
+  return { closedShortfall, toBatches };
+}
+
 export type DeliveryState = 'open' | 'partial' | 'complete';
 
 export function deliveryState(ordered: number, delivered: number): DeliveryState {

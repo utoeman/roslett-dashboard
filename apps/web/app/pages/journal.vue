@@ -321,6 +321,17 @@ const signed = (quantity: number) => (quantity > 0 ? `+${quantity}` : String(qua
                 </UBadge>
                 <span v-else-if="item.kind === 'reversal'" class="text-xs text-leinen-400">Gegenbuchung</span>
                 <UButton
+                  v-else-if="item.saleId"
+                  :to="`/verkaeufe/${item.saleId}`"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-shopping-bag"
+                  class="rounded-[8px]"
+                >
+                  Zum Verkauf
+                </UButton>
+                <UButton
                   v-else
                   size="xs"
                   variant="ghost"

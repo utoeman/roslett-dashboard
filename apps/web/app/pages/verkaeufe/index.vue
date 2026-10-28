@@ -11,7 +11,7 @@ const { readError } = useApiError();
 const search = ref('');
 const searchDebounced = useDebounced(search, 250);
 const channelFilter = ref('all');
-const statusFilter = ref<'all' | SaleStatus | 'shortfall'>('all');
+const statusFilter = ref<'all' | SaleStatus | 'shortfall' | 'returned'>('all');
 const page = ref(0);
 const perPage = 100;
 
@@ -21,6 +21,7 @@ const { data, pending, error, refresh } = await useFetch<List<SaleListItem>>('/a
     channelId: computed(() => (channelFilter.value === 'all' ? undefined : channelFilter.value)),
     status: computed(() => (['open', 'shipped', 'cancelled'].includes(statusFilter.value) ? statusFilter.value : undefined)),
     shortfallOnly: computed(() => statusFilter.value === 'shortfall'),
+    returnedOnly: computed(() => statusFilter.value === 'returned'),
     limit: perPage,
     offset: computed(() => page.value * perPage),
   },
@@ -42,6 +43,7 @@ const statusOptions = [
   { label: 'Offen', value: 'open' },
   { label: 'Versendet', value: 'shipped' },
   { label: 'Storniert', value: 'cancelled' },
+  { label: 'Mit Retoure', value: 'returned' },
   { label: 'Mit Fehlmenge', value: 'shortfall' },
 ];
 
@@ -288,6 +290,9 @@ async function create() {
                   <div class="flex flex-wrap gap-1">
                     <UBadge size="sm" :color="statusLabels[item.status].color" variant="subtle" class="rounded-[8px]">
                       {{ statusLabels[item.status].label }}
+                    </UBadge>
+                    <UBadge v-if="item.returnState !== 'none'" size="sm" color="info" variant="subtle" class="rounded-[8px]">
+                      {{ item.returnState === 'full' ? 'Retoure' : 'Teilretoure' }}
                     </UBadge>
                     <UBadge v-if="item.shortfall > 0" size="sm" color="error" variant="subtle" class="rounded-[8px]">
                       Fehlmenge {{ item.shortfall }}

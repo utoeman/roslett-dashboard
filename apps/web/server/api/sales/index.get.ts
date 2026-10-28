@@ -13,13 +13,14 @@ const openShortfall = sql<number>`coalesce((
 
 /** Sales, newest first, with pieces, goods value, open shortfalls and margin. */
 export default defineEventHandler(async (event) => {
-  const { search, channelId, status, shortfallOnly, limit, offset } = readQuery(event, saleQuerySchema);
+  const { search, channelId, status, shortfallOnly, returnedOnly, limit, offset } = readQuery(event, saleQuerySchema);
   const db = useDb();
 
   const filters: SQL[] = [];
   if (channelId) filters.push(eq(schema.sales.channelId, channelId));
   if (status) filters.push(eq(schema.sales.status, status));
   if (shortfallOnly) filters.push(sql`${openShortfall} > 0`);
+  if (returnedOnly) filters.push(sql`exists (select 1 from refunds r where r.sale_id = sales.id and r.quantity > 0)`);
   if (search) {
     const pattern = `%${search}%`;
     filters.push(sql`(${schema.sales.externalOrderNumber} ilike ${pattern} or exists (
@@ -52,14 +53,15 @@ export default defineEventHandler(async (event) => {
     .from(schema.sales)
     .where(where);
 
-  const margins = new Map((await loadSales(db, rows.map((r) => r.id))).map((s) => [s.id, s.totals]));
+  const views = new Map((await loadSales(db, rows.map((r) => r.id))).map((s) => [s.id, s]));
 
   return {
     items: rows.map(({ goodsGross, ...row }) => ({
       ...row,
       goodsGross: numericToCents(goodsGross) ?? 0,
-      contributionMarginEur: margins.get(row.id)?.contributionMarginEur ?? null,
-      margin: margins.get(row.id)?.margin ?? null,
+      returnState: views.get(row.id)?.returnState ?? 'none',
+      contributionMarginEur: views.get(row.id)?.totals.contributionMarginEur ?? null,
+      margin: views.get(row.id)?.totals.margin ?? null,
     })),
     total,
     limit,

@@ -230,6 +230,8 @@ export interface StockEntry {
   openShortfall: number;
   reversesId: string | null;
   reversedById: string | null;
+  /** Entries of a sale are reversed through the sale, not in the journal. */
+  saleId: string | null;
 }
 
 export interface BatchOption {
@@ -248,6 +250,22 @@ export interface StockSummary {
 
 export type SaleStatus = 'open' | 'shipped' | 'cancelled';
 
+/** Derived from refunded quantities. */
+export type ReturnState = 'none' | 'partial' | 'full';
+
+export interface SaleRefund {
+  id: string;
+  /** null for goodwill on the whole order. */
+  saleItemId: string | null;
+  quantity: number;
+  /** Cents. */
+  amountGross: number;
+  restocked: boolean;
+  damaged: boolean;
+  refundedAt: string;
+  note: string | null;
+}
+
 export interface SaleListItem {
   id: string;
   /** null for imported orders of an unknown source. */
@@ -261,6 +279,7 @@ export interface SaleListItem {
   goodsGross: number;
   /** Units still without a batch. */
   shortfall: number;
+  returnState: ReturnState;
   contributionMarginEur: number | null;
   margin: number | null;
 }
@@ -275,6 +294,7 @@ export interface SaleFigures {
   postageEur: number;
   shippingRevenueNetEur: number;
   discountNetEur: number;
+  refundNetEur: number;
   contributionMarginEur: number;
   margin: number;
 }
@@ -286,6 +306,7 @@ export interface SaleItem extends SaleFigures {
   unitPriceGross: number;
   vatRate: number;
   shortfall: number;
+  refundedQuantity: number;
 }
 
 export interface Sale {
@@ -298,8 +319,10 @@ export interface Sale {
   postageCost: number;
   discountGross: number;
   status: SaleStatus;
+  returnState: ReturnState;
   createdAt: string;
   fees: { id: string; kind: string; amount: number; source: 'flat' | 'api' }[];
+  refunds: SaleRefund[];
   items: SaleItem[];
   totals: SaleFigures;
   /** Cost is partly estimated while a shortfall is open. */

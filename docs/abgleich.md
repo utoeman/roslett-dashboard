@@ -175,5 +175,10 @@ Release nach 1a-3.
 | F7 | Bestellsumme für die Pauschalgebühr | Warenwert brutto − Rabatt brutto + Versanderlös brutto |
 | F8 | Porto, Gebühren | gelten als Nettokosten; Rabatt und Versanderlös werden mit dem MwSt-Satz der jeweiligen Position auf netto gerechnet |
 | F9 | Versanderlös und Porto | Vorbelegung aus dem Kanal (versandkostenfrei ab Warenwert brutto), je Bestellung überschreibbar |
+| F10 | Storno | nur offene Bestellungen, immer die ganze Bestellung, nur ohne Erstattungen; danach läuft alles über Retoure/Erstattung (entschieden 28.10.2026) |
+| F11 | Gebühren bei Erstattung und Storno | bleiben voll stehen (konservativ, bis exakte Gebühren aus der API kommen); ein Storno zeigt deshalb Marge = − Gebühren, ohne Erlös, Porto und Stückkosten |
+| F12 | Retoure beschädigt | Häkchen im Retoure-Dialog: Retoure auf die Chargen der Position + Schwund (FIFO) in einem Schritt; der Verlust bleibt in der Marge |
+| F13 | Retoure auf Chargen | zuerst schließt sie eine noch offene Fehlmenge der Position, dann zurück auf die Chargen der Position, neueste zuerst |
+| F14 | Verkaufsbuchungen im Journal | lassen sich dort nicht stornieren; nur über den Verkauf (Storno, Retoure) |
 | D4 | Erstimport | ab Anbindung, keine Altbestellungen |
 | D5 | Erstanlage der Produkte | CSV-Export im Shopify-Format aus dem Dashboard |

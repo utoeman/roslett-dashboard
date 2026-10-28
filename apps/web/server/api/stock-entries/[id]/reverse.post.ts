@@ -3,12 +3,11 @@ import { schema, useDb } from '../../../db/client.js';
 import { reverseSchema } from '../../../../shared/schemas/stock-entry.js';
 import { readJsonBody, readId, requireFound } from '../../../utils/validation.js';
 import { conflict, databaseError } from '../../../utils/errors.js';
-import { batchStock, postEntry, resolveShortfalls } from '../../../utils/stock.js';
+import { reverseEntry } from '../../../utils/stock.js';
 
 /**
- * Reverses an entry with a counter entry; the original stays untouched. Batch
- * allocations are mirrored, an open shortfall is closed. Stock that has been
- * used up since cannot be taken back.
+ * Reverses a journal entry. Entries of a sale are excluded: cancelling or
+ * returning goes through the sale, so order and stock stay in step (F14).
  */
 export default defineEventHandler(async (event) => {
   const id = readId(event);
@@ -20,6 +19,9 @@ export default defineEventHandler(async (event) => {
     'Die Buchung',
   );
   if (original.kind === 'reversal') throw conflict('Ein Storno lässt sich nicht stornieren.');
+  if (original.saleItemId !== null) {
+    throw conflict('Buchungen eines Verkaufs werden über den Verkauf storniert oder retourniert.');
+  }
   const already = await db.query.stockEntries.findFirst({
     where: eq(schema.stockEntries.reversesId, id),
     columns: { id: true },
@@ -27,34 +29,7 @@ export default defineEventHandler(async (event) => {
   if (already) throw conflict('Diese Buchung ist bereits storniert.');
 
   try {
-    const reversalId = await db.transaction(async (tx) => {
-      const stock = new Map((await batchStock(tx, original.variantId)).map((b) => [b.id, b.remaining]));
-      const now = new Date();
-      const allocations = original.allocations.map((a) => {
-        if (a.batchId !== null && -a.quantity < 0 && (stock.get(a.batchId) ?? 0) < a.quantity) {
-          throw conflict('Ware aus dieser Buchung ist inzwischen verbraucht; ein Storno ist nicht mehr möglich.');
-        }
-        return { batchId: a.batchId, quantity: -a.quantity, resolvedAt: a.batchId === null ? now : undefined };
-      });
-
-      // An unresolved shortfall of the original is closed, not resolved later.
-      for (const a of original.allocations) {
-        if (a.batchId === null && a.resolvedAt === null) {
-          await tx.update(schema.batchAllocations).set({ resolvedAt: now }).where(eq(schema.batchAllocations.id, a.id));
-        }
-      }
-
-      const created = await postEntry(tx, {
-        variantId: original.variantId,
-        kind: 'reversal',
-        quantity: -original.quantity,
-        note: note ?? null,
-        reversesId: original.id,
-        allocations,
-      });
-      if (-original.quantity > 0) await resolveShortfalls(tx, original.variantId);
-      return created;
-    });
+    const reversalId = await db.transaction((tx) => reverseEntry(tx, original, note ?? null));
     setResponseStatus(event, 201);
     return { id: reversalId };
   } catch (error) {

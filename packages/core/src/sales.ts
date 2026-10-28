@@ -23,6 +23,8 @@ export interface SaleLine {
   readonly costOfGoodsEur: Cents;
   /** Cost items (packaging, labels …) per unit. */
   readonly unitCostItemsEur: Cents;
+  /** Refunds booked on this line. */
+  readonly refundGross?: Cents;
 }
 
 export interface SaleInput {
@@ -31,6 +33,10 @@ export interface SaleInput {
   readonly postageCost: Cents;
   readonly discountGross: Cents;
   readonly feesEur: Cents;
+  /** Refunds on the whole order (goodwill), split by goods value. */
+  readonly orderRefundGross?: Cents;
+  /** Cancelled before shipping: no revenue, postage or cost items; fees stay (F11). */
+  readonly cancelled?: boolean;
   readonly lines: readonly SaleLine[];
 }
 
@@ -43,6 +49,7 @@ export interface SaleFigures {
   readonly postageEur: Cents;
   readonly shippingRevenueNetEur: Cents;
   readonly discountNetEur: Cents;
+  readonly refundNetEur: Cents;
   readonly contributionMarginEur: Cents;
   /** Contribution / net revenue; 0 without revenue. */
   readonly margin: Rate;
@@ -93,12 +100,14 @@ function assertLine(line: SaleLine): void {
 
 const toNet = (gross: Cents, vatRate: Rate): Cents => round(gross / (1 + vatRate));
 
-const marginOf = (contribution: Cents, revenueNet: Cents): Rate => (revenueNet === 0 ? 0 : contribution / revenueNet);
+/** Relative to net revenue after refunds; nothing left means 0. */
+const marginOf = (contribution: Cents, revenueNet: Cents): Rate => (revenueNet <= 0 ? 0 : contribution / revenueNet);
 
 /**
  * Margin per line = net revenue − FIFO cost − cost items − fees − postage
- * + net shipping revenue − net discount. Discount and shipping revenue are
- * netted with the VAT rate of the line they are distributed to.
+ * + net shipping revenue − net discount − net refunds. Discount, shipping
+ * revenue and refunds are netted with the VAT rate of the line they belong to.
+ * Fees stay in full after a refund (F11).
  */
 export function saleMargins(input: SaleInput): SaleMarginResult {
   if (input.lines.length === 0) throw new SalesError('Ein Verkauf braucht mindestens eine Position.');
@@ -109,17 +118,43 @@ export function saleMargins(input: SaleInput): SaleMarginResult {
   const shipping = distributeByWeight(assertCents(input.shippingRevenueGross, 'Versanderlös'), weights);
   const postage = distributeByWeight(assertCents(input.postageCost, 'Porto'), weights);
   const fees = distributeByWeight(assertCents(input.feesEur, 'Gebühren'), weights);
+  const orderRefunds = distributeByWeight(assertCents(input.orderRefundGross ?? 0, 'Erstattung'), weights);
 
   const lines = input.lines.map((line, i): SaleLineMargin => {
     const goodsGross = weights[i] ?? 0;
     const revenueNetEur = toNet(goodsGross, line.vatRate);
-    const costItemsEur = line.quantity * line.unitCostItemsEur;
     const feesEur = fees[i] ?? 0;
+    if (input.cancelled) {
+      const contribution = -line.costOfGoodsEur - feesEur;
+      return {
+        id: line.id,
+        goodsGross,
+        revenueNetEur,
+        costOfGoodsEur: line.costOfGoodsEur,
+        costItemsEur: 0,
+        feesEur,
+        postageEur: 0,
+        shippingRevenueNetEur: 0,
+        discountNetEur: 0,
+        refundNetEur: 0,
+        contributionMarginEur: contribution,
+        margin: 0,
+      };
+    }
+    const costItemsEur = line.quantity * line.unitCostItemsEur;
     const postageEur = postage[i] ?? 0;
     const shippingRevenueNetEur = toNet(shipping[i] ?? 0, line.vatRate);
     const discountNetEur = toNet(discounts[i] ?? 0, line.vatRate);
+    const refundNetEur = toNet(assertCents(line.refundGross ?? 0, 'Erstattung') + (orderRefunds[i] ?? 0), line.vatRate);
     const contributionMarginEur =
-      revenueNetEur - line.costOfGoodsEur - costItemsEur - feesEur - postageEur + shippingRevenueNetEur - discountNetEur;
+      revenueNetEur -
+      line.costOfGoodsEur -
+      costItemsEur -
+      feesEur -
+      postageEur +
+      shippingRevenueNetEur -
+      discountNetEur -
+      refundNetEur;
     return {
       id: line.id,
       goodsGross,
@@ -130,8 +165,9 @@ export function saleMargins(input: SaleInput): SaleMarginResult {
       postageEur,
       shippingRevenueNetEur,
       discountNetEur,
+      refundNetEur,
       contributionMarginEur,
-      margin: marginOf(contributionMarginEur, revenueNetEur),
+      margin: marginOf(contributionMarginEur, revenueNetEur - refundNetEur),
     };
   });
 
@@ -149,8 +185,9 @@ export function saleMargins(input: SaleInput): SaleMarginResult {
       postageEur: total('postageEur'),
       shippingRevenueNetEur: total('shippingRevenueNetEur'),
       discountNetEur: total('discountNetEur'),
+      refundNetEur: total('refundNetEur'),
       contributionMarginEur,
-      margin: marginOf(contributionMarginEur, revenueNetEur),
+      margin: input.cancelled ? 0 : marginOf(contributionMarginEur, revenueNetEur - total('refundNetEur')),
     },
   };
 }

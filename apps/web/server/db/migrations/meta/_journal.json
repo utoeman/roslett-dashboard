@@ -50,6 +50,13 @@
       "when": 1793028625430,
       "tag": "0006_verkauf",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793194480431,
+      "tag": "0007_erstattungen",
+      "breakpoints": true
     }
   ]
 }

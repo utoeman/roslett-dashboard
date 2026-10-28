@@ -80,6 +80,7 @@ export async function loadSales(db: Reader, ids: readonly string[]) {
     with: {
       channel: { columns: { id: true, name: true } },
       fees: true,
+      refunds: { orderBy: (r, { asc }) => [asc(r.refundedAt), asc(r.createdAt)] },
       items: {
         with: {
           variant: { with: { color: true, product: { columns: { id: true, name: true } } } },
@@ -125,12 +126,26 @@ export async function loadSales(db: Reader, ids: readonly string[]) {
     const postageCost = numericToCents(sale.postageCost) ?? 0;
     const discountGross = numericToCents(sale.discountGross) ?? 0;
     const fees = sale.fees.map((f) => ({ id: f.id, kind: f.kind, amount: numericToCents(f.amount) ?? 0, source: f.source }));
+    const refunds = sale.refunds.map((r) => ({
+      id: r.id,
+      saleItemId: r.saleItemId,
+      quantity: r.quantity,
+      amountGross: numericToCents(r.amountGross) ?? 0,
+      restocked: r.restocked,
+      damaged: r.damaged,
+      refundedAt: r.refundedAt,
+      note: r.note,
+    }));
+    const refundsOf = (saleItemId: string | null) => refunds.filter((r) => r.saleItemId === saleItemId);
+    const sumOf = (rows: typeof refunds, key: 'quantity' | 'amountGross') => rows.reduce((total, r) => total + r[key], 0);
 
     const margins = saleMargins({
       shippingRevenueGross,
       postageCost,
       discountGross,
       feesEur: fees.reduce((total, f) => total + f.amount, 0),
+      orderRefundGross: sumOf(refundsOf(null), 'amountGross'),
+      cancelled: sale.status === 'cancelled',
       lines: items.map(({ item, costOfGoodsEur, unitCostItemsEur }) => ({
         id: item.id,
         quantity: item.quantity,
@@ -138,8 +153,11 @@ export async function loadSales(db: Reader, ids: readonly string[]) {
         vatRate: numericToRate(item.vatRate) ?? 0,
         costOfGoodsEur,
         unitCostItemsEur,
+        refundGross: sumOf(refundsOf(item.id), 'amountGross'),
       })),
     });
+    const sold = items.reduce((total, { item }) => total + item.quantity, 0);
+    const returned = refunds.reduce((total, r) => total + r.quantity, 0);
 
     return {
       id: sale.id,
@@ -151,8 +169,11 @@ export async function loadSales(db: Reader, ids: readonly string[]) {
       postageCost,
       discountGross,
       status: sale.status,
+      /** Derived from refunded quantities, not stored. */
+      returnState: returned === 0 ? ('none' as const) : returned < sold ? ('partial' as const) : ('full' as const),
       createdAt: sale.createdAt,
       fees,
+      refunds,
       items: items.map(({ item, shortfall }, i) => ({
         ...margins.lines[i],
         id: item.id,
@@ -167,6 +188,7 @@ export async function loadSales(db: Reader, ids: readonly string[]) {
         unitPriceGross: numericToCents(item.unitPriceGross) ?? 0,
         vatRate: numericToRate(item.vatRate) ?? 0,
         shortfall,
+        refundedQuantity: sumOf(refundsOf(item.id), 'quantity'),
       })),
       totals: margins.totals,
       /** Part of the cost is an estimate while a shortfall is open. */

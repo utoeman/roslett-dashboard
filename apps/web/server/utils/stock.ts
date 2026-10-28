@@ -12,11 +12,12 @@ import {
   planShortfallResolution,
   type BatchStock,
   type PlannedAllocation,
+  type ReturnSource,
 } from '@roslett/core';
 import type { useDb } from '../db/client.js';
 import { schema } from '../db/client.js';
 import type { Position } from '../../shared/schemas/goods-receipt.js';
-import { badRequest } from './errors.js';
+import { badRequest, conflict } from './errors.js';
 import { centsToNumeric, numericToCents } from './money.js';
 
 type Db = ReturnType<typeof useDb>;
@@ -90,6 +91,76 @@ export async function postEntry(
     );
   }
   return created.id;
+}
+
+type EntryWithAllocations = {
+  id: string;
+  variantId: string;
+  quantity: number;
+  saleItemId: string | null;
+  allocations: { id: string; batchId: string | null; quantity: number; resolvedAt: Date | null }[];
+};
+
+/**
+ * Reverses an entry with a counter entry; the original stays untouched. Batch
+ * allocations are mirrored, an open shortfall is closed. Stock that has been
+ * used up since cannot be taken back.
+ */
+export async function reverseEntry(tx: Tx, original: EntryWithAllocations, note: string | null): Promise<string> {
+  const stock = new Map((await batchStock(tx, original.variantId)).map((b) => [b.id, b.remaining]));
+  const now = new Date();
+  const allocations = original.allocations.map((a) => {
+    if (a.batchId !== null && -a.quantity < 0 && (stock.get(a.batchId) ?? 0) < a.quantity) {
+      throw conflict('Ware aus dieser Buchung ist inzwischen verbraucht; ein Storno ist nicht mehr möglich.');
+    }
+    return { batchId: a.batchId, quantity: -a.quantity, resolvedAt: a.batchId === null ? now : undefined };
+  });
+
+  // An unresolved shortfall of the original is closed, not resolved later.
+  for (const a of original.allocations) {
+    if (a.batchId === null && a.resolvedAt === null) {
+      await tx.update(schema.batchAllocations).set({ resolvedAt: now }).where(eq(schema.batchAllocations.id, a.id));
+    }
+  }
+
+  const created = await postEntry(tx, {
+    variantId: original.variantId,
+    kind: 'reversal',
+    quantity: -original.quantity,
+    note,
+    saleItemId: original.saleItemId ?? undefined,
+    reversesId: original.id,
+    allocations,
+  });
+  if (-original.quantity > 0) await resolveShortfalls(tx, original.variantId);
+  return created;
+}
+
+/**
+ * What of a sale line can still come back: per batch issued minus returned,
+ * plus its open shortfall (batch null).
+ */
+export async function returnSources(tx: Tx, saleItemId: string): Promise<ReturnSource[]> {
+  const rows = await tx
+    .select({
+      batchId: schema.batchAllocations.batchId,
+      invoiceDate: schema.goodsReceipts.invoiceDate,
+      returnable: sql<number>`(-sum(${schema.batchAllocations.quantity}))::int`,
+    })
+    .from(schema.batchAllocations)
+    .innerJoin(schema.stockEntries, eq(schema.batchAllocations.stockEntryId, schema.stockEntries.id))
+    .leftJoin(schema.batches, eq(schema.batchAllocations.batchId, schema.batches.id))
+    .leftJoin(schema.goodsReceipts, eq(schema.batches.goodsReceiptId, schema.goodsReceipts.id))
+    .where(
+      and(
+        eq(schema.stockEntries.saleItemId, saleItemId),
+        inArray(schema.stockEntries.kind, ['sale', 'return']),
+        // Closed shortfalls never held goods.
+        sql`(${schema.batchAllocations.batchId} is not null or ${schema.batchAllocations.resolvedAt} is null)`,
+      ),
+    )
+    .groupBy(schema.batchAllocations.batchId, schema.goodsReceipts.invoiceDate);
+  return rows.map((r) => ({ batchId: r.batchId, invoiceDate: r.invoiceDate ?? '', returnable: r.returnable }));
 }
 
 /** Assigns open shortfalls of a variant to stock that has arrived since (oldest first). */

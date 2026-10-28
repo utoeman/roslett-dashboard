@@ -1,7 +1,7 @@
 /** Sales (orders) entered by hand; Shopify imports use the same shape later. */
 
 import { z } from 'zod';
-import { flagSchema, listQuerySchema, moneySchema, requiredText, uuidSchema } from './common.js';
+import { flagSchema, listQuerySchema, moneySchema, optionalText, requiredText, uuidSchema } from './common.js';
 import { isoDateSchema } from './goods-receipt.js';
 
 const quantitySchema = z.coerce
@@ -44,11 +44,44 @@ export const saleQuerySchema = listQuerySchema.pick({ search: true, limit: true,
   channelId: uuidSchema.optional(),
   status: z.enum(saleStatuses).optional(),
   shortfallOnly: flagSchema().default(false),
+  returnedOnly: flagSchema().default(false),
 });
 
-/** Cancelling is a reversal with its own route (1a-3), not a status change. */
+/** Cancelling is a reversal with its own route, not a status change. */
 export const updateSaleSchema = z.object({
   status: z.enum(['open', 'shipped'], { message: 'Status muss offen oder versendet sein.' }),
 });
 
+export const cancelSaleSchema = z.object({ note: optionalText(500) });
+
+/**
+ * Return (goods back, `restocked`), refund without goods (quantity, not
+ * restocked) or goodwill on the whole order (no line, quantity 0).
+ */
+export const createRefundSchema = z
+  .object({
+    saleItemId: uuidSchema.nullable().default(null),
+    quantity: z.coerce.number().int({ message: 'Menge muss eine ganze Zahl sein.' }).min(0, { message: 'Menge darf nicht negativ sein.' }).default(0),
+    amountGross: amountSchema('Betrag'),
+    restocked: flagSchema().default(false),
+    damaged: flagSchema().default(false),
+    refundedAt: isoDateSchema,
+    note: optionalText(500),
+  })
+  .superRefine((r, ctx) => {
+    if (r.quantity > 0 && r.saleItemId === null) {
+      ctx.addIssue({ code: 'custom', path: ['saleItemId'], message: 'Für eine Menge bitte die Position wählen.' });
+    }
+    if (r.restocked && r.quantity === 0) {
+      ctx.addIssue({ code: 'custom', path: ['quantity'], message: 'Eine Retoure braucht mindestens 1 Stück.' });
+    }
+    if (r.damaged && !r.restocked) {
+      ctx.addIssue({ code: 'custom', path: ['damaged'], message: 'Beschädigt gibt es nur bei einer Retoure.' });
+    }
+    if (r.quantity === 0 && r.amountGross === 0) {
+      ctx.addIssue({ code: 'custom', path: ['amountGross'], message: 'Betrag oder Menge angeben.' });
+    }
+  });
+
 export type CreateSale = z.infer<typeof createSaleSchema>;
+export type CreateRefund = z.infer<typeof createRefundSchema>;

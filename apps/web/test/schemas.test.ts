@@ -27,7 +27,7 @@ import {
   createChannelSchema,
 } from '../shared/schemas/channel.js';
 import { journalQuerySchema } from '../shared/schemas/stock-entry.js';
-import { createSaleSchema, saleQuerySchema, updateSaleSchema } from '../shared/schemas/sale.js';
+import { createRefundSchema, createSaleSchema, saleQuerySchema, updateSaleSchema } from '../shared/schemas/sale.js';
 import { additionalCostSchema, createReceiptSchema } from '../shared/schemas/goods-receipt.js';
 import {
   centsToNumeric,
@@ -540,5 +540,30 @@ describe('Verkauf – Status und Filter', () => {
     expect(saleQuerySchema.parse({}).shortfallOnly).toBe(false);
     expect(saleQuerySchema.parse({ shortfallOnly: 'true' }).shortfallOnly).toBe(true);
     expect(saleQuerySchema.safeParse({ status: 'returned' }).success).toBe(false);
+  });
+});
+
+describe('createRefundSchema – Retoure, Erstattung, Kulanz', () => {
+  const item = '00000000-0000-4000-8000-000000000003';
+  const base = { refundedAt: '2026-10-28' };
+  const issues = (input: object) => {
+    const result = createRefundSchema.safeParse({ ...base, ...input });
+    return result.success ? [] : result.error.issues.map((i) => i.path.join('.'));
+  };
+
+  it('nimmt Retoure, Erstattung ohne Ware und Kulanz an', () => {
+    expect(issues({ saleItemId: item, quantity: 1, amountGross: '39,90', restocked: true })).toEqual([]);
+    expect(issues({ saleItemId: item, quantity: 1, amountGross: '39,90' })).toEqual([]);
+    expect(createRefundSchema.parse({ ...base, amountGross: '5' })).toMatchObject({ saleItemId: null, quantity: 0, amountGross: 500, restocked: false });
+  });
+
+  it('verlangt eine Position für Mengen und Menge für Retouren', () => {
+    expect(issues({ quantity: 1, amountGross: '10' })).toEqual(['saleItemId']);
+    expect(issues({ saleItemId: item, restocked: true, amountGross: '10' })).toEqual(['quantity']);
+  });
+
+  it('kennt beschädigt nur bei Retouren und lehnt leere Erstattungen ab', () => {
+    expect(issues({ saleItemId: item, quantity: 1, amountGross: '10', damaged: true })).toEqual(['damaged']);
+    expect(issues({ amountGross: '0' })).toEqual(['amountGross']);
   });
 });

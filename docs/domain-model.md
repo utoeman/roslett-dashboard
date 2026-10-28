@@ -223,8 +223,13 @@ Geliefert = Summe der Zugangsbuchungen. Restmenge = Summe aller Zuordnungen der 
 | sale_item_id | → sale_items, optional | leer = Erstattung auf die ganze Bestellung (Kulanz) |
 | quantity | int | 0 bei reiner Geld-Erstattung |
 | amount_gross | Geld | mindert den Erlös |
-| restocked | bool | ja → `return`-Buchung auf die Chargen der Position |
+| restocked | bool | ja → `return`-Buchung auf die Chargen der Position (F13) |
+| damaged | bool | nur mit `restocked`: zusätzlich Schwund (F12) |
 | refunded_at | timestamp | |
+| note | text, optional | |
+
+Erstattungen mindern den Erlös: auf die Position netto mit deren MwSt-Satz, auf die ganze
+Bestellung nach Warenwert verteilt. Die Marge in % bezieht sich dann auf VK netto − Erstattungen netto. Summe aller Erstattungen ≤ Warenwert − Rabatt + Versanderlös.
 
 ### Bestandsjournal
 

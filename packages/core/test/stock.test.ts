@@ -4,6 +4,7 @@ import {
   convertToEur,
   deliveryState,
   planIssue,
+  planReturn,
   planShortfallResolution,
   planStocktake,
   receiptNumber,
@@ -175,5 +176,37 @@ describe('valueStock', () => {
 
   it('liefert ohne Chargen keinen Einstand', () => {
     expect(valueStock([])).toEqual({ units: 0, valueEur: 0, averageCostEur: null });
+  });
+});
+
+describe('planReturn (Retoure auf die Chargen der Position)', () => {
+  const source = (batchId: string | null, invoiceDate: string, returnable: number) => ({ batchId, invoiceDate, returnable });
+
+  it('schließt zuerst die offene Fehlmenge, dann die neueste Charge', () => {
+    const sources = [source('alt', '2026-01-10', 3), source('neu', '2026-02-10', 2), source(null, '', 2)];
+    expect(planReturn(sources, 3)).toEqual({ closedShortfall: 2, toBatches: [{ batchId: 'neu', quantity: 1 }] });
+  });
+
+  it('geht über mehrere Chargen, neueste zuerst', () => {
+    const sources = [source('alt', '2026-01-10', 3), source('neu', '2026-02-10', 2)];
+    expect(planReturn(sources, 4)).toEqual({
+      closedShortfall: 0,
+      toBatches: [
+        { batchId: 'neu', quantity: 2 },
+        { batchId: 'alt', quantity: 2 },
+      ],
+    });
+  });
+
+  it('überspringt bereits zurückgenommene Mengen', () => {
+    expect(planReturn([source('neu', '2026-02-10', 0), source('alt', '2026-01-10', 1)], 1)).toEqual({
+      closedShortfall: 0,
+      toBatches: [{ batchId: 'alt', quantity: 1 }],
+    });
+  });
+
+  it('lehnt mehr ab, als noch zurückgenommen werden kann', () => {
+    expect(() => planReturn([source('a', '2026-01-10', 2)], 3)).toThrow(StockError);
+    expect(() => planReturn([source('a', '2026-01-10', 2)], 0)).toThrow(StockError);
   });
 });

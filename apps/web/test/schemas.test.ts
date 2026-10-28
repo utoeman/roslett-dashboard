@@ -27,7 +27,7 @@ import {
   createChannelSchema,
 } from '../shared/schemas/channel.js';
 import { journalQuerySchema } from '../shared/schemas/stock-entry.js';
-import { createSaleSchema } from '../shared/schemas/sale.js';
+import { createSaleSchema, saleQuerySchema, updateSaleSchema } from '../shared/schemas/sale.js';
 import { additionalCostSchema, createReceiptSchema } from '../shared/schemas/goods-receipt.js';
 import {
   centsToNumeric,
@@ -527,5 +527,18 @@ describe('createSaleSchema', () => {
     expect(createSaleSchema.safeParse({ ...base, discountGross: '-1' }).success).toBe(false);
     expect(createSaleSchema.safeParse({ ...base, items: [] }).success).toBe(false);
     expect(createSaleSchema.safeParse({ ...base, externalOrderNumber: ' ' }).success).toBe(false);
+  });
+});
+
+describe('Verkauf – Status und Filter', () => {
+  it('erlaubt offen und versendet, Storno nur über die eigene Route', () => {
+    expect(updateSaleSchema.parse({ status: 'shipped' })).toEqual({ status: 'shipped' });
+    expect(updateSaleSchema.safeParse({ status: 'cancelled' }).success).toBe(false);
+  });
+
+  it('liest den Fehlmengen-Filter aus der Abfrage', () => {
+    expect(saleQuerySchema.parse({}).shortfallOnly).toBe(false);
+    expect(saleQuerySchema.parse({ shortfallOnly: 'true' }).shortfallOnly).toBe(true);
+    expect(saleQuerySchema.safeParse({ status: 'returned' }).success).toBe(false);
   });
 });

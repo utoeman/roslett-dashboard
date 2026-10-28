@@ -8,6 +8,7 @@ const links = [
   { name: 'Übersicht', path: '/' },
   { name: 'Produkte', path: '/produkte' },
   { name: 'Wareneingang', path: '/wareneingang' },
+  { name: 'Verkäufe', path: '/verkaeufe' },
   { name: 'Bestandsjournal', path: '/journal' },
   { name: 'Kanäle', path: '/einstellungen/kanaele' },
   { name: 'Lieferanten', path: '/einstellungen/lieferanten' },

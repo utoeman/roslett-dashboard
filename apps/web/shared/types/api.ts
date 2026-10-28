@@ -246,6 +246,66 @@ export interface StockSummary {
   variantsBelowMinimum: number;
 }
 
+export type SaleStatus = 'open' | 'shipped' | 'cancelled';
+
+export interface SaleListItem {
+  id: string;
+  /** null for imported orders of an unknown source. */
+  channelName: string | null;
+  externalOrderNumber: string;
+  orderedAt: string;
+  deliveryCountry: string;
+  status: SaleStatus;
+  pieces: number;
+  /** Cents. */
+  goodsGross: number;
+  /** Units still without a batch. */
+  shortfall: number;
+  contributionMarginEur: number | null;
+  margin: number | null;
+}
+
+/** All amounts in cents; margin as a rate of net revenue. */
+export interface SaleFigures {
+  goodsGross: number;
+  revenueNetEur: number;
+  costOfGoodsEur: number;
+  costItemsEur: number;
+  feesEur: number;
+  postageEur: number;
+  shippingRevenueNetEur: number;
+  discountNetEur: number;
+  contributionMarginEur: number;
+  margin: number;
+}
+
+export interface SaleItem extends SaleFigures {
+  id: string;
+  variant: { id: string; sku: string; label: string; productId: string; productName: string };
+  quantity: number;
+  unitPriceGross: number;
+  vatRate: number;
+  shortfall: number;
+}
+
+export interface Sale {
+  id: string;
+  channel: { id: string; name: string } | null;
+  externalOrderNumber: string;
+  orderedAt: string;
+  deliveryCountry: string;
+  shippingRevenueGross: number;
+  postageCost: number;
+  discountGross: number;
+  status: SaleStatus;
+  createdAt: string;
+  fees: { id: string; kind: string; amount: number; source: 'flat' | 'api' }[];
+  items: SaleItem[];
+  totals: SaleFigures;
+  /** Cost is partly estimated while a shortfall is open. */
+  provisional: boolean;
+}
+
 /** Envelope of all list responses. */
 export interface List<T> {
   items: T[];

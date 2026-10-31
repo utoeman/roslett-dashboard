@@ -12,6 +12,8 @@ export default defineEventHandler(async (event) => {
       code: schema.categories.code,
       name: schema.categories.name,
       group: schema.categories.group,
+      shopifyCategoryId: schema.categories.shopifyCategoryId,
+      shopifyCategoryName: schema.categories.shopifyCategoryName,
       archivedAt: schema.categories.archivedAt,
       // Qualified on purpose: an unqualified "id" would bind to the subquery's table.
       inUse: sql<boolean>`exists (select 1 from products p where p.category_id = categories.id)`,

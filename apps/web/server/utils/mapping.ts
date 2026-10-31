@@ -15,6 +15,7 @@ type VariantRow = {
   fiberFilling: string | null;
   originCountry: string | null;
   hsCode: string | null;
+  weightGrams: number | null;
   archivedAt: Date | null;
   color: ColorRef | null;
 };
@@ -32,6 +33,7 @@ export function mapVariant(row: VariantRow) {
     fiberFilling: row.fiberFilling,
     originCountry: row.originCountry,
     hsCode: row.hsCode,
+    weightGrams: row.weightGrams,
     archivedAt: row.archivedAt,
   };
 }

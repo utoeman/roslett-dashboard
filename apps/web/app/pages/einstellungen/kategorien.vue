@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { suggestCode } from '@roslett/core';
-import type { Category, CategoryGroup, List } from '~~/shared/types/api';
+import type { Category, CategoryGroup, List, ShopifyTaxonomyCategory } from '~~/shared/types/api';
 
 useHead({ title: 'Kategorien' });
 
@@ -23,7 +23,43 @@ const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 
 const editing = ref<Category | null>(null);
-const form = reactive({ code: '', name: '', group: 'textile' as CategoryGroup });
+const form = reactive({
+  code: '',
+  name: '',
+  group: 'textile' as CategoryGroup,
+  shopifyCategoryId: null as string | null,
+  shopifyCategoryName: null as string | null,
+});
+
+// Shopify's standard product taxonomy (English), searched live; sent as the product category.
+const taxonomySearch = ref('');
+const taxonomyResults = ref<ShopifyTaxonomyCategory[]>([]);
+const taxonomyMessage = ref<string | null>(null);
+let taxonomyTimer: ReturnType<typeof setTimeout> | undefined;
+watch(taxonomySearch, (term) => {
+  clearTimeout(taxonomyTimer);
+  taxonomyMessage.value = null;
+  if (term.trim().length < 2) {
+    taxonomyResults.value = [];
+    return;
+  }
+  taxonomyTimer = setTimeout(async () => {
+    try {
+      taxonomyResults.value = await $fetch<ShopifyTaxonomyCategory[]>('/api/shopify/taxonomy', { query: { search: term } });
+      if (taxonomyResults.value.length === 0) taxonomyMessage.value = 'Nichts gefunden – Suche auf Englisch, z. B. „placemats“.';
+    } catch (err) {
+      taxonomyMessage.value = readError(err).message;
+    }
+  }, 300);
+});
+function chooseTaxonomy(category: ShopifyTaxonomyCategory | null) {
+  form.shopifyCategoryId = category?.id ?? null;
+  form.shopifyCategoryName = category?.name ?? null;
+  taxonomySearch.value = '';
+  taxonomyResults.value = [];
+}
+/** Last part of the path, enough for the table. */
+const shortTaxonomy = (name: string | null) => name?.split(' > ').pop() ?? '–';
 
 // Codes of all entries, archived too: a code stays unique even when archived.
 const takenCodes = ref<string[]>([]);
@@ -54,6 +90,10 @@ function openDialog(category?: Category) {
   form.code = category?.code ?? '';
   form.name = category?.name ?? '';
   form.group = category?.group ?? 'textile';
+  form.shopifyCategoryId = category?.shopifyCategoryId ?? null;
+  form.shopifyCategoryName = category?.shopifyCategoryName ?? null;
+  taxonomySearch.value = '';
+  taxonomyResults.value = [];
   codeTouched.value = false;
   dialogOpen.value = true;
   if (!category) void loadTakenCodes();
@@ -64,9 +104,10 @@ async function save() {
   message.value = null;
   fieldErrors.value = {};
   // A code in use is part of SKUs and is not sent at all.
+  const shopify = { shopifyCategoryId: form.shopifyCategoryId, shopifyCategoryName: form.shopifyCategoryName };
   const body = editing.value?.inUse
-    ? { name: form.name, group: form.group }
-    : { code: form.code, name: form.name, group: form.group };
+    ? { name: form.name, group: form.group, ...shopify }
+    : { code: form.code, name: form.name, group: form.group, ...shopify };
   try {
     if (editing.value) {
       await $fetch(`/api/categories/${editing.value.id}`, { method: 'PATCH', body });
@@ -168,6 +209,7 @@ async function confirmDelete() {
               <th class="px-4">Kürzel</th>
               <th class="px-4">Name</th>
               <th class="px-4">Gruppe</th>
+              <th class="px-4">Shopify-Kategorie</th>
               <th class="px-4">Status</th>
               <th class="px-4 text-right">Aktionen</th>
             </tr>
@@ -177,6 +219,9 @@ async function confirmDelete() {
               <td class="px-4 font-mono">{{ category.code }}</td>
               <td class="px-4 font-medium">{{ category.name }}</td>
               <td class="px-4 text-leinen-500">{{ groupLabel(category.group) }}</td>
+              <td class="px-4 text-leinen-500" :title="category.shopifyCategoryName ?? ''">
+                {{ shortTaxonomy(category.shopifyCategoryName) }}
+              </td>
               <td class="px-4">
                 <UBadge v-if="category.archivedAt" size="sm" color="neutral" variant="subtle" class="rounded-[8px]">
                   archiviert
@@ -259,6 +304,30 @@ async function confirmDelete() {
           </UFormField>
           <UFormField label="Gruppe" :error="fieldErrors.group">
             <USelectMenu v-model="form.group" :items="groupOptions" value-key="value" class="w-full" />
+          </UFormField>
+          <UFormField
+            label="Shopify-Kategorie"
+            help="Standard-Produktkategorie von Shopify (für Google Shopping und Steuern). Suche auf Englisch, z. B. „bedspread“."
+          >
+            <div v-if="form.shopifyCategoryName" class="mb-2 flex items-start justify-between gap-2 text-sm">
+              <span>{{ form.shopifyCategoryName }}</span>
+              <UButton size="xs" variant="ghost" color="neutral" class="rounded-[8px]" @click="chooseTaxonomy(null)">
+                Entfernen
+              </UButton>
+            </div>
+            <UInput v-model="taxonomySearch" icon="i-lucide-search" placeholder="Shopify-Kategorie suchen" class="w-full" />
+            <p v-if="taxonomyMessage" class="mt-1 text-xs text-leinen-500">{{ taxonomyMessage }}</p>
+            <ul v-if="taxonomyResults.length" class="mt-2 max-h-48 overflow-y-auto rounded-[8px] border border-leinen-200 text-sm">
+              <li v-for="option in taxonomyResults" :key="option.id">
+                <button
+                  type="button"
+                  class="w-full px-3 py-1.5 text-left hover:bg-leinen-100"
+                  @click="chooseTaxonomy(option)"
+                >
+                  {{ option.name }}
+                </button>
+              </li>
+            </ul>
           </UFormField>
           <div class="flex justify-end gap-2 pt-2">
             <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="dialogOpen = false">

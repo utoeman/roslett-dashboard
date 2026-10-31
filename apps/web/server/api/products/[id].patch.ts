@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
         if (variant.priceGross !== undefined) changes.priceGross = centsToNumeric(variant.priceGross);
         if (variant.minimumStock !== undefined) changes.minimumStock = variant.minimumStock;
         if (variant.archivedAt !== undefined) changes.archivedAt = variant.archivedAt;
-        for (const key of ['fiber', 'fiberFilling', 'originCountry', 'hsCode'] as const) {
+        for (const key of ['fiber', 'fiberFilling', 'originCountry', 'hsCode', 'weightGrams'] as const) {
           if (variant[key] !== undefined) changes[key] = variant[key];
         }
         if (Object.keys(changes).length > 0) {

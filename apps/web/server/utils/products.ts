@@ -82,6 +82,7 @@ export async function buildVariantRows(
       fiberFilling: variant.fiberFilling ?? null,
       originCountry: variant.originCountry ?? null,
       hsCode: variant.hsCode ?? null,
+      weightGrams: variant.weightGrams ?? null,
     };
   });
 }

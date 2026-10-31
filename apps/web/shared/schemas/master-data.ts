@@ -23,6 +23,9 @@ export const createCategorySchema = z.object({
   code: codeSchema,
   name: requiredText('Name', 100),
   group: categoryGroupSchema,
+  /** Shopify standard product taxonomy, chosen via search. */
+  shopifyCategoryId: z.string().trim().max(200).nullable().optional(),
+  shopifyCategoryName: z.string().trim().max(300).nullable().optional(),
 });
 
 /** `code` can only change while the category is unused. */
@@ -30,6 +33,8 @@ export const updateCategorySchema = z.object({
   code: codeSchema.optional(),
   name: requiredText('Name', 100).optional(),
   group: categoryGroupSchema.optional(),
+  shopifyCategoryId: z.string().trim().max(200).nullable().optional(),
+  shopifyCategoryName: z.string().trim().max(300).nullable().optional(),
   archivedAt,
 });
 

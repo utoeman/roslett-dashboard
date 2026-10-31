@@ -11,6 +11,9 @@ export interface Category {
   code: string;
   name: string;
   group: CategoryGroup;
+  /** Shopify standard product taxonomy; sent as the product category. */
+  shopifyCategoryId: string | null;
+  shopifyCategoryName: string | null;
   archivedAt: string | null;
   /** Codes in use can no longer change. */
   inUse?: boolean;
@@ -49,6 +52,8 @@ export interface Variant {
   /** ISO 3166 alpha-2. */
   originCountry: string | null;
   hsCode: string | null;
+  /** Shipping weight per unit in grams. */
+  weightGrams: number | null;
   archivedAt: string | null;
   /** Only in product responses; derived from the journal. */
   inventory?: VariantInventory;
@@ -431,6 +436,12 @@ export interface ShopifyStockChangesPreview {
     entries: { kind: string; quantity: number; postedAt: string }[];
   }[];
   locations: { id: string; name: string }[];
+}
+
+export interface ShopifyTaxonomyCategory {
+  id: string;
+  /** Full path in English, e.g. "Home & Garden > Linens & Bedding > Table Linens > Placemats". */
+  name: string;
 }
 
 export interface ShopifySyncResult {

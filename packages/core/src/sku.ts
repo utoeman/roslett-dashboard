@@ -62,3 +62,29 @@ export function buildVariantLabel(
   const parts = [colorName?.trim(), size?.trim()].filter((part): part is string => Boolean(part));
   return parts.length > 0 ? parts.join(' ') : 'Standard';
 }
+
+const LETTERS: Record<string, string> = { Ä: 'A', Ö: 'O', Ü: 'U', ẞ: 'SS' };
+
+/**
+ * Proposal for a three-letter color or category code from its name: the first
+ * three letters, otherwise later letters of the name in order (the first letter
+ * stays). `taken` are codes already in use; null when nothing fits.
+ */
+export function suggestCode(name: string, taken: readonly string[]): string | null {
+  const letters = name
+    .toUpperCase()
+    .replace(/[ÄÖÜẞ]/g, (c) => LETTERS[c] ?? c)
+    .replace(/ß/g, 'SS')
+    .normalize('NFKD')
+    .replace(/[^A-Z]/g, '');
+  if (letters.length < 3) return null;
+  const used = new Set(taken.map((c) => c.toUpperCase()));
+  const first = letters[0] ?? '';
+  for (let i = 1; i < letters.length - 1; i++) {
+    for (let j = i + 1; j < letters.length; j++) {
+      const candidate = first + letters[i] + letters[j];
+      if (!used.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}

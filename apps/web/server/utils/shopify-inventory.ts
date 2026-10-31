@@ -1,41 +1,85 @@
 /**
- * Goods receipts and productions to Shopify (stage 2b, G14, G16): booked
- * receipt entries not sent yet become one relative change per variant.
+ * Stock changes to Shopify as relative adjustments: goods receipts (stage 2b,
+ * G14, G16) and shrinkage, own use, stocktakes, supplier returns and reversals
+ * of sent entries (stage 4). Every journal entry is sent once.
  */
 
 import { createHash } from 'node:crypto';
-import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
-import { InventoryPushError, planInventoryPush, type InventoryChange, type PendingEntry } from '@roslett/core';
+import { and, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import {
+  InventoryPushError,
+  PUSHED_KINDS,
+  inventoryReason,
+  planInventoryPush,
+  type InventoryChange,
+  type PendingEntry,
+  type PushedKind,
+} from '@roslett/core';
 import { schema, type useDb } from '../db/client.js';
-import type { ReceiptShopifyPreview, ReceiptShopifyPushResult } from '../../shared/types/api.js';
+import type {
+  ReceiptShopifyPreview,
+  ReceiptShopifyPushResult,
+  ShopifyStockChangesPreview,
+} from '../../shared/types/api.js';
 import { badRequest, conflict } from './errors.js';
 import { fetchShopifyVariants, shopifyGraphql } from './shopify.js';
 
 type Db = ReturnType<typeof useDb>;
 type Reader = Pick<Db, 'select' | 'selectDistinct' | 'query'>;
 
-/** `goods_receipt` entries of the receipt that are neither reversed nor sent. */
-async function pendingEntries(db: Reader, receiptId: string): Promise<PendingEntry[]> {
-  const reversed = sql`exists (select 1 from ${schema.stockEntries} r where r.reverses_id = ${schema.stockEntries.id})`;
-  const pushed = sql`exists (select 1 from ${schema.shopifyInventoryPushes} p where p.stock_entry_id = ${schema.stockEntries.id})`;
-  return db
-    .selectDistinct({ entryId: schema.stockEntries.id, variantId: schema.stockEntries.variantId, quantity: schema.stockEntries.quantity })
+interface Pending extends PendingEntry {
+  kind: PushedKind;
+  postedAt: Date;
+}
+
+const entryColumns = {
+  entryId: schema.stockEntries.id,
+  variantId: schema.stockEntries.variantId,
+  quantity: schema.stockEntries.quantity,
+  kind: schema.stockEntries.kind,
+  postedAt: schema.stockEntries.postedAt,
+};
+
+const notSent = sql`not exists (select 1 from ${schema.shopifyInventoryPushes} p where p.stock_entry_id = ${schema.stockEntries.id})`;
+const notReversed = sql`not exists (select 1 from ${schema.stockEntries} r where r.reverses_id = ${schema.stockEntries.id})`;
+// A reversal goes to Shopify only if the entry it reverses went there.
+const reversesSent = sql`exists (select 1 from ${schema.shopifyInventoryPushes} p where p.stock_entry_id = ${schema.stockEntries.reversesId} and p.reason = 'pushed')`;
+
+const asPending = (rows: { entryId: string; variantId: string; quantity: number; kind: string; postedAt: Date }[]) =>
+  rows.map((r) => ({ ...r, kind: r.kind as PushedKind }));
+
+/** `goods_receipt` entries of one receipt that are neither reversed nor sent. */
+async function pendingReceiptEntries(db: Reader, receiptId: string): Promise<Pending[]> {
+  const rows = await db
+    .selectDistinct(entryColumns)
     .from(schema.stockEntries)
     .innerJoin(schema.batchAllocations, eq(schema.batchAllocations.stockEntryId, schema.stockEntries.id))
     .innerJoin(schema.batches, eq(schema.batches.id, schema.batchAllocations.batchId))
     .where(
-      and(
-        eq(schema.batches.goodsReceiptId, receiptId),
-        eq(schema.stockEntries.kind, 'goods_receipt'),
-        sql`not ${reversed}`,
-        sql`not ${pushed}`,
-      ),
+      and(eq(schema.batches.goodsReceiptId, receiptId), eq(schema.stockEntries.kind, 'goods_receipt'), notReversed, notSent),
     );
+  return asPending(rows);
 }
 
-async function plan(db: Reader, receiptId: string): Promise<{ entries: PendingEntry[]; changes: InventoryChange[] }> {
-  const entries = await pendingEntries(db, receiptId);
-  if (entries.length === 0) return { entries, changes: [] };
+/** Every entry Shopify does not know about yet, oldest first (stage 4). */
+async function pendingStockChanges(db: Reader): Promise<Pending[]> {
+  const rows = await db
+    .select(entryColumns)
+    .from(schema.stockEntries)
+    .where(
+      and(
+        notSent,
+        or(
+          and(inArray(schema.stockEntries.kind, [...PUSHED_KINDS]), notReversed),
+          and(eq(schema.stockEntries.kind, 'reversal'), reversesSent),
+        ),
+      ),
+    )
+    .orderBy(schema.stockEntries.postedAt, schema.stockEntries.createdAt);
+  return asPending(rows);
+}
+
+async function linkedVariants(db: Reader, entries: readonly Pending[]) {
   const variants = await db.query.variants.findMany({
     where: and(
       inArray(schema.variants.id, [...new Set(entries.map((e) => e.variantId))]),
@@ -43,9 +87,12 @@ async function plan(db: Reader, receiptId: string): Promise<{ entries: PendingEn
     ),
     columns: { id: true, sku: true, shopifyInventoryItemId: true },
   });
-  const linked = new Map(variants.map((v) => [v.id, { sku: v.sku, inventoryItemId: v.shopifyInventoryItemId ?? '' }]));
+  return new Map(variants.map((v) => [v.id, { sku: v.sku, inventoryItemId: v.shopifyInventoryItemId ?? '' }]));
+}
+
+function plan(entries: readonly Pending[], linked: Map<string, { sku: string; inventoryItemId: string }>): InventoryChange[] {
   try {
-    return { entries, changes: planInventoryPush(entries, linked) };
+    return planInventoryPush(entries, linked);
   } catch (error) {
     if (error instanceof InventoryPushError) throw badRequest(error.message);
     throw error;
@@ -57,6 +104,20 @@ async function activeLocations(): Promise<{ id: string; name: string }[]> {
     `query { locations(first: 50) { nodes { id name isActive } } }`,
   );
   return data.locations.nodes.filter((l) => l.isActive).map(({ id, name }) => ({ id, name }));
+}
+
+/** G14: the only active location automatically, otherwise the chosen one. */
+async function resolveLocation(locationId: string | null): Promise<{ id: string; name: string }> {
+  const locations = await activeLocations();
+  const location =
+    locationId === null ? (locations.length === 1 ? locations[0] : undefined) : locations.find((l) => l.id === locationId);
+  if (location === undefined) {
+    throw badRequest(
+      locationId === null ? 'Shopify hat mehrere Lagerorte; bitte einen wählen.' : 'Den Lagerort gibt es in Shopify nicht.',
+      { locationId: 'Lagerort wählen.' },
+    );
+  }
+  return location;
 }
 
 /** Current `available` quantity per inventory item at the location; items not stocked there are absent. */
@@ -79,6 +140,75 @@ async function availableAt(inventoryItemIds: readonly string[], locationId: stri
   return result;
 }
 
+/**
+ * One adjustment per Shopify reason. Each claims its entries first (unique per
+ * entry) and rolls the claim back if Shopify refuses; `changeFromQuantity`
+ * makes Shopify refuse when the quantity moved since it was read, and the
+ * idempotency key derived from the entries stops a retry from adding twice.
+ */
+async function pushEntries(
+  db: Db,
+  entries: readonly Pending[],
+  location: { id: string; name: string },
+  referenceDocumentUri: string,
+): Promise<{ sku: string; delta: number }[]> {
+  const linked = await linkedVariants(db, entries);
+  plan(entries, linked); // fails before anything is sent if a variant is not linked
+
+  const groups = new Map<string, Pending[]>();
+  for (const entry of entries) {
+    const reason = inventoryReason(entry.kind);
+    groups.set(reason, [...(groups.get(reason) ?? []), entry]);
+  }
+
+  const sent = new Map<string, number>();
+  for (const [reason, group] of groups) {
+    const changes = plan(group, linked);
+    const available = await availableAt(changes.map((c) => c.inventoryItemId), location.id);
+    const missing = changes.find((c) => !available.has(c.inventoryItemId));
+    if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
+
+    const key = createHash('sha256')
+      .update(group.map((e) => e.entryId).sort().join(','))
+      .digest('hex');
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(schema.shopifyInventoryPushes)
+        .values(group.map((e) => ({ stockEntryId: e.entryId, delta: e.quantity, locationId: location.id, reason: 'pushed' as const })));
+      const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
+        `mutation Adjust($input: InventoryAdjustQuantitiesInput!, $key: String!) {
+          inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
+        }`,
+        {
+          key: `roslett-${key}`,
+          input: {
+            reason,
+            name: 'available',
+            referenceDocumentUri,
+            changes: changes.map((c) => ({
+              delta: c.delta,
+              changeFromQuantity: available.get(c.inventoryItemId),
+              inventoryItemId: c.inventoryItemId,
+              locationId: location.id,
+            })),
+          },
+        },
+      );
+      const errors = data.inventoryAdjustQuantities.userErrors;
+      if (errors.length > 0) throw badRequest(`Shopify hat die Änderung abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
+    });
+    for (const c of changes) sent.set(c.sku, (sent.get(c.sku) ?? 0) + c.delta);
+  }
+  return [...sent].map(([sku, delta]) => ({ sku, delta }));
+}
+
+async function shopifyStock(): Promise<Map<string, number>> {
+  const shopify = await fetchShopifyVariants();
+  return new Map(shopify.map((v) => [v.inventoryItemId, v.inventoryQuantity]));
+}
+
+// --- Goods receipts (2b) -------------------------------------------------------
+
 async function requireReceipt(db: Reader, receiptId: string) {
   const receipt = await db.query.goodsReceipts.findFirst({
     where: eq(schema.goodsReceipts.id, receiptId),
@@ -91,74 +221,54 @@ async function requireReceipt(db: Reader, receiptId: string) {
 
 export async function receiptShopifyPreview(db: Db, receiptId: string): Promise<ReceiptShopifyPreview> {
   await requireReceipt(db, receiptId);
-  const { changes } = await plan(db, receiptId);
-  if (changes.length === 0) return { lines: [], locations: [] };
-  const [shopify, locations] = await Promise.all([fetchShopifyVariants(), activeLocations()]);
-  const stock = new Map(shopify.map((v) => [v.inventoryItemId, v.inventoryQuantity]));
+  const entries = await pendingReceiptEntries(db, receiptId);
+  if (entries.length === 0) return { lines: [], locations: [] };
+  const changes = plan(entries, await linkedVariants(db, entries));
+  const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
   return {
     lines: changes.map((c) => ({ sku: c.sku, delta: c.delta, shopifyStock: stock.get(c.inventoryItemId) ?? null })),
     locations,
   };
 }
 
-/**
- * Claims the entries first (unique per entry), then adjusts Shopify; if Shopify
- * fails, the transaction rolls the claim back. The idempotency key is derived
- * from the entries, so a retry after a lost answer cannot add twice.
- */
 export async function pushReceiptToShopify(
   db: Db,
   receiptId: string,
   locationId: string | null,
 ): Promise<ReceiptShopifyPushResult> {
   const receipt = await requireReceipt(db, receiptId);
-  const { entries, changes } = await plan(db, receiptId);
-  if (changes.length === 0) throw conflict('Dieser Zugang ist schon in Shopify.');
+  const entries = await pendingReceiptEntries(db, receiptId);
+  if (entries.length === 0) throw conflict('Dieser Zugang ist schon in Shopify.');
+  const location = await resolveLocation(locationId);
+  const lines = await pushEntries(db, entries, location, `gid://roslett/GoodsReceipt/${receipt.number}`);
+  return { location: location.name, lines };
+}
 
-  const locations = await activeLocations();
-  const location =
-    locationId === null ? (locations.length === 1 ? locations[0] : undefined) : locations.find((l) => l.id === locationId);
-  if (location === undefined) {
-    throw badRequest(
-      locationId === null ? 'Shopify hat mehrere Lagerorte; bitte einen wählen.' : 'Den Lagerort gibt es in Shopify nicht.',
-      { locationId: 'Lagerort wählen.' },
-    );
-  }
+// --- All open stock changes (stage 4) ------------------------------------------
 
-  const available = await availableAt(changes.map((c) => c.inventoryItemId), location.id);
-  const missing = changes.find((c) => !available.has(c.inventoryItemId));
-  if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
+export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPreview> {
+  const entries = await pendingStockChanges(db);
+  if (entries.length === 0) return { lines: [], locations: [] };
+  const linked = await linkedVariants(db, entries);
+  const changes = plan(entries, linked);
+  const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
+  return {
+    lines: changes.map((c) => ({
+      sku: c.sku,
+      delta: c.delta,
+      shopifyStock: stock.get(c.inventoryItemId) ?? null,
+      entries: entries
+        .filter((e) => e.variantId === c.variantId)
+        .map((e) => ({ kind: e.kind, quantity: e.quantity, postedAt: e.postedAt.toISOString() })),
+    })),
+    locations,
+  };
+}
 
-  const key = createHash('sha256')
-    .update(entries.map((e) => e.entryId).sort().join(','))
-    .digest('hex');
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(schema.shopifyInventoryPushes)
-      .values(entries.map((e) => ({ stockEntryId: e.entryId, delta: e.quantity, locationId: location.id })));
-    const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
-      `mutation Receive($input: InventoryAdjustQuantitiesInput!, $key: String!) {
-        inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
-      }`,
-      {
-        key: `roslett-${key}`,
-        input: {
-          reason: 'received',
-          name: 'available',
-          referenceDocumentUri: `gid://roslett/GoodsReceipt/${receipt.number}`,
-          // Compare-and-set: Shopify refuses if the quantity moved since it was read.
-          changes: changes.map((c) => ({
-            delta: c.delta,
-            changeFromQuantity: available.get(c.inventoryItemId),
-            inventoryItemId: c.inventoryItemId,
-            locationId: location.id,
-          })),
-        },
-      },
-    );
-    const errors = data.inventoryAdjustQuantities.userErrors;
-    if (errors.length > 0) throw badRequest(`Shopify hat den Zugang abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
-  });
-
-  return { location: location.name, lines: changes.map((c) => ({ sku: c.sku, delta: c.delta })) };
+export async function pushStockChanges(db: Db, locationId: string | null): Promise<ReceiptShopifyPushResult> {
+  const entries = await pendingStockChanges(db);
+  if (entries.length === 0) throw conflict('Es gibt keine offenen Bestandsänderungen.');
+  const location = await resolveLocation(locationId);
+  const lines = await pushEntries(db, entries, location, 'gid://roslett/StockChanges/manual');
+  return { location: location.name, lines };
 }

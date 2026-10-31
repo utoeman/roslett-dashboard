@@ -420,6 +420,17 @@ export interface ShopifyStagedUpload {
   parameters: { name: string; value: string }[];
 }
 
+export interface ShopifyStockChangesPreview {
+  /** Per variant: the sum to send and the entries behind it. */
+  lines: {
+    sku: string;
+    delta: number;
+    shopifyStock: number | null;
+    entries: { kind: string; quantity: number; postedAt: string }[];
+  }[];
+  locations: { id: string; name: string }[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { PricePlan } from '@roslett/core';
-import type { ShopifyMatchRow, ShopifyPricePushResult, ShopifyStatus, ShopifySyncResult } from '~~/shared/types/api';
+import type {
+  ReceiptShopifyPushResult,
+  ShopifyMatchRow,
+  ShopifyPricePushResult,
+  ShopifyStatus,
+  ShopifyStockChangesPreview,
+  ShopifySyncResult,
+} from '~~/shared/types/api';
 
 useHead({ title: 'Shopify' });
 
@@ -83,7 +90,7 @@ async function adjust() {
   try {
     await $fetch('/api/stock-entries', {
       method: 'POST',
-      body: { kind: 'stocktake', variantId: row.variantId, counted: row.shopifyStock, note: adjustNote.value },
+      body: { kind: 'stocktake', variantId: row.variantId, counted: row.shopifyStock, note: adjustNote.value, alignedWithShopify: true },
     });
     adjusting.value = null;
     await refresh();
@@ -122,6 +129,44 @@ async function pushPrices() {
   }
 }
 
+// Stage 4: stock changes booked in the dashboard that Shopify does not know about yet.
+const {
+  data: stockChanges,
+  error: stockChangesError,
+  refresh: refreshStockChanges,
+} = await useFetch<ShopifyStockChangesPreview>('/api/shopify/stock-changes', { lazy: true });
+const stockLocation = ref<string | undefined>(undefined);
+const stockPushing = ref(false);
+const stockResult = ref<ReceiptShopifyPushResult | null>(null);
+const stockError = ref<string | null>(null);
+const kindText: Record<string, string> = {
+  goods_receipt: 'Zugang',
+  shrinkage: 'Schwund',
+  own_use: 'Eigenverbrauch',
+  stocktake: 'Inventur',
+  supplier_return: 'Rückgabe an Lieferant',
+  reversal: 'Storno',
+};
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+const needsLocation = computed(() => (stockChanges.value?.locations.length ?? 0) > 1);
+
+async function pushStock() {
+  stockPushing.value = true;
+  stockError.value = null;
+  stockResult.value = null;
+  try {
+    stockResult.value = await $fetch<ReceiptShopifyPushResult>('/api/shopify/stock-changes', {
+      method: 'POST',
+      body: { locationId: stockLocation.value ?? null },
+    });
+    await Promise.all([refreshStockChanges(), refresh()]);
+  } catch (err) {
+    stockError.value = readError(err).message;
+  } finally {
+    stockPushing.value = false;
+  }
+}
+
 async function link() {
   linking.value = true;
   message.value = null;
@@ -141,7 +186,7 @@ async function link() {
   <div>
     <SeitenKopf
       titel="Shopify"
-      hinweis="Verbindung zum Shop, Zuordnung der Varianten über die SKU und Abruf der Bestellungen. In Shopify wird nichts geändert."
+      hinweis="Verbindung zum Shop: Varianten über die SKU zuordnen, Bestellungen abrufen, Preise und Bestandsänderungen übertragen. Geschrieben wird nur nach Klick."
     />
 
     <div class="space-y-4 px-6 py-4">
@@ -277,6 +322,71 @@ async function link() {
           <p v-if="pricePlan && pricePlan.missingPrice.length > 0" class="text-sm text-roswarning-700">
             Ohne Preis im Dashboard (Shopify-Preis bleibt): {{ pricePlan.missingPrice.join(', ') }}
           </p>
+        </div>
+
+        <div
+          class="space-y-3 rounded-[12px] border border-leinen-200/70 bg-white p-4 dark:border-leinen-800 dark:bg-leinen-900"
+          style="border-width: 0.5px"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium">Offene Bestandsänderungen</p>
+              <p class="text-sm text-leinen-500">
+                Zugänge, Schwund, Eigenverbrauch, Inventur und Rückgaben, die Shopify noch nicht kennt. Jede Buchung wird
+                einmal übertragen; Verkäufe und Retouren kommen aus Shopify.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <USelectMenu
+                v-if="needsLocation"
+                v-model="stockLocation"
+                :items="(stockChanges?.locations ?? []).map((l) => ({ label: l.name, value: l.id }))"
+                value-key="value"
+                placeholder="Lagerort"
+                class="w-44"
+              />
+              <UButton
+                icon="i-lucide-upload"
+                :disabled="!stockChanges || stockChanges.lines.length === 0 || (needsLocation && !stockLocation)"
+                :loading="stockPushing"
+                @click="pushStock"
+              >
+                {{ stockChanges?.lines.length ?? 0 }} Varianten übertragen
+              </UButton>
+            </div>
+          </div>
+          <UAlert v-if="stockChangesError" color="error" variant="soft" :title="readError(stockChangesError).message" />
+          <UAlert v-if="stockError" color="error" variant="soft" :title="stockError" />
+          <UAlert
+            v-if="stockResult"
+            color="success"
+            variant="soft"
+            :title="`In Shopify gebucht (${stockResult.location})`"
+            :description="stockResult.lines.map((l) => `${l.sku} ${signed(l.delta)}`).join(', ')"
+          />
+          <table v-if="stockChanges && stockChanges.lines.length > 0" class="ros-tabelle w-full text-sm">
+            <thead class="text-left text-xs font-medium uppercase tracking-wide text-leinen-500">
+              <tr>
+                <th class="px-2">SKU</th>
+                <th class="px-2">Buchungen</th>
+                <th class="px-2 text-right">Änderung</th>
+                <th class="px-2 text-right">Shopify</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="l in stockChanges.lines" :key="l.sku">
+                <td class="px-2 font-mono text-xs">{{ l.sku }}</td>
+                <td class="px-2 text-leinen-600">
+                  {{ l.entries.map((e) => `${kindText[e.kind] ?? e.kind} ${signed(e.quantity)} (${new Date(e.postedAt).toLocaleDateString('de-DE')})`).join(', ') }}
+                </td>
+                <td class="zahl px-2">{{ signed(l.delta) }}</td>
+                <td class="zahl px-2">
+                  {{ l.shopifyStock === null ? '–' : `${l.shopifyStock} → ${l.shopifyStock + l.delta}` }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else-if="stockChanges" class="text-sm text-leinen-500">Shopify kennt alle Bestandsänderungen.</p>
         </div>
 
         <div class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white" style="border-width: 0.5px">

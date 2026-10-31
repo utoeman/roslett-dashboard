@@ -2,6 +2,13 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.7.0 (2026-10-31)
+
+### Neu
+
+- import Shopify orders (#32)
+- shopify connection and sku linking (#31)
+
 ## v0.6.0 (2026-10-28)
 
 ### Neu
@@ -67,6 +74,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

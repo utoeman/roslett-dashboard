@@ -262,14 +262,22 @@ function messageOf(error: unknown): string | null {
   return null;
 }
 
+/** The nightly run looks back this far regardless of the cursor and catches anything missed. */
+const NIGHTLY_WINDOW_MS = 48 * 60 * 60_000;
+
+export type SyncTrigger = 'manual' | 'scheduled' | 'nightly';
+
 /**
  * Imports everything changed since the last run. A failed order holds the
  * cursor back to its change time, so the next run tries it again.
  */
-export async function syncShopifyOrders(db: Db): Promise<ShopifySyncResult> {
+export async function syncShopifyOrders(db: Db, trigger: SyncTrigger): Promise<ShopifySyncResult> {
   const startedAt = new Date();
   const state = await db.query.shopifySync.findFirst();
-  const since = state ? new Date(state.ordersSyncedTo.getTime() - OVERLAP_MS) : null;
+  let since = state ? new Date(state.ordersSyncedTo.getTime() - OVERLAP_MS) : null;
+  if (trigger === 'nightly' && since !== null) {
+    since = new Date(Math.min(since.getTime(), startedAt.getTime() - NIGHTLY_WINDOW_MS));
+  }
   const [orders, channels] = await Promise.all([fetchOrders(since), db.query.channels.findMany()]);
 
   const counts = { created: 0, updated: 0, unchanged: 0 };
@@ -290,11 +298,13 @@ export async function syncShopifyOrders(db: Db): Promise<ShopifySyncResult> {
   }
 
   const syncedTo = heldBack ?? startedAt;
+  const result: ShopifySyncResult = { fetched: orders.length, ...counts, warnings, errors, syncedTo: syncedTo.toISOString() };
+  const run = { ordersSyncedTo: syncedTo, updatedAt: new Date(), lastRunTrigger: trigger, lastRunResult: result };
   await db
     .insert(schema.shopifySync)
-    .values({ id: 1, ordersSyncedTo: syncedTo })
-    .onConflictDoUpdate({ target: schema.shopifySync.id, set: { ordersSyncedTo: syncedTo, updatedAt: new Date() } });
-  return { fetched: orders.length, ...counts, warnings, errors, syncedTo: syncedTo.toISOString() };
+    .values({ id: 1, ...run })
+    .onConflictDoUpdate({ target: schema.shopifySync.id, set: run });
+  return result;
 }
 
 /** A Shopify source belongs to one channel only. */

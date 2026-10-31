@@ -200,3 +200,6 @@ Erstattungen und Stornos. Release nach 1b-2.
 | G8 | Status beim Import | „versendet“ nur, wenn Shopify die Bestellung als ausgeführt meldet (`FULFILLED`), sonst „offen“ |
 | G9 | Gebühren beim Import | weiter pauschal aus dem Kanal (F11); echte Zahlungsgebühren aus der API später |
 | G10 | Abruf in 1b-2 | zunächst nur per Button „Jetzt abrufen“; der 15-Minuten-Abruf (D1) folgt nach einer Woche Testbetrieb. Erstattungen mit `restockType` `RETURN` oder `CANCEL` gelten als wieder eingelagert (V2) |
+| G11 | Testbetrieb | entfällt (entschieden 31.10.2026): der 15-Minuten-Abruf und der nächtliche Abgleich kommen sofort als Schritt 1c; G10 „nach einer Woche“ ist damit überholt |
+| G12 | Webhooks | vorerst **keine** (entschieden 31.10.2026): Abruf alle 15 Minuten plus nächtlicher Abgleich der letzten 48 Stunden reicht beim erwarteten Volumen; Webhooks nur bei echtem Bedarf. Ergänzt D1 und Stufe 2 |
+| G13 | Umfang bis Go-live | Shopify-Stufen 1c–4; übrige Roadmap-Punkte (Diagramme, PWA, Playwright, Barrierefreiheit, Demo) nach dem Go-live. Direkt vor dem Go-live werden Testprodukte samt aller Bewegungen gelöscht, Stammdaten bleiben |

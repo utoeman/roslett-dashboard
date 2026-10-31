@@ -71,6 +71,13 @@
       "when": 1793455440494,
       "tag": "0009_shopify_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793457115513,
+      "tag": "0010_shopify_sync_runs",
+      "breakpoints": true
     }
   ]
 }

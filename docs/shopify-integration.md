@@ -87,7 +87,8 @@ unverändert). Lagerort: der einzige aktive automatisch, sonst Auswahl.
 **Umgesetzt (3a, G17–G19):** Produktseite › „Nach Shopify übertragen“. Ein `productSet` je
 Produkt (synchron) mit Titel, Beschreibung, Marke (= Hersteller; ohne Herstellerangaben bleibt die
 Shopify-Marke), Produkttyp (= Kategorie), Optionen Farbe/Größe, Varianten mit SKU und Preis,
-Produktmetafeldern wie beim CSV, Variantenmetafeldern `custom.fiber`/`fiber_filling` sowie HS-Code und
+Produktmetafeldern (`custom.fiber`, `fiber_filling`, `care_instructions`, `safety_information`,
+`manufacturer`), Variantenmetafeldern `custom.fiber`/`fiber_filling` sowie HS-Code und
 Herkunftsland am Inventarartikel (immer gesendet, leer = in Shopify gelöscht). Handle und Status
 „Entwurf“ nur beim Anlegen; ein unverknüpftes Produkt, dessen Handle es in Shopify schon gibt, wird
 abgelehnt (erst verknüpfen). Einstandspreis bleibt bei 2a. Die Vorschau vergleicht Feld für Feld
@@ -216,24 +217,15 @@ Prüfberichte, Risikoanalyse und Beschwerdeverzeichnis (10 Jahre) vorerst außer
 
 | Stufe | Inhalt | Risiko |
 |---|---|---|
-| 0 | Vorarbeiten ohne Shopify-Zugriff: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export im Shopify-Format für die Erstanlage | keins |
+| 0 | Vorarbeiten ohne Shopify-Zugriff: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export für die Erstanlage (mit 3a entfernt) | keins |
 | 1 | Nur lesen (Polling): Bestellungen, Erstattungen, Stornos, Bestände; FIFO, Marge, Prüfliste | keins |
 | 2 | Schreiben per Klick mit Vorschau: Verkaufspreis, Einstandspreis, Zugänge (`+Menge`); Webhooks erst bei Bedarf (G12) | gering bis mittel |
 | 3 | Schreiben: Produkte, Varianten, Metafelder (Upsert); Bild-Upload (G2) | mittel (Pflichtangaben) |
 | 4 | Inventur- und Schwundbuchungen relativ pushen | mittel |
 
-Bis Stufe 3 steht, werden Produkte per CSV aus dem Dashboard angelegt bzw. aktualisiert.
-
-**CSV-Export (Stufe 0, umgesetzt):** Produktliste → „Shopify-CSV“. Eine Zeile je aktiver
-Variante, Produktangaben nur in der ersten Zeile; Status `draft`, nicht veröffentlicht.
-Handle = Name + Produktnummer (`leinenkissen-sand-0012`). Optionen „Farbe“ und „Größe“
-(fehlender Wert: „Standard“, ohne beide: Shopify-Standardvariante). Preis brutto, „Cost per
-item“ = gewichteter Durchschnitt offener Chargen (Abschnitt 6). Produktmetafelder
-`custom.fiber`, `custom.fiber_filling`, `custom.care_instructions`, `custom.safety_information`,
-`custom.manufacturer` – in Shopify vorher als Metafelddefinitionen anlegen.
-Grenzen des Shopify-CSV: **keine Variantenmetafelder** (Faser nur, wenn sie bei allen Varianten
-gleich ist, sonst Hinweis), **kein HS-Code und kein Herkunftsland**, Bestandsmengen werden
-bewusst nicht exportiert (würden absolut setzen, Invariante 2). Diese Werte kommen mit Stufe 3.
+**CSV-Export (Stufe 0):** diente der Erstanlage, solange es keine API-Anbindung gab. Mit Stufe 3a
+(Übertragung per `productSet`) entfernt (G20); Handle-Regel (Name + Produktnummer,
+`leinenkissen-sand-0012`), Optionen und Produktmetafelder gelten dort unverändert weiter.
 
 ## 11. Nicht im Umfang
 

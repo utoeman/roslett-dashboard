@@ -10,7 +10,6 @@ export * from './fifo.js';
 export * from './pricing.js';
 export * from './sku.js';
 export * from './stock.js';
-export * from './shopify-csv.js';
 export * from './shopify-match.js';
 export * from './shopify-orders.js';
 export * from './shopify-prices.js';

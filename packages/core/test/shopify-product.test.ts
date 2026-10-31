@@ -3,6 +3,7 @@ import {
   ProductPushError,
   buildProductSet,
   diffProductSet,
+  productHandle,
   type ProductPushProduct,
   type ProductSetInput,
 } from '../src/shopify-product';
@@ -151,5 +152,12 @@ describe('diffProductSet', () => {
     const linked = { ...desired(), status: undefined };
     current.status = 'ACTIVE';
     expect(diffProductSet(linked, current).changes).toEqual([]);
+  });
+});
+
+describe('productHandle', () => {
+  it('bildet einen stabilen Handle aus Name und Produktnummer', () => {
+    expect(productHandle('Leinenkissen Sand', 12)).toBe('leinenkissen-sand-0012');
+    expect(productHandle('Größe & Grün – Überwurf', 3)).toBe('groesse-gruen-ueberwurf-0003');
   });
 });

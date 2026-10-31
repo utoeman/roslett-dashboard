@@ -53,6 +53,10 @@ export default defineEventHandler(async (event) => {
         allocations,
       });
       if (quantity > 0) await resolveShortfalls(tx, input.variantId);
+      if (input.kind === 'stocktake' && input.alignedWithShopify) {
+        // Already Shopify's quantity; marked so stage 4 never sends it back.
+        await tx.insert(schema.shopifyInventoryPushes).values({ stockEntryId: entryId, delta: quantity, locationId: null, reason: 'aligned' });
+      }
       return entryId;
     });
     setResponseStatus(event, 201);

@@ -41,3 +41,20 @@ export function planInventoryPush(
   }
   return [...byVariant.values()];
 }
+
+/**
+ * Journal kinds that change stock without Shopify knowing (stage 4). Sales,
+ * returns and their reversals come from Shopify and are never sent back. A
+ * reversal is sent only when the entry it reverses was sent.
+ */
+export const PUSHED_KINDS = ['goods_receipt', 'shrinkage', 'own_use', 'stocktake', 'supplier_return'] as const;
+
+export type PushedKind = (typeof PUSHED_KINDS)[number] | 'reversal';
+
+/** Shopify's adjustment reason, shown in its inventory history. */
+export function inventoryReason(kind: PushedKind): string {
+  if (kind === 'goods_receipt') return 'received';
+  if (kind === 'shrinkage') return 'shrinkage';
+  if (kind === 'stocktake') return 'cycle_count_available';
+  return 'correction';
+}

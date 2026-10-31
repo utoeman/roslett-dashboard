@@ -221,7 +221,14 @@ export const shopifyInventoryPushes = pgTable('shopify_inventory_pushes', {
     .unique()
     .references(() => stockEntries.id),
   delta: integer('delta').notNull(),
-  locationId: text('location_id').notNull(),
+  /** Null when nothing was sent (`aligned`, `before_stage4`). */
+  locationId: text('location_id'),
+  /**
+   * `pushed`: sent to Shopify. `aligned`: a check-list stocktake that matched the
+   * dashboard to Shopify, so there is nothing to send. `before_stage4`: booked
+   * before stock changes were sent at all.
+   */
+  reason: text('reason', { enum: ['pushed', 'aligned', 'before_stage4'] }).notNull().default('pushed'),
   pushedAt: timestamp('pushed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

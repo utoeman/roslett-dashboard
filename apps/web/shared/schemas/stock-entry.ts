@@ -20,6 +20,8 @@ export const manualEntrySchema = z.discriminatedUnion('kind', [
     kind: z.literal('stocktake'),
     counted: z.coerce.number().int().min(0, { message: 'Gezählte Menge darf nicht negativ sein.' }),
     note: requiredText('Notiz', 500),
+    /** Check-list „Angleichen“: the count is Shopify's, so nothing is sent back (stage 4). */
+    alignedWithShopify: flagSchema().default(false),
   }),
   z.object({
     ...base,

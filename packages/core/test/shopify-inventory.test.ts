@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InventoryPushError, planInventoryPush } from '../src/shopify-inventory';
+import { InventoryPushError, PUSHED_KINDS, inventoryReason, planInventoryPush } from '../src/shopify-inventory';
 
 const linked = new Map([
   ['v1', { sku: 'ROS-KIS-0012-SAN-4545', inventoryItemId: 'gid://shopify/InventoryItem/1' }],
@@ -28,5 +28,21 @@ describe('planInventoryPush', () => {
 
   it('lehnt Varianten ohne Shopify-Verknüpfung ab', () => {
     expect(() => planInventoryPush([{ entryId: 'e1', variantId: 'v9', quantity: 5 }], linked)).toThrow(InventoryPushError);
+  });
+});
+
+describe('inventoryReason', () => {
+  it('ordnet jeder übertragenen Buchungsart einen Shopify-Grund zu', () => {
+    expect(inventoryReason('goods_receipt')).toBe('received');
+    expect(inventoryReason('shrinkage')).toBe('shrinkage');
+    expect(inventoryReason('stocktake')).toBe('cycle_count_available');
+    expect(inventoryReason('own_use')).toBe('correction');
+    expect(inventoryReason('supplier_return')).toBe('correction');
+    expect(inventoryReason('reversal')).toBe('correction');
+  });
+
+  it('überträgt nie Verkäufe und Retouren, die kommen aus Shopify', () => {
+    expect(PUSHED_KINDS).not.toContain('sale');
+    expect(PUSHED_KINDS).not.toContain('return');
   });
 });

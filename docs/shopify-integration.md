@@ -115,6 +115,14 @@ diese Zuordnung stehen (geprüft).
    Notiz Pflicht).
 2. Differenz relativ pushen (`-2`).
 
+**Umgesetzt (Stufe 4, G21–G24):** Seite „Shopify“ › „Offene Bestandsänderungen“ listet je Variante
+alle Buchungen, die Shopify nicht kennt (Zugang, Schwund, Eigenverbrauch, Inventur, Rückgabe an
+Lieferant; Storno nur einer übertragenen Buchung), mit `Shopify alt → neu`. Übertragen wird je
+Shopify-Grund (`received`, `shrinkage`, `cycle_count_available`, sonst `correction`) mit
+`changeFromQuantity` und `@idempotent`; jede Buchung landet einmal in `shopify_inventory_pushes`
+(Grund `pushed`, `aligned` für „Angleichen“, `before_stage4` für Altbuchungen). Dieselbe Logik
+nutzt der Button am Wareneingang (2b).
+
 ## 5. Kanal-Erkennung
 
 Shopify liefert pro Bestellung die Quelle (`sourceName`, App bzw. Vertriebskanal). In den

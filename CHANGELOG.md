@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.11.0 (2026-10-31)
+
+### Neu
+
+- weight, Shopify category and alt texts (#42)
+
 ## v0.10.1 (2026-10-31)
 
 ### Fehlerbehebungen
@@ -102,6 +108,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

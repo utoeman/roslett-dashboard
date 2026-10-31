@@ -17,6 +17,7 @@ const links = [
   { name: 'Farben', path: '/einstellungen/farben' },
   { name: 'MwSt-Sätze', path: '/einstellungen/mwst' },
   { name: 'Hersteller', path: '/einstellungen/hersteller' },
+  { name: 'Shopify', path: '/einstellungen/shopify' },
 ];
 
 // Close on navigation so the list does not cover the content.

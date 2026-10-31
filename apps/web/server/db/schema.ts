@@ -136,6 +136,8 @@ export const products = pgTable('products', {
   /** Printed on the packaging, German only (translations live in Shopify). */
   careNotes: text('care_notes'),
   safetyNotes: text('safety_notes'),
+  /** Shopify GID, set when a variant is linked by SKU (G5). */
+  shopifyProductId: text('shopify_product_id'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
@@ -165,11 +167,15 @@ export const variants = pgTable(
     originCountry: text('origin_country'),
     /** Customs tariff number, 6 to 10 digits. */
     hsCode: text('hs_code'),
+    /** Shopify GIDs, set when linked by SKU (G5); the inventory item carries stock and cost. */
+    shopifyVariantId: text('shopify_variant_id'),
+    shopifyInventoryItemId: text('shopify_inventory_item_id'),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt,
   },
   (t) => [
     uniqueIndex('variants_sku_idx').on(t.sku),
+    uniqueIndex('variants_shopify_variant_idx').on(t.shopifyVariantId),
     index('variants_product_idx').on(t.productId),
   ],
 );

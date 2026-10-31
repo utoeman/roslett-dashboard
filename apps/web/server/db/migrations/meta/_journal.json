@@ -57,6 +57,13 @@
       "when": 1793194480431,
       "tag": "0007_erstattungen",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793453095766,
+      "tag": "0008_shopify_ids",
+      "breakpoints": true
     }
   ]
 }

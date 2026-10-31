@@ -39,7 +39,8 @@ Rechnungen (bleibt Shopify bzw. Lexware Office).
 | Retouren, Erstattungen, Stornos | **Shopify** | Pull |
 | Chargen, Fremdwährung, Kurse, Zoll, Fracht, FIFO | Dashboard | nur Dashboard |
 | Kanalgebühren, Versand, Kostenpositionen | Dashboard | nur Dashboard |
-| Bilder, SEO-Texte | Shopify | kein Push |
+| Bilder hinzufügen | Dashboard | Upload → Shopify (ab Stufe 3, G2) |
+| Bildreihenfolge, Alt-Texte, SEO-Texte, Kollektionen | Shopify | kein Push |
 
 ## 4. Vorgänge
 
@@ -105,12 +106,14 @@ geändert hat. Shopify nutzt das Feld nur für eigene Berichte; maßgeblich blei
 
 ## 7. Technik
 
-- **API:** GraphQL Admin API, eigene App. *Prüfen:* Seit 2026 werden neue eigene Apps
-  nach unserem Stand über das Dev Dashboard (Client-Credentials) angelegt statt als
-  Custom App mit Admin-Token im Shop-Admin.
-- **Scopes:** `read_products`, `write_products`, `read_inventory`, `write_inventory`,
-  `read_orders`, `read_all_orders` (Erstimport älter als 60 Tage), `read_locations`.
-  Bestell-Webhooks setzen Zugriff auf *protected customer data* voraus.
+- **API:** GraphQL Admin API, eigene App im Shopify Dev Dashboard (G3). Zugang über den
+  Client-Credentials-Grant: `POST https://{shop}/admin/oauth/access_token` mit Client-ID und
+  -Secret liefert einen Token für 24 Stunden; der Server holt ihn bei Bedarf neu. Geht nur
+  für Stores derselben Shopify-Organisation. Umgebungsvariablen: `NUXT_SHOPIFY_SHOP`,
+  `NUXT_SHOPIFY_CLIENT_ID`, `NUXT_SHOPIFY_CLIENT_SECRET`.
+- **Scopes (G4):** `read_products`, `write_products`, `read_inventory`, `write_inventory`,
+  `read_orders`, `read_locations`, `write_files` – alle gleich bei der Einrichtung.
+  Bestellungen setzen Zugriff auf *protected customer data* voraus (in der App beantragen).
 - **Mutationen** (gegen die aktuelle API-Version prüfen): `productSet`,
   `productVariantsBulkUpdate`, `inventoryItemUpdate` (Kosten), `inventoryAdjustQuantities`,
   `metafieldsSet`. Massenänderungen über Bulk Operations.
@@ -167,7 +170,7 @@ Prüfberichte, Risikoanalyse und Beschwerdeverzeichnis (10 Jahre) vorerst außer
 | 0 | Vorarbeiten ohne Shopify-Zugriff: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export im Shopify-Format für die Erstanlage | keins |
 | 1 | Nur lesen (Polling): Bestellungen, Erstattungen, Stornos, Bestände; FIFO, Marge, Prüfliste | keins |
 | 2 | Schreiben per Klick mit Vorschau: Verkaufspreis, Einstandspreis, Zugänge (`+Menge`); Webhooks | gering bis mittel |
-| 3 | Schreiben: Produkte, Varianten, Metafelder (Upsert) | mittel (Pflichtangaben) |
+| 3 | Schreiben: Produkte, Varianten, Metafelder (Upsert); Bild-Upload (G2) | mittel (Pflichtangaben) |
 | 4 | Inventur- und Schwundbuchungen relativ pushen | mittel |
 
 Bis Stufe 3 steht, werden Produkte per CSV aus dem Dashboard angelegt bzw. aktualisiert.
@@ -185,7 +188,7 @@ bewusst nicht exportiert (würden absolut setzen, Invariante 2). Diese Werte kom
 
 ## 11. Nicht im Umfang
 
-Bild-Upload über die API, absolutes Setzen von Beständen, direkte Etsy-/Amazon-Anbindung,
+Bildbearbeitung und Galerie-Reihenfolge, absolutes Setzen von Beständen, direkte Etsy-/Amazon-Anbindung,
 Zwei-Wege-Sync eines Feldes, Mehrbenutzer, Versand, Rechnungen.
 
 ## 12. Offen

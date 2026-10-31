@@ -70,6 +70,13 @@ Buchungstypen sind die vorhandenen aus `stock_entry_kind` (Schritt 3 im Abgleich
    `inventoryAdjustQuantities` mit `+Menge`, Name `available`.
 3. Einstandspreis-Push siehe Abschnitt 6.
 
+**Umgesetzt (2b, G14, G16):** Wareneingang › „Nach Shopify übertragen“ zeigt je Variante die noch
+nicht übertragenen Zugangsbuchungen (Teillieferungen einzeln, stornierte ausgenommen) mit
+`Shopify alt → neu`. Übertragen wird relativ mit `changeFromQuantity` (Shopify lehnt ab, wenn sich
+der Bestand seit dem Lesen geändert hat) und `@idempotent`-Schlüssel aus den Buchungs-IDs. Jede
+Buchung steht danach in `shopify_inventory_pushes` (eindeutig je Buchung, Journal bleibt
+unverändert). Lagerort: der einzige aktive automatisch, sonst Auswahl.
+
 ### V4 Neues Produkt, neuer Preis (Dashboard → Shopify)
 1. Änderung markiert den Datensatz als „nicht übertragen“.
 2. „Nach Shopify übertragen“ zeigt zuerst eine **Vorschau** (alt → neu, pro Feld).

@@ -207,6 +207,21 @@ export const companySettings = pgTable(
   (t) => [check('company_settings_single_row', sql`${t.id} = 1`)],
 );
 
+/**
+ * Journal entries already sent to Shopify as a relative stock change (G16).
+ * Kept apart from the journal, which stays immutable; unique per entry.
+ */
+export const shopifyInventoryPushes = pgTable('shopify_inventory_pushes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  stockEntryId: uuid('stock_entry_id')
+    .notNull()
+    .unique()
+    .references(() => stockEntries.id),
+  delta: integer('delta').notNull(),
+  locationId: text('location_id').notNull(),
+  pushedAt: timestamp('pushed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Where the next order import starts; absent before the first one. */
 export const shopifySync = pgTable(
   'shopify_sync',

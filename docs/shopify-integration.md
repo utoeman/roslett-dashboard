@@ -84,6 +84,17 @@ unverändert). Lagerort: der einzige aktive automatisch, sonst Auswahl.
 4. Shopify-IDs (`product`, `variant`, `inventoryItem`) speichern, Zeitpunkt und Prüfsumme
    des Pushs setzen.
 
+**Umgesetzt (3a, G17–G19):** Produktseite › „Nach Shopify übertragen“. Ein `productSet` je
+Produkt (synchron) mit Titel, Beschreibung, Marke (= Hersteller; ohne Herstellerangaben bleibt die
+Shopify-Marke), Produkttyp (= Kategorie), Optionen Farbe/Größe, Varianten mit SKU und Preis,
+Produktmetafeldern wie beim CSV, Variantenmetafeldern `custom.fiber`/`fiber_filling` sowie HS-Code und
+Herkunftsland am Inventarartikel (immer gesendet, leer = in Shopify gelöscht). Handle und Status
+„Entwurf“ nur beim Anlegen; ein unverknüpftes Produkt, dessen Handle es in Shopify schon gibt, wird
+abgelehnt (erst verknüpfen). Einstandspreis bleibt bei 2a. Die Vorschau vergleicht Feld für Feld
+mit Shopify und nennt Varianten, die Shopify entfernen würde. Prüfsumme ohne IDs, Handle und
+Entwurfsstatus → „seit letzter Übertragung geändert“. Variantenmetafelder haben im Dev-Store noch
+keine Definition (im Admin erst nach Anlage sichtbar).
+
 ### V5 Inventur, Schwund (Dashboard → Shopify)
 1. `stocktake` bzw. `shrinkage` wie im Domain-Modell (Plus → neueste Charge, Minus → FIFO,
    Notiz Pflicht).

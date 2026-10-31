@@ -373,6 +373,24 @@ export interface ReceiptShopifyPushResult {
   lines: { sku: string; delta: number }[];
 }
 
+export interface ShopifyProductPreview {
+  /** No product in Shopify yet: it is created as a draft. */
+  isNew: boolean;
+  pushedAt: string | null;
+  /** The dashboard data differs from what was sent last time. */
+  changedSincePush: boolean;
+  changes: { field: string; from: string | null; to: string | null }[];
+  /** SKUs Shopify would remove from the product. */
+  removedVariants: string[];
+  warnings: string[];
+}
+
+export interface ShopifyProductPushResult {
+  productId: string;
+  variants: number;
+  warnings: string[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

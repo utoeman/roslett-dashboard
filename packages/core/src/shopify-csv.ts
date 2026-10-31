@@ -84,11 +84,11 @@ export function toCsv(rows: readonly (readonly string[])[]): string {
 
 const price = (cents: Cents | null) => (cents === null ? '' : centsToEuros(cents).toFixed(2));
 
-const html = (text: string) =>
+export const textToHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 
 /** The common value of all variants, or null plus a flag when they differ. */
-function common(values: readonly (string | null)[]): { value: string | null; differs: boolean } {
+export function commonValue(values: readonly (string | null)[]): { value: string | null; differs: boolean } {
   const distinct = new Set(values);
   return distinct.size === 1 ? { value: values[0] ?? null, differs: false } : { value: null, differs: true };
 }
@@ -106,8 +106,8 @@ export function buildShopifyCsv(
     const label = `${String(product.number).padStart(4, '0')} ${product.name}`;
     const handle = productHandle(product.name, product.number);
 
-    const fiber = common(product.variants.map((v) => v.fiber));
-    const filling = common(product.variants.map((v) => v.fiberFilling));
+    const fiber = commonValue(product.variants.map((v) => v.fiber));
+    const filling = commonValue(product.variants.map((v) => v.fiberFilling));
     if (fiber.differs) warnings.push(`${label}: Faser je Variante unterschiedlich – in Shopify je Variante nachtragen.`);
     else if (product.textile && fiber.value === null) warnings.push(`${label}: Faserangabe fehlt.`);
     if (filling.differs) {
@@ -139,7 +139,7 @@ export function buildShopifyCsv(
         ...(first
           ? {
               Title: product.name,
-              Description: html(product.description ?? ''),
+              Description: textToHtml(product.description ?? ''),
               Vendor: manufacturer?.name ?? '',
               Type: product.categoryName,
               'Published on online store': 'FALSE',

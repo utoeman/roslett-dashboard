@@ -140,6 +140,9 @@ export const products = pgTable('products', {
   safetyNotes: text('safety_notes'),
   /** Shopify GID, set when a variant is linked by SKU (G5). */
   shopifyProductId: text('shopify_product_id'),
+  /** Last `productSet` and the hash of what was sent; a different hash means "changed since". */
+  shopifyPushedAt: timestamp('shopify_pushed_at', { withTimezone: true }),
+  shopifyPushHash: text('shopify_push_hash'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });

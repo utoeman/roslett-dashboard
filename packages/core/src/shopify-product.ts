@@ -6,7 +6,35 @@
  */
 
 import { centsToEuros, type Cents } from './money.js';
-import { commonValue, productHandle, textToHtml, type Manufacturer } from './shopify-csv.js';
+
+export interface Manufacturer {
+  name: string;
+  address: string;
+  email: string;
+}
+
+const UMLAUTS: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' };
+
+/** Name plus product number, so equal names never collide. */
+export function productHandle(name: string, number: number): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[äöüß]/g, (c) => UMLAUTS[c] ?? c)
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${slug}-${String(number).padStart(4, '0')}`;
+}
+
+export const textToHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+
+/** The common value of all variants, or null plus a flag when they differ. */
+export function commonValue(values: readonly (string | null)[]): { value: string | null; differs: boolean } {
+  const distinct = new Set(values);
+  return distinct.size === 1 ? { value: values[0] ?? null, differs: false } : { value: null, differs: true };
+}
 
 export class ProductPushError extends Error {
   constructor(message: string) {

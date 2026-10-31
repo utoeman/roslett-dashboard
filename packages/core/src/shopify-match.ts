@@ -16,6 +16,9 @@ export interface ShopifyVariantRef {
   inventoryItemId: string;
   /** Shopify's total available quantity across locations. */
   inventoryQuantity: number;
+  /** Decimal strings as Shopify returns them; null = no cost set. */
+  price: string;
+  unitCost: string | null;
 }
 
 export interface VariantMatch {

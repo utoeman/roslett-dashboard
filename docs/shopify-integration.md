@@ -106,6 +106,12 @@ nicht wechseln). Der Wert ändert sich mit jedem Verkauf und jeder Nachbelastung
 nach jedem Wareneingang sofort, sonst einmal nächtlich für alle Varianten, deren Wert sich
 geändert hat. Shopify nutzt das Feld nur für eigene Berichte; maßgeblich bleibt das Dashboard.
 
+**Umgesetzt (2a, G15):** Seite „Shopify“ › „Preise und Einstandspreise“ vergleicht alle verknüpften
+Varianten (Preis = Variantenpreis, sonst Basispreis; Einstand wie oben) und zeigt nur Abweichungen.
+„Änderungen übertragen“ schreibt Preise je Produkt (`productVariantsBulkUpdate`) und Kosten je
+Inventarartikel (`inventoryItemUpdate`); die Vorschau wird serverseitig neu berechnet. Varianten
+ohne Dashboard-Preis behalten ihren Shopify-Preis und werden gemeldet.
+
 ## 7. Technik
 
 - **API:** GraphQL Admin API, eigene App im Shopify Dev Dashboard (G3). Zugang über den

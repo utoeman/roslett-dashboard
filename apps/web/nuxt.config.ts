@@ -30,6 +30,8 @@ export default defineNuxtConfig({
     accessPasswordHash: '',
     // Dev Dashboard app (G3), set via NUXT_SHOPIFY_SHOP / _CLIENT_ID / _CLIENT_SECRET.
     shopify: { shop: '', clientId: '', clientSecret: '' },
+    // Shared with the Netlify scheduled functions, set via NUXT_CRON_SECRET.
+    cronSecret: '',
     public: {},
   },
 

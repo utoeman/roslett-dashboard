@@ -350,6 +350,8 @@ export interface ShopifyStatus {
   unknownInShopify: { sku: string | null; variantId: string }[];
   /** Where the next order import starts; null before the first one. */
   ordersSyncedTo: string | null;
+  /** Last import of any trigger; null before the first one. */
+  lastRun: { at: string; trigger: 'manual' | 'scheduled' | 'nightly'; result: ShopifySyncResult } | null;
 }
 
 export interface ShopifySyncResult {

@@ -12,9 +12,18 @@ const syncing = ref(false);
 const syncResult = ref<ShopifySyncResult | null>(null);
 const syncError = ref<string | null>(null);
 
+const triggerText = { manual: 'per Klick', scheduled: 'automatisch', nightly: 'nächtlicher Abgleich' } as const;
+const formatTime = (iso: string) => new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+// Own click first; otherwise the last run, so errors of scheduled runs show up here.
+const shownResult = computed(() => syncResult.value ?? data.value?.lastRun?.result ?? null);
+const lastRunText = computed(() => {
+  const run = data.value?.lastRun;
+  return run ? `Letzter Abruf ${formatTime(run.at)}, ${triggerText[run.trigger]}` : null;
+});
+
 const syncedText = computed(() =>
   data.value?.ordersSyncedTo
-    ? new Date(data.value.ordersSyncedTo).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+    ? formatTime(data.value.ordersSyncedTo)
     : 'noch nie',
 );
 
@@ -146,7 +155,7 @@ async function link() {
             <div>
               <p class="text-sm font-medium">Bestellungen</p>
               <p class="text-sm text-leinen-500">
-                Neue Bestellungen, Erstattungen und Stornos aus Shopify. Abgerufen bis: {{ syncedText }}
+                Neue Bestellungen, Erstattungen und Stornos aus Shopify, automatisch alle 15 Minuten. Abgerufen bis: {{ syncedText }}
               </p>
             </div>
             <UButton icon="i-lucide-download" :loading="syncing" @click="sync">Jetzt abrufen</UButton>
@@ -154,27 +163,28 @@ async function link() {
 
           <UAlert v-if="syncError" color="error" variant="soft" :title="syncError" />
 
-          <template v-if="syncResult">
+          <template v-if="shownResult">
             <p class="text-sm">
-              {{ syncResult.fetched }} Bestellungen geprüft: {{ syncResult.created }} neu, {{ syncResult.updated }} geändert,
-              {{ syncResult.unchanged }} unverändert.
+              <span v-if="lastRunText" class="text-leinen-500">{{ lastRunText }}: </span>
+              {{ shownResult.fetched }} Bestellungen geprüft: {{ shownResult.created }} neu, {{ shownResult.updated }} geändert,
+              {{ shownResult.unchanged }} unverändert.
             </p>
             <UAlert
-              v-if="syncResult.errors.length > 0"
+              v-if="shownResult.errors.length > 0"
               color="error"
               variant="soft"
               title="Nicht gebucht; der nächste Abruf versucht es erneut"
             >
               <template #description>
                 <ul class="list-inside list-disc">
-                  <li v-for="(e, i) in syncResult.errors" :key="i">{{ e.order }}: {{ e.message }}</li>
+                  <li v-for="(e, i) in shownResult.errors" :key="i">{{ e.order }}: {{ e.message }}</li>
                 </ul>
               </template>
             </UAlert>
-            <UAlert v-if="syncResult.warnings.length > 0" color="warning" variant="soft" title="Hinweise">
+            <UAlert v-if="shownResult.warnings.length > 0" color="warning" variant="soft" title="Hinweise">
               <template #description>
                 <ul class="list-inside list-disc">
-                  <li v-for="(w, i) in syncResult.warnings" :key="i">{{ w.order }}: {{ w.message }}</li>
+                  <li v-for="(w, i) in shownResult.warnings" :key="i">{{ w.order }}: {{ w.message }}</li>
                 </ul>
               </template>
             </UAlert>

@@ -126,7 +126,11 @@ geändert hat. Shopify nutzt das Feld nur für eigene Berichte; maßgeblich blei
   werden kann (z. B. unbekannte SKU, Nummer schon von Hand erfasst), erscheint als Fehler und
   hält den Abrufstand an ihrer Änderungszeit fest, damit der nächste Abruf sie erneut versucht.
   Nachträgliche Positionsänderungen (`orders/edited`) gleicht der Abruf nicht ab. Import ab Anbindung, keine Altbestellungen (kein `read_all_orders`).
-- **Webhooks ab Stufe 2:** `orders/create`, `orders/updated`, `orders/cancelled`, `orders/edited`,
+- **Automatischer Abruf (1c):** zwei Netlify Scheduled Functions rufen `POST /api/cron/shopify-sync`
+  auf, geschützt mit `NUXT_CRON_SECRET` (statt Sitzung): alle 15 Minuten ab dem Abrufstand,
+  nachts um 02:00 UTC die letzten 48 Stunden unabhängig vom Abrufstand. Ergebnis und Auslöser des
+  letzten Laufs werden gespeichert und auf der Seite „Shopify“ angezeigt.
+- **Webhooks (später, G12):** `orders/create`, `orders/updated`, `orders/cancelled`, `orders/edited`,
   `refunds/create`, `inventory_levels/update`, `products/update`.
 - **Webhook-Verarbeitung** (Netlify Function): HMAC prüfen, Event mit `X-Shopify-Event-Id`
   persistieren (eindeutig → Idempotenz), dann direkt verarbeiten und mit 200 antworten.
@@ -138,8 +142,8 @@ geändert hat. Shopify nutzt das Feld nur für eigene Berichte; maßgeblich blei
   - `products/update`: Prüfsumme der Dashboard-Felder mit dem letzten Push vergleichen.
     Gleich → eigenes Echo, ignorieren. Abweichend → manuelle Änderung im Shopify-Admin,
     Warnung „in Shopify geändert“; der nächste Push überschreibt nach Vorschau.
-- **Nächtlicher Abgleich** (Scheduled Function): Bestellungen des Vortags nachholen
-  (fehlende Webhooks), Bestände vergleichen. Mengenabweichung → Eintrag in einer Prüfliste
+- **Nächtlicher Abgleich** (Scheduled Function): Bestellungen der letzten 48 Stunden nachholen
+  (verpasste Läufe), Bestände vergleichen. Mengenabweichung → Eintrag in einer Prüfliste
   mit Vorschlag (`stocktake`: Plus → neueste Charge, Minus → FIFO); gebucht wird erst per
   Klick mit Notiz. Der Abgleich ist Pflicht, nicht Komfort.
 - **Wartung:** API-Version mindestens jährlich hochziehen.
@@ -175,7 +179,7 @@ Prüfberichte, Risikoanalyse und Beschwerdeverzeichnis (10 Jahre) vorerst außer
 |---|---|---|
 | 0 | Vorarbeiten ohne Shopify-Zugriff: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder, CSV-Export im Shopify-Format für die Erstanlage | keins |
 | 1 | Nur lesen (Polling): Bestellungen, Erstattungen, Stornos, Bestände; FIFO, Marge, Prüfliste | keins |
-| 2 | Schreiben per Klick mit Vorschau: Verkaufspreis, Einstandspreis, Zugänge (`+Menge`); Webhooks | gering bis mittel |
+| 2 | Schreiben per Klick mit Vorschau: Verkaufspreis, Einstandspreis, Zugänge (`+Menge`); Webhooks erst bei Bedarf (G12) | gering bis mittel |
 | 3 | Schreiben: Produkte, Varianten, Metafelder (Upsert); Bild-Upload (G2) | mittel (Pflichtangaben) |
 | 4 | Inventur- und Schwundbuchungen relativ pushen | mittel |
 

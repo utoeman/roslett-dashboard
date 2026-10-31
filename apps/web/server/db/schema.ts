@@ -13,6 +13,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -22,6 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import type { ShopifySyncResult } from '../../shared/types/api.js';
 
 // ---------------------------------------------------------------------------
 // Shared columns
@@ -212,6 +214,9 @@ export const shopifySync = pgTable(
     id: integer('id').primaryKey().default(1),
     ordersSyncedTo: timestamp('orders_synced_to', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Last run of any trigger, so errors of scheduled runs are visible. */
+    lastRunTrigger: text('last_run_trigger', { enum: ['manual', 'scheduled', 'nightly'] }),
+    lastRunResult: jsonb('last_run_result').$type<ShopifySyncResult>(),
   },
   (t) => [check('shopify_sync_single_row', sql`${t.id} = 1`)],
 );

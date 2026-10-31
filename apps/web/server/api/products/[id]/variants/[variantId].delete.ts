@@ -2,6 +2,7 @@ import { and, count, eq } from 'drizzle-orm';
 import { schema, useDb } from '../../../../db/client.js';
 import { readId, requireFound } from '../../../../utils/validation.js';
 import { conflict, databaseError } from '../../../../utils/errors.js';
+import { variantUses } from '../../../../utils/variant-usage.js';
 
 /**
  * Deletes an archived variant that was never booked, received or sold. The
@@ -22,26 +23,13 @@ export default defineEventHandler(async (event) => {
   );
   if (variant.archivedAt === null) throw conflict('Bitte die Variante zuerst archivieren.');
 
-  // A product always keeps at least one variant (domain model).
+  // A product always keeps at least one variant (domain model); the whole product can be deleted instead.
   const [siblings] = await db.select({ n: count() }).from(schema.variants).where(eq(schema.variants.productId, productId));
   if ((siblings?.n ?? 0) <= 1) {
-    throw conflict('Das ist die letzte Variante des Produkts. Bitte stattdessen das Produkt archivieren.');
+    throw conflict('Das ist die letzte Variante. Archivieren Sie das Produkt und löschen Sie es oben als Ganzes.');
   }
 
-  const usage = async (table: typeof schema.stockEntries | typeof schema.batches | typeof schema.saleItems) => {
-    const [row] = await db.select({ n: count() }).from(table).where(eq(table.variantId, variantId));
-    return row?.n ?? 0;
-  };
-  const [entries, batches, sales] = await Promise.all([
-    usage(schema.stockEntries),
-    usage(schema.batches),
-    usage(schema.saleItems),
-  ]);
-  const uses = [
-    entries > 0 ? `${entries} Buchung(en)` : null,
-    batches > 0 ? `${batches} Wareneingangsposition(en)` : null,
-    sales > 0 ? `${sales} Verkaufsposition(en)` : null,
-  ].filter((u): u is string => u !== null);
+  const uses = await variantUses(db, [variantId]);
   if (uses.length > 0) {
     throw conflict(`${variant.sku} wird in ${uses.join(', ')} verwendet und bleibt archiviert.`);
   }

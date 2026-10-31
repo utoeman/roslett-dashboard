@@ -45,6 +45,7 @@ type ProductRow = {
   vatCategory: 'standard' | 'reduced';
   careNotes: string | null;
   safetyNotes: string | null;
+  shopifyProductId: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   category: { id: string; code: string; name: string; group: 'textile' | 'decor' };
@@ -67,6 +68,7 @@ export function mapProduct(row: ProductRow) {
     vatCategory: row.vatCategory,
     careNotes: row.careNotes,
     safetyNotes: row.safetyNotes,
+    shopifyProductId: row.shopifyProductId,
     archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     variants: row.variants.map(mapVariant),

@@ -81,6 +81,8 @@ export interface Product {
   vatCategory: VatCategory;
   careNotes: string | null;
   safetyNotes: string | null;
+  /** Set once the product is in Shopify (linked or pushed). */
+  shopifyProductId: string | null;
   archivedAt: string | null;
   createdAt: string;
   variants: Variant[];

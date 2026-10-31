@@ -1,0 +1,58 @@
+# Go-live reset (G28): deletes all products and everything booked on them in
+# the live database; master data stays. Dry run by default. Create a Neon
+# backup branch first – a real run cannot be undone.
+name: Testdaten löschen
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'probelauf = nur zählen und zurückrollen, loeschen = wirklich löschen'
+        type: choice
+        options: [probelauf, loeschen]
+        default: probelauf
+      bestaetigung:
+        description: 'Nur beim Löschen: LÖSCHEN eintippen'
+        type: string
+        required: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Bestätigung prüfen
+        if: inputs.modus == 'loeschen' && inputs.bestaetigung != 'LÖSCHEN'
+        run: |
+          echo "::error::Zum Löschen bitte im Feld Bestätigung genau LÖSCHEN eintippen. Es wurde nichts verändert."
+          exit 1
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Reset
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret PRODUCTION_DATABASE_URL fehlt."
+            exit 1
+          fi
+          if [ "${{ inputs.modus }}" = "loeschen" ]; then
+            node scripts/reset-test-data.ts --apply
+          else
+            node scripts/reset-test-data.ts
+          fi

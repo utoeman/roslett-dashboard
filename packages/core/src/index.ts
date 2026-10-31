@@ -13,4 +13,5 @@ export * from './stock.js';
 export * from './shopify-csv.js';
 export * from './shopify-match.js';
 export * from './shopify-orders.js';
+export * from './shopify-prices.js';
 export * from './sales.js';

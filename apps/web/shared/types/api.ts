@@ -354,6 +354,14 @@ export interface ShopifyStatus {
   lastRun: { at: string; trigger: 'manual' | 'scheduled' | 'nightly'; result: ShopifySyncResult } | null;
 }
 
+export interface ShopifyPricePushResult {
+  /** Variants whose price was written. */
+  prices: number;
+  /** Inventory items whose cost was written. */
+  costs: number;
+  errors: { sku: string; message: string }[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

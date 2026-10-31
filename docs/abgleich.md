@@ -203,3 +203,6 @@ Erstattungen und Stornos. Release nach 1b-2.
 | G11 | Testbetrieb | entfällt (entschieden 31.10.2026): der 15-Minuten-Abruf und der nächtliche Abgleich kommen sofort als Schritt 1c; G10 „nach einer Woche“ ist damit überholt |
 | G12 | Webhooks | vorerst **keine** (entschieden 31.10.2026): Abruf alle 15 Minuten plus nächtlicher Abgleich der letzten 48 Stunden reicht beim erwarteten Volumen; Webhooks nur bei echtem Bedarf. Ergänzt D1 und Stufe 2 |
 | G13 | Umfang bis Go-live | Shopify-Stufen 1c–4; übrige Roadmap-Punkte (Diagramme, PWA, Playwright, Barrierefreiheit, Demo) nach dem Go-live. Direkt vor dem Go-live werden Testprodukte samt aller Bewegungen gelöscht, Stammdaten bleiben |
+| G14 | Lagerort für Zugänge | gibt es in Shopify genau einen aktiven Lagerort, wird er automatisch genommen; bei mehreren Hinweis mit Auswahl (entschieden 31.10.2026) |
+| G15 | Einstandspreis-Push | nur per Klick nach Vorschau, zusammen mit dem Verkaufspreis; kein automatischer Push nach Wareneingang oder nachts (ersetzt die Taktung in Abschnitt 6 der Shopify-Anbindung) |
+| G16 | Zugang nach Shopify | je Wareneingang bzw. Produktion genau einmal, relativ (`+Menge`); Korrekturen danach über Inventur/Schwund (Stufe 4) |

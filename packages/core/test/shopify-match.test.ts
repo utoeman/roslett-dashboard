@@ -7,6 +7,8 @@ const shopify = (sku: string | null, n: number, quantity = 0): ShopifyVariantRef
   variantId: `gid://shopify/ProductVariant/${n}`,
   inventoryItemId: `gid://shopify/InventoryItem/${n}`,
   inventoryQuantity: quantity,
+  price: '39.90',
+  unitCost: null,
 });
 
 describe('matchShopifyVariants', () => {

@@ -82,8 +82,9 @@ interface VariantPage {
       id: string;
       sku: string | null;
       inventoryQuantity: number | null;
+      price: string;
       product: { id: string };
-      inventoryItem: { id: string };
+      inventoryItem: { id: string; unitCost: { amount: string } | null };
     }[];
   };
 }
@@ -97,7 +98,7 @@ export async function fetchShopifyVariants(): Promise<ShopifyVariantRef[]> {
       `query Variants($after: String) {
         productVariants(first: 250, after: $after) {
           pageInfo { hasNextPage endCursor }
-          nodes { id sku inventoryQuantity product { id } inventoryItem { id } }
+          nodes { id sku inventoryQuantity price product { id } inventoryItem { id unitCost { amount } } }
         }
       }`,
       { after },
@@ -109,6 +110,8 @@ export async function fetchShopifyVariants(): Promise<ShopifyVariantRef[]> {
         variantId: node.id,
         inventoryItemId: node.inventoryItem.id,
         inventoryQuantity: node.inventoryQuantity ?? 0,
+        price: node.price,
+        unitCost: node.inventoryItem.unitCost?.amount ?? null,
       });
     }
     after = page.productVariants.pageInfo.hasNextPage ? page.productVariants.pageInfo.endCursor : null;

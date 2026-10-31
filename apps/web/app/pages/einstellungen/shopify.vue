@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ShopifyMatchRow, ShopifyStatus, ShopifySyncResult } from '~~/shared/types/api';
+import type { PricePlan } from '@roslett/core';
+import type { ShopifyMatchRow, ShopifyPricePushResult, ShopifyStatus, ShopifySyncResult } from '~~/shared/types/api';
 
 useHead({ title: 'Shopify' });
 
@@ -92,6 +93,32 @@ async function adjust() {
     adjustErrors.value = fields;
   } finally {
     adjustSaving.value = false;
+  }
+}
+
+// Stage 2a: price and cost differences, pushed only after looking at the preview.
+const { formatMoney } = useMoney();
+const {
+  data: pricePlan,
+  pending: pricesLoading,
+  error: pricesError,
+  refresh: refreshPrices,
+} = await useFetch<PricePlan>('/api/shopify/prices', { lazy: true });
+const pushing = ref(false);
+const pushResult = ref<ShopifyPricePushResult | null>(null);
+const pushError = ref<string | null>(null);
+
+async function pushPrices() {
+  pushing.value = true;
+  pushError.value = null;
+  pushResult.value = null;
+  try {
+    pushResult.value = await $fetch<ShopifyPricePushResult>('/api/shopify/prices', { method: 'POST' });
+    await refreshPrices();
+  } catch (err) {
+    pushError.value = readError(err).message;
+  } finally {
+    pushing.value = false;
   }
 }
 
@@ -189,6 +216,67 @@ async function link() {
               </template>
             </UAlert>
           </template>
+        </div>
+
+        <div
+          class="space-y-3 rounded-[12px] border border-leinen-200/70 bg-white p-4 dark:border-leinen-800 dark:bg-leinen-900"
+          style="border-width: 0.5px"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium">Preise und Einstandspreise</p>
+              <p class="text-sm text-leinen-500">
+                Das Dashboard gibt Verkaufspreis und Einstand vor. Übertragen werden nur Abweichungen, erst nach Klick.
+              </p>
+            </div>
+            <UButton
+              icon="i-lucide-upload"
+              :disabled="!pricePlan || pricePlan.changes.length === 0"
+              :loading="pushing"
+              @click="pushPrices"
+            >
+              {{ pricePlan?.changes.length ?? 0 }} Änderungen übertragen
+            </UButton>
+          </div>
+
+          <p v-if="pricesLoading && !pricePlan" class="text-sm text-leinen-500">Preise werden verglichen …</p>
+          <UAlert v-if="pricesError" color="error" variant="soft" :title="readError(pricesError).message" />
+          <UAlert v-if="pushError" color="error" variant="soft" :title="pushError" />
+          <UAlert
+            v-if="pushResult"
+            :color="pushResult.errors.length > 0 ? 'warning' : 'success'"
+            variant="soft"
+            :title="`${pushResult.prices} Preise und ${pushResult.costs} Einstandspreise übertragen.`"
+          >
+            <template v-if="pushResult.errors.length > 0" #description>
+              <ul class="list-inside list-disc">
+                <li v-for="(e, i) in pushResult.errors" :key="i">{{ e.sku }}: {{ e.message }}</li>
+              </ul>
+            </template>
+          </UAlert>
+
+          <table v-if="pricePlan && pricePlan.changes.length > 0" class="ros-tabelle w-full text-sm">
+            <thead class="text-left text-xs font-medium uppercase tracking-wide text-leinen-500">
+              <tr>
+                <th class="px-2">SKU</th>
+                <th class="px-2 text-right">Preis Shopify → Dashboard</th>
+                <th class="px-2 text-right">Einstand Shopify → Dashboard</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in pricePlan.changes" :key="c.variantId">
+                <td class="px-2 font-mono text-xs">{{ c.sku }}</td>
+                <td class="zahl px-2">{{ c.price ? `${formatMoney(c.price.from)} → ${formatMoney(c.price.to)}` : '–' }}</td>
+                <td class="zahl px-2">
+                  {{ c.cost ? `${c.cost.from === null ? 'leer' : formatMoney(c.cost.from)} → ${formatMoney(c.cost.to)}` : '–' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else-if="pricePlan" class="text-sm text-leinen-500">Preise und Einstandspreise stimmen überein.</p>
+          <p v-if="pricePlan && pricePlan.missingPrice.length > 0" class="text-sm text-roswarning-700">
+            Ohne Preis im Dashboard (Shopify-Preis bleibt): {{ pricePlan.missingPrice.join(', ') }}
+          </p>
         </div>
 
         <div class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white" style="border-width: 0.5px">

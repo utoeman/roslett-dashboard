@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { MoneyError, convertToEur, parseMoney } from '@roslett/core';
-import type { AdditionalCost, GoodsReceipt, List, Product, ReceiptPosition } from '~~/shared/types/api';
+import type {
+  AdditionalCost,
+  GoodsReceipt,
+  List,
+  Product,
+  ReceiptPosition,
+  ReceiptShopifyPreview,
+  ReceiptShopifyPushResult,
+} from '~~/shared/types/api';
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));
@@ -221,6 +229,46 @@ function submitReceive() {
   );
 }
 
+// --- Shopify (G16) ----------------------------------------------------------
+const shopifyOpen = ref(false);
+const shopifyLoading = ref(false);
+const shopifyPreview = ref<ReceiptShopifyPreview | null>(null);
+const shopifyLocation = ref<string | undefined>(undefined);
+const shopifyMessage = ref<string | null>(null);
+const shopifyDone = ref<ReceiptShopifyPushResult | null>(null);
+
+async function openShopify() {
+  shopifyOpen.value = true;
+  shopifyLoading.value = true;
+  shopifyMessage.value = null;
+  shopifyDone.value = null;
+  shopifyPreview.value = null;
+  try {
+    shopifyPreview.value = await $fetch<ReceiptShopifyPreview>(api('/shopify'));
+    shopifyLocation.value = shopifyPreview.value.locations.length === 1 ? shopifyPreview.value.locations[0]?.id : undefined;
+  } catch (err) {
+    shopifyMessage.value = readError(err).message;
+  } finally {
+    shopifyLoading.value = false;
+  }
+}
+
+async function pushShopify() {
+  shopifyLoading.value = true;
+  shopifyMessage.value = null;
+  try {
+    shopifyDone.value = await $fetch<ReceiptShopifyPushResult>(api('/shopify'), {
+      method: 'POST',
+      body: { locationId: shopifyLocation.value ?? null },
+    });
+    shopifyPreview.value = null;
+  } catch (err) {
+    shopifyMessage.value = readError(err).message;
+  } finally {
+    shopifyLoading.value = false;
+  }
+}
+
 const stateBadge = computed(() => {
   if (!data.value) return { label: '', color: 'neutral' as const };
   if (data.value.state === 'draft') return { label: 'Entwurf', color: 'neutral' as const };
@@ -258,6 +306,17 @@ const positionBadge = (p: ReceiptPosition) =>
           </UButton>
           <UButton v-if="canReceive" icon="i-lucide-package-check" size="sm" class="rounded-[8px]" @click="openReceive">
             Zugang buchen
+          </UButton>
+          <UButton
+            v-if="!isDraft"
+            icon="i-lucide-upload"
+            size="sm"
+            variant="outline"
+            color="neutral"
+            class="rounded-[8px]"
+            @click="openShopify"
+          >
+            Nach Shopify übertragen
           </UButton>
         </template>
       </SeitenKopf>
@@ -592,6 +651,65 @@ const positionBadge = (p: ReceiptPosition) =>
               </UButton>
             </div>
           </form>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="shopifyOpen" title="Zugang nach Shopify übertragen">
+        <template #body>
+          <div class="space-y-4">
+            <UAlert v-if="shopifyMessage" color="error" variant="subtle" class="rounded-[12px]" :description="shopifyMessage" />
+            <p v-if="shopifyLoading && !shopifyPreview" class="text-sm text-leinen-500">Shopify wird abgefragt …</p>
+
+            <UAlert
+              v-if="shopifyDone"
+              color="success"
+              variant="subtle"
+              class="rounded-[12px]"
+              :title="`In Shopify gebucht (${shopifyDone.location})`"
+              :description="shopifyDone.lines.map((l) => `${l.sku} +${l.delta}`).join(', ')"
+            />
+
+            <template v-if="shopifyPreview">
+              <p v-if="shopifyPreview.lines.length === 0" class="text-sm text-leinen-500">
+                Alle gebuchten Zugänge dieses Belegs sind schon in Shopify.
+              </p>
+              <template v-else>
+                <p class="text-sm text-leinen-500">
+                  Gebuchte Zugänge, die noch nicht in Shopify sind. Shopify erhöht den Bestand um die Menge; jede Buchung
+                  wird nur einmal übertragen.
+                </p>
+                <ul class="space-y-1 text-sm">
+                  <li v-for="l in shopifyPreview.lines" :key="l.sku" class="flex justify-between gap-3">
+                    <span class="font-mono text-xs">{{ l.sku }}</span>
+                    <span class="tabular-nums">
+                      +{{ l.delta }}<template v-if="l.shopifyStock !== null">, Shopify {{ l.shopifyStock }} → {{ l.shopifyStock + l.delta }}</template>
+                    </span>
+                  </li>
+                </ul>
+                <UFormField v-if="shopifyPreview.locations.length > 1" label="Lagerort" required>
+                  <USelectMenu
+                    v-model="shopifyLocation"
+                    :items="shopifyPreview.locations.map((l) => ({ label: l.name, value: l.id }))"
+                    value-key="value"
+                    class="w-full"
+                  />
+                </UFormField>
+              </template>
+            </template>
+
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="shopifyOpen = false">Schließen</UButton>
+              <UButton
+                v-if="shopifyPreview && shopifyPreview.lines.length > 0"
+                :loading="shopifyLoading"
+                :disabled="shopifyLocation === undefined"
+                class="rounded-[8px]"
+                @click="pushShopify"
+              >
+                Übertragen
+              </UButton>
+            </div>
+          </div>
         </template>
       </UModal>
     </div>

@@ -362,6 +362,17 @@ export interface ShopifyPricePushResult {
   errors: { sku: string; message: string }[];
 }
 
+export interface ReceiptShopifyPreview {
+  /** Open entries of the receipt per variant; empty when everything is in Shopify. */
+  lines: { sku: string; delta: number; shopifyStock: number | null }[];
+  locations: { id: string; name: string }[];
+}
+
+export interface ReceiptShopifyPushResult {
+  location: string;
+  lines: { sku: string; delta: number }[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

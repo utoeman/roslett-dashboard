@@ -398,6 +398,20 @@ export interface ShopifyImage {
   status: string;
   /** Preview, null while processing. */
   url: string | null;
+  /** Colours whose variants show this image. */
+  colors: string[];
+}
+
+export interface ShopifyImageAttached {
+  /** The new image; null if Shopify did not list it yet. */
+  mediaId: string | null;
+  images: ShopifyImage[];
+}
+
+export interface ShopifyImageAssigned {
+  /** False while Shopify still processes the image; the browser asks again. */
+  ready: boolean;
+  images: ShopifyImage[];
 }
 
 export interface ShopifyStagedUpload {

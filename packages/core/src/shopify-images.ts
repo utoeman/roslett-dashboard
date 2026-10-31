@@ -42,3 +42,19 @@ export function assertStagedResource(resourceUrl: string): void {
     throw new ImageUploadError('Die Upload-Adresse stammt nicht von Shopify.');
   }
 }
+
+/**
+ * A colour photo belongs to every variant of that colour, across all sizes.
+ * Shopify shows one image per variant, so the colour switch on the shop page
+ * changes the picture.
+ */
+export function variantsOfColor(
+  variants: readonly { colorId: string | null; shopifyVariantId: string | null }[],
+  colorId: string,
+): string[] {
+  const ids = variants.flatMap((v) => (v.colorId === colorId && v.shopifyVariantId ? [v.shopifyVariantId] : []));
+  if (ids.length === 0) {
+    throw new ImageUploadError('Zu dieser Farbe gibt es keine Variante in Shopify. Bitte zuerst „Nach Shopify übertragen“.');
+  }
+  return ids;
+}

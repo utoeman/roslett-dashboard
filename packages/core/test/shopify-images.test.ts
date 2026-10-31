@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ImageUploadError, assertStagedResource, checkImageUpload } from '../src/shopify-images';
+import { ImageUploadError, assertStagedResource, checkImageUpload, variantsOfColor } from '../src/shopify-images';
 
 describe('checkImageUpload', () => {
   it('akzeptiert JPEG, PNG und WebP bis 20 MB', () => {
@@ -27,5 +27,22 @@ describe('assertStagedResource', () => {
     expect(() => assertStagedResource('https://example.com/kissen.jpg')).toThrow(ImageUploadError);
     expect(() => assertStagedResource('http://shopify-staged-uploads.storage.googleapis.com/x.jpg')).toThrow(ImageUploadError);
     expect(() => assertStagedResource('kein-link')).toThrow(ImageUploadError);
+  });
+});
+
+describe('variantsOfColor', () => {
+  const variants = [
+    { colorId: 'olive', shopifyVariantId: 'gid://shopify/ProductVariant/1' },
+    { colorId: 'olive', shopifyVariantId: 'gid://shopify/ProductVariant/2' },
+    { colorId: 'sand', shopifyVariantId: 'gid://shopify/ProductVariant/3' },
+    { colorId: 'olive', shopifyVariantId: null },
+  ];
+
+  it('liefert alle verknüpften Varianten einer Farbe über alle Größen', () => {
+    expect(variantsOfColor(variants, 'olive')).toEqual(['gid://shopify/ProductVariant/1', 'gid://shopify/ProductVariant/2']);
+  });
+
+  it('lehnt eine Farbe ohne verknüpfte Variante ab', () => {
+    expect(() => variantsOfColor(variants, 'weiss')).toThrow(ImageUploadError);
   });
 });

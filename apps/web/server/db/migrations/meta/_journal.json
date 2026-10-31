@@ -85,6 +85,13 @@
       "when": 1793458080206,
       "tag": "0011_shopify_inventory_pushes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793464925984,
+      "tag": "0012_shopify_product_push",
+      "breakpoints": true
     }
   ]
 }

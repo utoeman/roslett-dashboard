@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import type { Color, List, ProductDetail, Variant } from '~~/shared/types/api';
+import type {
+  Color,
+  List,
+  ProductDetail,
+  ShopifyProductPreview,
+  ShopifyProductPushResult,
+  Variant,
+} from '~~/shared/types/api';
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));
@@ -174,6 +181,41 @@ const activeVariants = computed(
 const archivedVariants = computed(
   () => data.value?.variants.filter((v) => v.archivedAt) ?? [],
 );
+
+// --- Shopify (stage 3a) -------------------------------------------------------
+const shopifyOpen = ref(false);
+const shopifyLoading = ref(false);
+const shopifyPreview = ref<ShopifyProductPreview | null>(null);
+const shopifyMessage = ref<string | null>(null);
+const shopifyDone = ref<ShopifyProductPushResult | null>(null);
+
+async function openShopify() {
+  shopifyOpen.value = true;
+  shopifyLoading.value = true;
+  shopifyMessage.value = null;
+  shopifyDone.value = null;
+  shopifyPreview.value = null;
+  try {
+    shopifyPreview.value = await $fetch<ShopifyProductPreview>(`/api/products/${id.value}/shopify`);
+  } catch (err) {
+    shopifyMessage.value = readError(err).message;
+  } finally {
+    shopifyLoading.value = false;
+  }
+}
+
+async function pushShopify() {
+  shopifyLoading.value = true;
+  shopifyMessage.value = null;
+  try {
+    shopifyDone.value = await $fetch<ShopifyProductPushResult>(`/api/products/${id.value}/shopify`, { method: 'POST' });
+    shopifyPreview.value = null;
+  } catch (err) {
+    shopifyMessage.value = readError(err).message;
+  } finally {
+    shopifyLoading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -207,6 +249,16 @@ const archivedVariants = computed(
             class="rounded-[8px]"
           >
             Alle Produkte
+          </UButton>
+          <UButton
+            icon="i-lucide-upload"
+            size="sm"
+            variant="outline"
+            color="neutral"
+            class="rounded-[8px]"
+            @click="openShopify"
+          >
+            Nach Shopify übertragen
           </UButton>
         </template>
       </SeitenKopf>
@@ -649,6 +701,79 @@ const archivedVariants = computed(
               </UButton>
             </div>
           </form>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="shopifyOpen" title="Produkt nach Shopify übertragen">
+        <template #body>
+          <div class="space-y-4">
+            <UAlert v-if="shopifyMessage" color="error" variant="subtle" class="rounded-[12px]" :description="shopifyMessage" />
+            <p v-if="shopifyLoading && !shopifyPreview" class="text-sm text-leinen-500">Shopify wird abgefragt …</p>
+            <UAlert
+              v-if="shopifyDone"
+              color="success"
+              variant="subtle"
+              class="rounded-[12px]"
+              :title="`In Shopify gespeichert (${shopifyDone.variants} Varianten)`"
+              description="Fotos, SEO-Texte, Kollektionen und Veröffentlichen pflegen Sie in Shopify."
+            />
+
+            <template v-if="shopifyPreview">
+              <p class="text-sm text-leinen-500">
+                <template v-if="shopifyPreview.isNew">Neu in Shopify, als Entwurf.</template>
+                <template v-else-if="shopifyPreview.pushedAt">
+                  Zuletzt übertragen {{ formatDate(shopifyPreview.pushedAt) }}<template v-if="shopifyPreview.changedSincePush">, seitdem im Dashboard geändert</template>.
+                </template>
+                <template v-else>In Shopify vorhanden, noch nie aus dem Dashboard übertragen.</template>
+              </p>
+              <UAlert
+                v-if="shopifyPreview.removedVariants.length > 0"
+                color="warning"
+                variant="subtle"
+                class="rounded-[12px]"
+                title="Diese Varianten entfernt Shopify, weil das Dashboard sie nicht (mehr) führt:"
+                :description="shopifyPreview.removedVariants.join(', ')"
+              />
+              <UAlert
+                v-if="shopifyPreview.warnings.length > 0"
+                color="warning"
+                variant="subtle"
+                class="rounded-[12px]"
+                :description="shopifyPreview.warnings.join(' ')"
+              />
+              <p v-if="shopifyPreview.changes.length === 0" class="text-sm">Shopify stimmt mit dem Dashboard überein.</p>
+              <div v-else class="max-h-80 overflow-y-auto">
+                <table class="ros-tabelle w-full text-sm">
+                  <thead class="text-left text-xs font-medium uppercase tracking-wide text-leinen-500">
+                    <tr>
+                      <th class="px-2">Feld</th>
+                      <th class="px-2">Shopify</th>
+                      <th class="px-2">Dashboard</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="c in shopifyPreview.changes" :key="c.field">
+                      <td class="px-2 font-mono text-xs">{{ c.field }}</td>
+                      <td class="px-2 text-leinen-500">{{ c.from ?? '–' }}</td>
+                      <td class="px-2">{{ c.to ?? '–' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="shopifyOpen = false">Schließen</UButton>
+              <UButton
+                v-if="shopifyPreview && (shopifyPreview.changes.length > 0 || shopifyPreview.removedVariants.length > 0)"
+                :loading="shopifyLoading"
+                class="rounded-[8px]"
+                @click="pushShopify"
+              >
+                Übertragen
+              </UButton>
+            </div>
+          </div>
         </template>
       </UModal>
     </div>

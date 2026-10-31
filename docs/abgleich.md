@@ -206,3 +206,7 @@ Erstattungen und Stornos. Release nach 1b-2.
 | G14 | Lagerort für Zugänge | gibt es in Shopify genau einen aktiven Lagerort, wird er automatisch genommen; bei mehreren Hinweis mit Auswahl (entschieden 31.10.2026) |
 | G15 | Einstandspreis-Push | nur per Klick nach Vorschau, zusammen mit dem Verkaufspreis; kein automatischer Push nach Wareneingang oder nachts (ersetzt die Taktung in Abschnitt 6 der Shopify-Anbindung) |
 | G16 | Zugang nach Shopify | jede Zugangsbuchung genau einmal, relativ (`+Menge`); Teillieferungen eines Belegs werden einzeln übertragen, stornierte Zugänge nicht. Korrekturen danach über Inventur/Schwund (Stufe 4) |
+| G17 | Status neuer Produkte (Stufe 3) | Entwurf; veröffentlicht wird in Shopify, wenn Fotos, SEO-Texte und Kollektionen gepflegt sind. Bei vorhandenen Produkten ändert das Dashboard den Status nicht (entschieden 31.10.2026) |
+| G18 | Änderungen im Shopify-Admin an Dashboard-Feldern | die Vorschau zeigt Shopify- und Dashboard-Wert je Feld; das Dashboard überschreibt erst nach Klick. Keine eigene Warnung „in Shopify geändert“ |
+| G19 | Archivierte Produkte | werden in Shopify archiviert, nie gelöscht. `productSet` ersetzt die Variantenliste: archivierte oder fremde Varianten entfernt Shopify, die Vorschau nennt sie vorher |
+| G20 | CSV-Export | bleibt, bis die Übertragung per API im Dev-Store bestätigt ist; danach in einem eigenen PR entfernt |

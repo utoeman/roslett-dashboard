@@ -127,6 +127,7 @@ type ChannelRow = {
   freeShippingFrom: string | null;
   defaultPostage: string;
   active: boolean;
+  shopifySources: string[];
 };
 
 export function mapChannel(row: ChannelRow) {
@@ -140,5 +141,6 @@ export function mapChannel(row: ChannelRow) {
     freeShippingFrom: numericToCents(row.freeShippingFrom),
     defaultPostage: numericToCents(row.defaultPostage),
     active: row.active,
+    shopifySources: row.shopifySources,
   };
 }

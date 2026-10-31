@@ -3,16 +3,18 @@ import type { ShopifyStatus } from '../../../shared/types/api.js';
 import { shopifyConfig } from '../../utils/shopify.js';
 import { compareWithShopify } from '../../utils/shopify-status.js';
 
-/** Connection check and SKU comparison; reads Shopify, writes nothing (G6). */
+/** Connection check, SKU comparison and import state; reads Shopify, writes nothing (G6). */
 export default defineEventHandler(async (): Promise<ShopifyStatus> => {
   const config = shopifyConfig();
-  if (!config) return { configured: false, shop: null, rows: [], unknownInShopify: [] };
+  if (!config) return { configured: false, shop: null, rows: [], unknownInShopify: [], ordersSyncedTo: null };
 
-  const { match, rows } = await compareWithShopify(useDb());
+  const db = useDb();
+  const [{ match, rows }, state] = await Promise.all([compareWithShopify(db), db.query.shopifySync.findFirst()]);
   return {
     configured: true,
     shop: config.shop,
     rows,
     unknownInShopify: match.unknownInShopify.map((v) => ({ sku: v.sku, variantId: v.variantId })),
+    ordersSyncedTo: state?.ordersSyncedTo.toISOString() ?? null,
   };
 });

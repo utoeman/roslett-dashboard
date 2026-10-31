@@ -196,3 +196,7 @@ Erstattungen und Stornos. Release nach 1b-2.
 | G4 | Berechtigungen | alle Scopes für Stufe 1–3 gleich bei der Einrichtung (`read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_orders`, `read_locations`, `write_files`), damit nicht je Stufe neu installiert werden muss; geschrieben wird erst ab Stufe 2 |
 | G5 | Zuordnung | über die SKU. Shopify-IDs (Produkt, Variante, Inventarartikel) werden an Produkt bzw. Variante gespeichert; Varianten ohne Treffer und Shopify-Varianten ohne Dashboard-SKU erscheinen in einer Liste |
 | G6 | Bestand in 1b-1 | wird nur angezeigt (Shopify-Menge neben Dashboard-Menge), nicht gebucht; Abweichungen landen ab 1b-2 in der Prüfliste |
+| G7 | Storno aus Shopify | Shopify legt beim Stornieren automatisch eine Erstattung aller Positionen an (`restockType` `CANCEL`). Hat die Bestellung `cancelledAt`, wird sie als Storno gebucht (F10, `reversal`); diese Erstattung gehört dazu und wird nicht zusätzlich gebucht (entschieden 31.10.2026) |
+| G8 | Status beim Import | „versendet“ nur, wenn Shopify die Bestellung als ausgeführt meldet (`FULFILLED`), sonst „offen“ |
+| G9 | Gebühren beim Import | weiter pauschal aus dem Kanal (F11); echte Zahlungsgebühren aus der API später |
+| G10 | Abruf in 1b-2 | zunächst nur per Button „Jetzt abrufen“; der 15-Minuten-Abruf (D1) folgt nach einer Woche Testbetrieb. Erstattungen mit `restockType` `RETURN` oder `CANCEL` gelten als wieder eingelagert (V2) |

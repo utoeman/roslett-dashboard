@@ -22,6 +22,7 @@ const form = reactive({
   shippingPriceGross: '',
   freeShippingFrom: '',
   defaultPostage: '',
+  shopifySources: '',
 });
 
 const ruleOptions = [
@@ -40,6 +41,7 @@ function openDialog(channel?: Channel) {
   form.shippingPriceGross = channel?.shippingPriceGross ? toInput(channel.shippingPriceGross) : '';
   form.freeShippingFrom = channel?.freeShippingFrom ? toInput(channel.freeShippingFrom) : '';
   form.defaultPostage = channel?.defaultPostage ? toInput(channel.defaultPostage) : '';
+  form.shopifySources = channel?.shopifySources.join(', ') ?? '';
   dialogOpen.value = true;
 }
 
@@ -56,6 +58,10 @@ async function save() {
     // Empty means shipping is never free.
     freeShippingFrom: form.freeShippingFrom || null,
     defaultPostage: form.defaultPostage || 0,
+    shopifySources: form.shopifySources
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s !== ''),
   };
   try {
     if (editingId.value) {
@@ -130,7 +136,7 @@ async function toggleActive(channel: Channel) {
         class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white dark:bg-leinen-900 dark:border-leinen-800"
         style="border-width: 0.5px"
       >
-        <table class="ros-tabelle w-full min-w-[60rem] text-sm">
+        <table class="ros-tabelle w-full min-w-[68rem] text-sm">
           <thead
             class="border-b border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500 dark:border-leinen-800 dark:bg-leinen-900/40"
           >
@@ -142,6 +148,7 @@ async function toggleActive(channel: Channel) {
               <th class="px-4 text-right">Frei ab</th>
               <th class="px-4 text-right">Porto</th>
               <th class="px-4">Preisregel</th>
+              <th class="px-4">Shopify-Quellen</th>
               <th class="px-4">Status</th>
               <th class="px-4 text-right">Aktion</th>
             </tr>
@@ -160,6 +167,9 @@ async function toggleActive(channel: Channel) {
               <td class="zahl px-4">{{ formatMoney(channel.defaultPostage) }}</td>
               <td class="px-4 text-leinen-500">
                 {{ channel.pricingRule === 'same_margin' ? 'aus Zielmarge' : 'fest' }}
+              </td>
+              <td class="px-4 font-mono text-xs text-leinen-500">
+                {{ channel.shopifySources.length ? channel.shopifySources.join(', ') : '–' }}
               </td>
               <td class="px-4">
                 <UButton
@@ -246,6 +256,13 @@ async function toggleActive(channel: Channel) {
               value-key="value"
               class="w-full"
             />
+          </UFormField>
+          <UFormField
+            label="Shopify-Quellen"
+            :error="fieldErrors.shopifySources"
+            help="Bestellungen mit dieser Quelle gehören zum Kanal, mehrere mit Komma. Zum Beispiel web, shopify_draft_order"
+          >
+            <UInput v-model="form.shopifySources" class="w-full font-mono" />
           </UFormField>
           <div class="flex justify-end gap-2 pt-2">
             <UButton

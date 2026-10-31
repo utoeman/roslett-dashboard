@@ -205,6 +205,17 @@ export const companySettings = pgTable(
   (t) => [check('company_settings_single_row', sql`${t.id} = 1`)],
 );
 
+/** Where the next order import starts; absent before the first one. */
+export const shopifySync = pgTable(
+  'shopify_sync',
+  {
+    id: integer('id').primaryKey().default(1),
+    ordersSyncedTo: timestamp('orders_synced_to', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check('shopify_sync_single_row', sql`${t.id} = 1`)],
+);
+
 // ---------------------------------------------------------------------------
 // Goods receipt
 // ---------------------------------------------------------------------------
@@ -314,6 +325,8 @@ export const channels = pgTable('channels', {
   /** Actual postage, default for new sales. */
   defaultPostage: money('default_postage').notNull().default('0'),
   active: boolean('active').notNull().default(true),
+  /** Shopify `sourceName` values whose orders belong to this channel. */
+  shopifySources: text('shopify_sources').array().notNull().default(sql`'{}'::text[]`),
 });
 
 export const channelPrices = pgTable(
@@ -359,10 +372,13 @@ export const sales = pgTable(
     postageCost: money('postage_cost').notNull().default('0'),
     discountGross: money('discount_gross').notNull().default('0'),
     status: saleStatusEnum('status').notNull().default('open'),
+    /** Set for imported orders; makes a repeated import a no-op. */
+    shopifyOrderId: text('shopify_order_id'),
     createdAt,
   },
   (t) => [
     uniqueIndex('sales_channel_order_idx').on(t.channelId, t.externalOrderNumber),
+    uniqueIndex('sales_shopify_order_idx').on(t.shopifyOrderId),
     index('sales_ordered_at_idx').on(t.orderedAt),
   ],
 );
@@ -381,6 +397,8 @@ export const saleItems = pgTable(
     quantity: integer('quantity').notNull(),
     unitPriceGross: money('unit_price_gross').notNull(),
     vatRate: numeric('vat_rate', { precision: 5, scale: 4 }).notNull(),
+    /** Shopify line item; refunds name the line by it. */
+    shopifyLineItemId: text('shopify_line_item_id'),
   },
   (t) => [
     index('sale_items_sale_idx').on(t.saleId),
@@ -422,10 +440,13 @@ export const refunds = pgTable(
     damaged: boolean('damaged').notNull().default(false),
     refundedAt: timestamp('refunded_at', { withTimezone: true }).notNull(),
     note: text('note'),
+    /** One Shopify refund becomes one row per line plus the order part. */
+    shopifyRefundId: text('shopify_refund_id'),
     createdAt,
   },
   (t) => [
     index('refunds_sale_idx').on(t.saleId),
+    index('refunds_shopify_refund_idx').on(t.shopifyRefundId),
     check('refunds_quantity_not_negative', sql`${t.quantity} >= 0`),
     check('refunds_damaged_needs_restock', sql`not ${t.damaged} or ${t.restocked}`),
   ],

@@ -4,11 +4,14 @@ import { readJsonBody, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapChannel } from '../../utils/mapping.js';
+import { assertShopifySourcesFree } from '../../utils/shopify-sync.js';
 
 export default defineEventHandler(async (event) => {
   const input = await readJsonBody(event, createChannelSchema);
+  const db = useDb();
+  await assertShopifySourcesFree(db, input.shopifySources, null);
   try {
-    const [channel] = await useDb()
+    const [channel] = await db
       .insert(schema.channels)
       .values({
         name: input.name,
@@ -19,6 +22,7 @@ export default defineEventHandler(async (event) => {
         freeShippingFrom: centsToNumeric(input.freeShippingFrom),
         defaultPostage: centsToNumeric(input.defaultPostage) ?? '0',
         active: input.active,
+        shopifySources: input.shopifySources,
       })
       .returning();
     setResponseStatus(event, 201);

@@ -391,6 +391,21 @@ export interface ShopifyProductPushResult {
   warnings: string[];
 }
 
+export interface ShopifyImage {
+  id: string;
+  alt: string | null;
+  /** UPLOADED, PROCESSING, READY or FAILED; Shopify processes new images asynchronously. */
+  status: string;
+  /** Preview, null while processing. */
+  url: string | null;
+}
+
+export interface ShopifyStagedUpload {
+  url: string;
+  resourceUrl: string;
+  parameters: { name: string; value: string }[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

@@ -205,4 +205,4 @@ Erstattungen und Stornos. Release nach 1b-2.
 | G13 | Umfang bis Go-live | Shopify-Stufen 1c–4; übrige Roadmap-Punkte (Diagramme, PWA, Playwright, Barrierefreiheit, Demo) nach dem Go-live. Direkt vor dem Go-live werden Testprodukte samt aller Bewegungen gelöscht, Stammdaten bleiben |
 | G14 | Lagerort für Zugänge | gibt es in Shopify genau einen aktiven Lagerort, wird er automatisch genommen; bei mehreren Hinweis mit Auswahl (entschieden 31.10.2026) |
 | G15 | Einstandspreis-Push | nur per Klick nach Vorschau, zusammen mit dem Verkaufspreis; kein automatischer Push nach Wareneingang oder nachts (ersetzt die Taktung in Abschnitt 6 der Shopify-Anbindung) |
-| G16 | Zugang nach Shopify | je Wareneingang bzw. Produktion genau einmal, relativ (`+Menge`); Korrekturen danach über Inventur/Schwund (Stufe 4) |
+| G16 | Zugang nach Shopify | jede Zugangsbuchung genau einmal, relativ (`+Menge`); Teillieferungen eines Belegs werden einzeln übertragen, stornierte Zugänge nicht. Korrekturen danach über Inventur/Schwund (Stufe 4) |

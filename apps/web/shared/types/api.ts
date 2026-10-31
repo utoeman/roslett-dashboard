@@ -329,6 +329,25 @@ export interface Sale {
   provisional: boolean;
 }
 
+/** One dashboard variant with its Shopify counterpart (G5, G6). */
+export interface ShopifyMatchRow {
+  variantId: string;
+  sku: string;
+  productName: string;
+  dashboardStock: number;
+  /** Null when the SKU is missing or ambiguous in Shopify. */
+  shopifyStock: number | null;
+  status: 'linked' | 'matched' | 'missing' | 'duplicate';
+}
+
+export interface ShopifyStatus {
+  configured: boolean;
+  shop: string | null;
+  rows: ShopifyMatchRow[];
+  /** Shopify variants with an empty or unknown SKU. */
+  unknownInShopify: { sku: string | null; variantId: string }[];
+}
+
 /** Envelope of all list responses. */
 export interface List<T> {
   items: T[];

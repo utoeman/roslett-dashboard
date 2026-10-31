@@ -182,3 +182,17 @@ Release nach 1a-3.
 | F14 | Verkaufsbuchungen im Journal | lassen sich dort nicht stornieren; nur über den Verkauf (Storno, Retoure) |
 | D4 | Erstimport | ab Anbindung, keine Altbestellungen |
 | D5 | Erstanlage der Produkte | CSV-Export im Shopify-Format aus dem Dashboard |
+
+## Schritt 11: Anbindung, Shopify Stufe 1b (entschieden 31.10.2026)
+
+Zwei PRs: 1b-1 Zugang und SKU-Zuordnung (nur lesen), 1b-2 Abruf von Bestellungen,
+Erstattungen und Stornos. Release nach 1b-2.
+
+| # | Punkt | Entscheidung |
+|---|---|---|
+| G1 | Wo Produkte entstehen | im Dashboard (bestätigt D5 und Feldhoheit); nach Shopify per CSV-Export, ab Stufe 3 per API. In Shopify werden nur Fotos, SEO-Texte und Kollektionen gepflegt |
+| G2 | Produktbilder | Upload im Dashboard, ab Stufe 3: der Browser lädt direkt zu Shopify hoch (Staged Upload), das Dashboard hängt das Bild ans Produkt und speichert nur die Shopify-Verknüpfung, keine Bilddatei. Reihenfolge und Alt-Texte bleiben in Shopify (Invariante 4) |
+| G3 | Zugang | eigene App im Shopify Dev Dashboard, Client-Credentials-Grant: Client-ID und -Secret als Umgebungsvariablen, Token (24 h) holt der Server bei Bedarf. Geht nur für Stores derselben Organisation |
+| G4 | Berechtigungen | alle Scopes für Stufe 1–3 gleich bei der Einrichtung (`read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_orders`, `read_locations`, `write_files`), damit nicht je Stufe neu installiert werden muss; geschrieben wird erst ab Stufe 2 |
+| G5 | Zuordnung | über die SKU. Shopify-IDs (Produkt, Variante, Inventarartikel) werden an Produkt bzw. Variante gespeichert; Varianten ohne Treffer und Shopify-Varianten ohne Dashboard-SKU erscheinen in einer Liste |
+| G6 | Bestand in 1b-1 | wird nur angezeigt (Shopify-Menge neben Dashboard-Menge), nicht gebucht; Abweichungen landen ab 1b-2 in der Prüfliste |

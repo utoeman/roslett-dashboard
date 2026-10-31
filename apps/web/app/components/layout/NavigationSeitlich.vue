@@ -39,6 +39,7 @@ const sections: NavSection[] = [
       { name: 'Farben', path: '/einstellungen/farben', icon: 'i-lucide-palette' },
       { name: 'MwSt-Sätze', path: '/einstellungen/mwst', icon: 'i-lucide-percent' },
       { name: 'Hersteller', path: '/einstellungen/hersteller', icon: 'i-lucide-factory' },
+      { name: 'Shopify', path: '/einstellungen/shopify', icon: 'i-lucide-shopping-bag' },
     ],
   },
 ];

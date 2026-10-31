@@ -28,6 +28,8 @@ export default defineNuxtConfig({
     // Set at runtime via NUXT_ACCESS_PASSWORD_HASH; empty at build time so no
     // secret ends up in the bundle. NUXT_SESSION_PASSWORD is read by nuxt-auth-utils.
     accessPasswordHash: '',
+    // Dev Dashboard app (G3), set via NUXT_SHOPIFY_SHOP / _CLIENT_ID / _CLIENT_SECRET.
+    shopify: { shop: '', clientId: '', clientSecret: '' },
     public: {},
   },
 

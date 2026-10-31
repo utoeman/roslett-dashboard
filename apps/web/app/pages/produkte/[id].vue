@@ -182,6 +182,37 @@ async function archiveVariant(variantId: string, archive: boolean) {
 const activeVariants = computed(
   () => data.value?.variants.filter((v) => !v.archivedAt) ?? [],
 );
+// Deleting is only possible for archived variants that were never booked; the server checks.
+const deletingVariant = ref<Variant | null>(null);
+const deleteVariantOpen = computed({
+  get: () => deletingVariant.value !== null,
+  set: (open: boolean) => {
+    if (!open) deletingVariant.value = null;
+  },
+});
+const deleteVariantBusy = ref(false);
+const deleteVariantMessage = ref<string | null>(null);
+
+function askDeleteVariant(variant: Variant) {
+  deleteVariantMessage.value = null;
+  deletingVariant.value = variant;
+}
+
+async function confirmDeleteVariant() {
+  if (deletingVariant.value === null) return;
+  deleteVariantBusy.value = true;
+  deleteVariantMessage.value = null;
+  try {
+    await $fetch(`/api/products/${id.value}/variants/${deletingVariant.value.id}`, { method: 'DELETE' });
+    deletingVariant.value = null;
+    await refresh();
+  } catch (err) {
+    deleteVariantMessage.value = readError(err).message;
+  } finally {
+    deleteVariantBusy.value = false;
+  }
+}
+
 const archivedVariants = computed(
   () => data.value?.variants.filter((v) => v.archivedAt) ?? [],
 );
@@ -582,6 +613,17 @@ async function pushShopify() {
                     >
                       Zurückholen
                     </UButton>
+                    <UButton
+                      size="xs"
+                      variant="ghost"
+                      color="error"
+                      icon="i-lucide-trash-2"
+                      :aria-label="`${variant.sku} löschen`"
+                      class="rounded-[8px]"
+                      @click="askDeleteVariant(variant)"
+                    >
+                      Löschen
+                    </UButton>
                   </div>
                 </td>
               </tr>
@@ -838,6 +880,31 @@ async function pushShopify() {
               </UButton>
             </div>
           </form>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="deleteVariantOpen" title="Variante löschen">
+        <template #body>
+          <div v-if="deletingVariant" class="space-y-4">
+            <UAlert
+              v-if="deleteVariantMessage"
+              color="error"
+              variant="subtle"
+              class="rounded-[12px]"
+              :description="deleteVariantMessage"
+            />
+            <p class="text-sm">
+              <span class="font-mono">{{ deletingVariant.sku }}</span> endgültig löschen? Das lässt sich nicht rückgängig
+              machen. Gelöscht wird nur, wenn die Variante nie gebucht, eingegangen oder verkauft wurde; ihre
+              Kanalpreise und eigenen Kostenpositionen gehen mit.
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deletingVariant = null">Abbrechen</UButton>
+              <UButton color="error" :loading="deleteVariantBusy" class="rounded-[8px]" @click="confirmDeleteVariant">
+                Endgültig löschen
+              </UButton>
+            </div>
+          </div>
         </template>
       </UModal>
 

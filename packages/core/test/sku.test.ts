@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SkuError, buildSku, buildVariantLabel, skuSize } from '../src/sku';
+import { SkuError, buildSku, buildVariantLabel, skuSize, suggestCode } from '../src/sku';
 
 describe('buildSku', () => {
   it('baut die volle SKU', () => {
@@ -65,5 +65,30 @@ describe('buildVariantLabel', () => {
   it('heisst ohne beides Standard', () => {
     expect(buildVariantLabel(null, null)).toBe('Standard');
     expect(buildVariantLabel(undefined, '  ')).toBe('Standard');
+  });
+});
+
+describe('suggestCode', () => {
+  it('nimmt die ersten drei Buchstaben, groß', () => {
+    expect(suggestCode('Schwarz', [])).toBe('SCH');
+    expect(suggestCode('Tagesdecke', [])).toBe('TAG');
+  });
+
+  it('ersetzt Umlaute und ß und ignoriert Leerzeichen und Zeichen', () => {
+    expect(suggestCode('Grün', [])).toBe('GRU');
+    expect(suggestCode('Öko', [])).toBe('OKO');
+    expect(suggestCode('Maß', [])).toBe('MAS');
+    expect(suggestCode('Tischset & Servier-Set', [])).toBe('TIS');
+  });
+
+  it('weicht bei belegtem Kürzel auf weitere Buchstaben des Namens aus', () => {
+    expect(suggestCode('Grau', ['GRA'])).toBe('GRU');
+    expect(suggestCode('Grau', ['gra', 'GRU'])).toBe('GAU');
+  });
+
+  it('gibt null zurück, wenn der Name zu kurz ist oder alles belegt ist', () => {
+    expect(suggestCode('Ro', [])).toBeNull();
+    expect(suggestCode('Rot', ['ROT'])).toBeNull();
+    expect(suggestCode('', [])).toBeNull();
   });
 });

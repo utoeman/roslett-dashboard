@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { suggestCode } from '@roslett/core';
 import type { Category, CategoryGroup, List } from '~~/shared/types/api';
 
 useHead({ title: 'Kategorien' });
@@ -24,6 +25,28 @@ const fieldErrors = ref<Record<string, string>>({});
 const editing = ref<Category | null>(null);
 const form = reactive({ code: '', name: '', group: 'textile' as CategoryGroup });
 
+// Codes of all entries, archived too: a code stays unique even when archived.
+const takenCodes = ref<string[]>([]);
+const codeTouched = ref(false);
+
+watch(
+  () => form.name,
+  (name) => {
+    // Only while creating and until the code was typed by hand.
+    if (editing.value || codeTouched.value) return;
+    form.code = suggestCode(name, takenCodes.value) ?? '';
+  },
+);
+
+async function loadTakenCodes() {
+  try {
+    const all = await $fetch<List<Category>>('/api/categories', { query: { includeArchived: true } });
+    takenCodes.value = all.items.map((item) => item.code);
+  } catch {
+    takenCodes.value = data.value?.items.map((item) => item.code) ?? [];
+  }
+}
+
 function openDialog(category?: Category) {
   message.value = null;
   fieldErrors.value = {};
@@ -31,7 +54,9 @@ function openDialog(category?: Category) {
   form.code = category?.code ?? '';
   form.name = category?.name ?? '';
   form.group = category?.group ?? 'textile';
+  codeTouched.value = false;
   dialogOpen.value = true;
+  if (!category) void loadTakenCodes();
 }
 
 async function save() {
@@ -69,6 +94,37 @@ async function setArchived(category: Category, archived: boolean) {
     await refresh();
   } catch (err) {
     message.value = readError(err).message;
+  }
+}
+
+// Deleting is only possible for archived, never used entries; the server checks.
+const deleting = ref<Category | null>(null);
+const deleteOpen = computed({
+  get: () => deleting.value !== null,
+  set: (open: boolean) => {
+    if (!open) deleting.value = null;
+  },
+});
+const deleteBusy = ref(false);
+const deleteMessage = ref<string | null>(null);
+
+function askDelete(category: Category) {
+  deleteMessage.value = null;
+  deleting.value = category;
+}
+
+async function confirmDelete() {
+  if (deleting.value === null) return;
+  deleteBusy.value = true;
+  deleteMessage.value = null;
+  try {
+    await $fetch(`/api/categories/${deleting.value.id}`, { method: 'DELETE' });
+    deleting.value = null;
+    await refresh();
+  } catch (err) {
+    deleteMessage.value = readError(err).message;
+  } finally {
+    deleteBusy.value = false;
   }
 }
 </script>
@@ -153,6 +209,18 @@ async function setArchived(category: Category, archived: boolean) {
                   >
                     {{ category.archivedAt ? 'Zurückholen' : 'Archivieren' }}
                   </UButton>
+                  <UButton
+                    v-if="category.archivedAt"
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-lucide-trash-2"
+                    :aria-label="`${category.code} löschen`"
+                    class="rounded-[8px]"
+                    @click="askDelete(category)"
+                  >
+                    Löschen
+                  </UButton>
                 </div>
               </td>
             </tr>
@@ -172,16 +240,22 @@ async function setArchived(category: Category, archived: boolean) {
             class="rounded-[12px]"
             :description="message"
           />
+          <UFormField label="Name" required :error="fieldErrors.name">
+            <UInput v-model="form.name" autofocus class="w-full" />
+          </UFormField>
           <UFormField
             label="Kürzel"
             required
             :error="fieldErrors.code"
-            :help="editing?.inUse ? 'Wird in SKUs verwendet und ist deshalb fest.' : 'Drei Buchstaben, z. B. KIS.'"
+            :help="editing?.inUse ? 'Wird in SKUs verwendet und ist deshalb fest.' : 'Wird aus dem Namen vorgeschlagen, änderbar. Drei Buchstaben, z. B. KIS.'"
           >
-            <UInput v-model="form.code" :disabled="editing?.inUse" maxlength="3" class="w-full font-mono uppercase" />
-          </UFormField>
-          <UFormField label="Name" required :error="fieldErrors.name">
-            <UInput v-model="form.name" class="w-full" />
+            <UInput
+              v-model="form.code"
+              :disabled="editing?.inUse"
+              maxlength="3"
+              class="w-full font-mono uppercase"
+              @update:model-value="codeTouched = true"
+            />
           </UFormField>
           <UFormField label="Gruppe" :error="fieldErrors.group">
             <USelectMenu v-model="form.group" :items="groupOptions" value-key="value" class="w-full" />
@@ -195,6 +269,22 @@ async function setArchived(category: Category, archived: boolean) {
             </UButton>
           </div>
         </form>
+      </template>
+    </UModal>
+
+    <UModal v-model:open="deleteOpen" :title="`Kategorie löschen`">
+      <template #body>
+        <div v-if="deleting" class="space-y-4">
+          <UAlert v-if="deleteMessage" color="error" variant="subtle" class="rounded-[12px]" :description="deleteMessage" />
+          <p class="text-sm">
+            <span class="font-mono">{{ deleting.code }}</span> {{ deleting.name }} endgültig löschen? Das lässt sich nicht
+            rückgängig machen. Gelöscht wird nur, wenn die Kategorie nie verwendet wurde.
+          </p>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deleting = null">Abbrechen</UButton>
+            <UButton color="error" :loading="deleteBusy" class="rounded-[8px]" @click="confirmDelete">Endgültig löschen</UButton>
+          </div>
+        </div>
       </template>
     </UModal>
   </div>

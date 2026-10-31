@@ -51,7 +51,12 @@ async function accessToken(config: ShopifyConfig): Promise<string> {
   return body.access_token;
 }
 
-export async function shopifyGraphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+/** `language` localises names Shopify translates itself (e.g. the product taxonomy). */
+export async function shopifyGraphql<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  options: { language?: string } = {},
+): Promise<T> {
   const config = shopifyConfig();
   if (!config) throw unavailable('Die Shopify-Anbindung ist nicht eingerichtet.');
   const token = await accessToken(config);
@@ -59,7 +64,11 @@ export async function shopifyGraphql<T>(query: string, variables: Record<string,
   try {
     response = await fetch(`https://${config.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+        ...(options.language ? { 'Accept-Language': options.language } : {}),
+      },
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(20_000),
     });

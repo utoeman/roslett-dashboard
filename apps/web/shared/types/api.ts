@@ -440,7 +440,7 @@ export interface ShopifyStockChangesPreview {
 
 export interface ShopifyTaxonomyCategory {
   id: string;
-  /** Full path in English, e.g. "Home & Garden > Linens & Bedding > Table Linens > Placemats". */
+  /** Full path in German, e.g. "Heim & Garten > Bett- und Haushaltswäsche > Tischwäsche > Tischsets". */
   name: string;
 }
 

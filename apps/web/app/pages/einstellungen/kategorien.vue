@@ -46,7 +46,7 @@ watch(taxonomySearch, (term) => {
   taxonomyTimer = setTimeout(async () => {
     try {
       taxonomyResults.value = await $fetch<ShopifyTaxonomyCategory[]>('/api/shopify/taxonomy', { query: { search: term } });
-      if (taxonomyResults.value.length === 0) taxonomyMessage.value = 'Nichts gefunden – Suche auf Englisch, z. B. „placemats“.';
+      if (taxonomyResults.value.length === 0) taxonomyMessage.value = 'Nichts gefunden – anderen Begriff versuchen, z. B. „Steppdecke“ statt „Tagesdecke“.';
     } catch (err) {
       taxonomyMessage.value = readError(err).message;
     }
@@ -307,7 +307,7 @@ async function confirmDelete() {
           </UFormField>
           <UFormField
             label="Shopify-Kategorie"
-            help="Standard-Produktkategorie von Shopify (für Google Shopping und Steuern). Suche auf Englisch, z. B. „bedspread“."
+            help="Standard-Produktkategorie von Shopify (für Google Shopping und Steuern), z. B. „Tischsets“, „Kissenbezüge“, „Steppdecke“."
           >
             <div v-if="form.shopifyCategoryName" class="mb-2 flex items-start justify-between gap-2 text-sm">
               <span>{{ form.shopifyCategoryName }}</span>

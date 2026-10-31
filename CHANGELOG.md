@@ -2,6 +2,14 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.8.0 (2026-10-31)
+
+### Neu
+
+- push goods receipts to Shopify (#35)
+- push prices to Shopify (#34)
+- scheduled Shopify sync (#33)
+
 ## v0.7.0 (2026-10-31)
 
 ### Neu
@@ -74,6 +82,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

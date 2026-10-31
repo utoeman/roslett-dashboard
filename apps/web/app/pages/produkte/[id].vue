@@ -182,6 +182,46 @@ async function archiveVariant(variantId: string, archive: boolean) {
 const activeVariants = computed(
   () => data.value?.variants.filter((v) => !v.archivedAt) ?? [],
 );
+// The whole product: archive, restore, and delete once archived and never used (G25).
+const productBusy = ref(false);
+const deleteProductOpen = ref(false);
+const deleteProductMessage = ref<string | null>(null);
+
+async function setProductArchived(archive: boolean) {
+  productBusy.value = true;
+  message.value = null;
+  try {
+    await $fetch(`/api/products/${id.value}`, {
+      method: 'PATCH',
+      body: { archivedAt: archive ? new Date().toISOString() : null },
+    });
+    await refresh();
+  } catch (err) {
+    message.value = readError(err).message;
+  } finally {
+    productBusy.value = false;
+  }
+}
+
+function askDeleteProduct() {
+  deleteProductMessage.value = null;
+  deleteProductOpen.value = true;
+}
+
+async function confirmDeleteProduct() {
+  productBusy.value = true;
+  deleteProductMessage.value = null;
+  try {
+    await $fetch(`/api/products/${id.value}`, { method: 'DELETE' });
+    deleteProductOpen.value = false;
+    await navigateTo('/produkte');
+  } catch (err) {
+    deleteProductMessage.value = readError(err).message;
+  } finally {
+    productBusy.value = false;
+  }
+}
+
 // Deleting is only possible for archived variants that were never booked; the server checks.
 const deletingVariant = ref<Variant | null>(null);
 const deleteVariantOpen = computed({
@@ -374,6 +414,35 @@ async function pushShopify() {
           >
             Nach Shopify übertragen
           </UButton>
+          <UButton
+            v-if="!data.archivedAt"
+            icon="i-lucide-archive"
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            class="rounded-[8px]"
+            :loading="productBusy"
+            @click="setProductArchived(true)"
+          >
+            Produkt archivieren
+          </UButton>
+          <template v-else>
+            <UBadge color="neutral" variant="subtle" class="rounded-[8px]">archiviert</UBadge>
+            <UButton
+              icon="i-lucide-archive-restore"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              class="rounded-[8px]"
+              :loading="productBusy"
+              @click="setProductArchived(false)"
+            >
+              Zurückholen
+            </UButton>
+            <UButton icon="i-lucide-trash-2" size="sm" variant="ghost" color="error" class="rounded-[8px]" @click="askDeleteProduct">
+              Produkt löschen
+            </UButton>
+          </template>
         </template>
       </SeitenKopf>
 
@@ -880,6 +949,33 @@ async function pushShopify() {
               </UButton>
             </div>
           </form>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="deleteProductOpen" title="Produkt löschen">
+        <template #body>
+          <div class="space-y-4">
+            <UAlert
+              v-if="deleteProductMessage"
+              color="error"
+              variant="subtle"
+              class="rounded-[12px]"
+              :description="deleteProductMessage"
+            />
+            <p class="text-sm">
+              {{ data.name }} samt Varianten ({{ data.variants.length }}) endgültig löschen? Das lässt sich nicht
+              rückgängig machen. Gelöscht wird nur, wenn keine Variante je gebucht, eingegangen oder verkauft wurde.
+            </p>
+            <p v-if="data.shopifyProductId" class="text-sm text-roswarning-700">
+              Das Produkt ist in Shopify und bleibt dort bestehen; dort bei Bedarf selbst löschen.
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deleteProductOpen = false">Abbrechen</UButton>
+              <UButton color="error" :loading="productBusy" class="rounded-[8px]" @click="confirmDeleteProduct">
+                Endgültig löschen
+              </UButton>
+            </div>
+          </div>
         </template>
       </UModal>
 

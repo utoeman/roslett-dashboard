@@ -95,6 +95,21 @@ mit Shopify und nennt Varianten, die Shopify entfernen würde. Prüfsumme ohne I
 Entwurfsstatus → „seit letzter Übertragung geändert“. Variantenmetafelder haben im Dev-Store noch
 keine Definition (im Admin erst nach Anlage sichtbar).
 
+**Umgesetzt (3b, G2):** Produktseite › „Bilder in Shopify“. Der Server prüft Typ (JPEG, PNG,
+WebP, GIF) und Größe (≤ 20 MB) und holt ein Upload-Ziel (`stagedUploadsCreate`, Ressource `IMAGE`);
+der Browser lädt die Datei direkt dorthin (CORS erlaubt, kein Netlify-Größenlimit); danach hängt
+`productUpdate(product, media)` das Bild an. Angenommen werden nur Adressen von
+`shopify-staged-uploads.storage.googleapis.com`. Das Dashboard speichert nichts außer der
+vorhandenen Produktverknüpfung und liest die Bilder aus Shopify. `productSet` (3a) lässt Bilder
+unberührt. Nur für Produkte, die schon in Shopify sind.
+Optional wird beim Hochladen eine **Farbe** gewählt (Liste aus den Farben der aktiven Varianten):
+das Bild wird Variantenbild aller Varianten dieser Farbe über alle Größen
+(`productVariantAppendMedia`), sodass der Shop beim Farbwechsel das Bild wechselt. Shopify nimmt die
+Zuordnung erst an, wenn das Bild verarbeitet ist („Non-ready media cannot be attached to variants“);
+der Browser fragt deshalb bis zu 30 s alle 1,5 s nach statt den Server warten zu lassen
+(Funktionslimit). Je Variante gibt es in Shopify genau ein Variantenbild. `productSet` lässt auch
+diese Zuordnung stehen (geprüft).
+
 ### V5 Inventur, Schwund (Dashboard → Shopify)
 1. `stocktake` bzw. `shrinkage` wie im Domain-Modell (Plus → neueste Charge, Minus → FIFO,
    Notiz Pflicht).

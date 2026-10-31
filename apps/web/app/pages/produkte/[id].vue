@@ -4,7 +4,11 @@ import type {
   List,
   ProductDetail,
   ShopifyProductPreview,
+  ShopifyImage,
+  ShopifyImageAssigned,
+  ShopifyImageAttached,
   ShopifyProductPushResult,
+  ShopifyStagedUpload,
   Variant,
 } from '~~/shared/types/api';
 
@@ -201,6 +205,85 @@ async function openShopify() {
     shopifyMessage.value = readError(err).message;
   } finally {
     shopifyLoading.value = false;
+  }
+}
+
+// --- Shopify images (stage 3b, G2) ---------------------------------------------
+const images = ref<ShopifyImage[]>([]);
+const imagesAvailable = ref(false);
+const imagesUploading = ref(false);
+const imagesProgress = ref('');
+const imagesMessage = ref<string | null>(null);
+/** Colours of the active variants; an image picked for one becomes the picture of all its sizes. */
+const imageColors = computed(() => {
+  const colors = new Map<string, string>();
+  for (const v of activeVariants.value) if (v.color) colors.set(v.color.id, v.color.name);
+  return [...colors].map(([value, label]) => ({ value, label }));
+});
+// 'none' instead of undefined or '': the select needs a non-empty value to show and pick it.
+const NO_COLOR = 'none';
+const imageColor = ref(NO_COLOR);
+
+async function loadImages() {
+  try {
+    images.value = await $fetch<ShopifyImage[]>(`/api/products/${id.value}/images`);
+    imagesAvailable.value = true;
+    imagesMessage.value = null;
+  } catch (err) {
+    imagesAvailable.value = false;
+    imagesMessage.value = readError(err).message;
+  }
+}
+onMounted(loadImages);
+
+/** Shopify accepts the colour only after processing the image, so ask again for up to 30 seconds. */
+async function assignColor(mediaId: string, colorId: string, name: string) {
+  imagesProgress.value = `${name}: wird der Farbe zugeordnet …`;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const result = await $fetch<ShopifyImageAssigned>(`/api/products/${id.value}/images/assign`, {
+      method: 'POST',
+      body: { mediaId, colorId },
+    });
+    if (result.ready) {
+      images.value = result.images;
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+  throw new Error(`${name}: Shopify verarbeitet das Bild noch; die Farbe bitte später in Shopify zuordnen.`);
+}
+
+/** The file goes from the browser straight to Shopify; the dashboard never receives it. */
+async function uploadImages(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  input.value = '';
+  if (files.length === 0) return;
+  imagesUploading.value = true;
+  imagesMessage.value = null;
+  try {
+    for (const [index, file] of files.entries()) {
+      imagesProgress.value = `${index + 1} von ${files.length} …`;
+      const target = await $fetch<ShopifyStagedUpload>(`/api/products/${id.value}/images/staged`, {
+        method: 'POST',
+        body: { filename: file.name, mimeType: file.type, fileSize: file.size },
+      });
+      const form = new FormData();
+      for (const p of target.parameters) form.append(p.name, p.value);
+      form.append('file', file);
+      const upload = await fetch(target.url, { method: 'POST', body: form });
+      if (!upload.ok) throw new Error(`${file.name}: Upload zu Shopify fehlgeschlagen (HTTP ${upload.status}).`);
+      const attached = await $fetch<ShopifyImageAttached>(`/api/products/${id.value}/images`, {
+        method: 'POST',
+        body: { resourceUrl: target.resourceUrl },
+      });
+      images.value = attached.images;
+      if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColor(attached.mediaId, imageColor.value, file.name);
+    }
+  } catch (err) {
+    imagesMessage.value = err instanceof Error && !('data' in err) ? err.message : readError(err).message;
+  } finally {
+    imagesUploading.value = false;
   }
 }
 
@@ -509,6 +592,60 @@ async function pushShopify() {
             Lagerbestands. Kanalgebühren, Verpackung und Versand sind noch nicht abgezogen. Bestand
             anklicken öffnet das Journal.
           </p>
+        </section>
+
+        <!-- Shopify images (stage 3b) -->
+        <section
+          class="rounded-[12px] border border-leinen-200/70 bg-white px-4 py-3 dark:bg-leinen-900 dark:border-leinen-800"
+          style="border-width: 0.5px"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-semibold">Bilder in Shopify</h2>
+              <p class="mt-0.5 text-xs text-leinen-500">
+                Werden direkt zu Shopify hochgeladen. Mit Farbe zeigt der Shop das Bild bei allen Größen dieser Farbe.
+                Reihenfolge und Alt-Texte pflegen Sie in Shopify.
+              </p>
+            </div>
+            <div v-if="imagesAvailable" class="flex flex-wrap items-center gap-2">
+            <USelectMenu
+              v-if="imageColors.length > 0"
+              v-model="imageColor"
+              :items="[{ value: NO_COLOR, label: 'Farbe: keine' }, ...imageColors.map((c) => ({ ...c, label: `Farbe: ${c.label}` }))]"
+              value-key="value"
+              size="sm"
+              class="w-44"
+              aria-label="Bild gehört zu Farbe"
+            />
+            <label class="cursor-pointer">
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sr-only" @change="uploadImages">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-[8px] border border-leinen-300 px-2.5 py-1.5 text-sm dark:border-leinen-700"
+              >
+                <UIcon :name="imagesUploading ? 'i-lucide-loader' : 'i-lucide-image-plus'" :class="{ 'animate-spin': imagesUploading }" />
+                {{ imagesUploading ? imagesProgress : 'Bilder hochladen' }}
+              </span>
+            </label>
+            </div>
+          </div>
+          <UAlert v-if="imagesMessage" color="warning" variant="subtle" class="mt-3 rounded-[12px]" :description="imagesMessage" />
+          <div v-if="images.length" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            <div
+              v-for="image in images"
+              :key="image.id"
+              class="relative flex aspect-square items-center justify-center overflow-hidden rounded-[8px] bg-leinen-100 dark:bg-leinen-800"
+            >
+              <img v-if="image.url" :src="image.url" :alt="image.alt ?? ''" class="h-full w-full object-cover">
+              <span v-else class="text-xs text-leinen-500">{{ image.status === 'FAILED' ? 'fehlgeschlagen' : 'wird verarbeitet' }}</span>
+              <span
+                v-if="image.colors.length"
+                class="absolute bottom-1 left-1 rounded-[6px] bg-white/90 px-1.5 py-0.5 text-[11px] dark:bg-leinen-900/90"
+              >
+                {{ image.colors.join(', ') }}
+              </span>
+            </div>
+          </div>
+          <p v-else-if="imagesAvailable" class="mt-3 text-sm text-leinen-500">Noch keine Bilder in Shopify.</p>
         </section>
 
         <!-- Cost items -->

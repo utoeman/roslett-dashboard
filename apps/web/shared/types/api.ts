@@ -391,6 +391,35 @@ export interface ShopifyProductPushResult {
   warnings: string[];
 }
 
+export interface ShopifyImage {
+  id: string;
+  alt: string | null;
+  /** UPLOADED, PROCESSING, READY or FAILED; Shopify processes new images asynchronously. */
+  status: string;
+  /** Preview, null while processing. */
+  url: string | null;
+  /** Colours whose variants show this image. */
+  colors: string[];
+}
+
+export interface ShopifyImageAttached {
+  /** The new image; null if Shopify did not list it yet. */
+  mediaId: string | null;
+  images: ShopifyImage[];
+}
+
+export interface ShopifyImageAssigned {
+  /** False while Shopify still processes the image; the browser asks again. */
+  ready: boolean;
+  images: ShopifyImage[];
+}
+
+export interface ShopifyStagedUpload {
+  url: string;
+  resourceUrl: string;
+  parameters: { name: string; value: string }[];
+}
+
 export interface ShopifySyncResult {
   fetched: number;
   created: number;

@@ -110,6 +110,7 @@ const variantForm = reactive({
   fiberFilling: '',
   originCountry: '',
   hsCode: '',
+  weightGrams: '',
 });
 
 function openVariantDialog(variant?: Variant) {
@@ -124,6 +125,7 @@ function openVariantDialog(variant?: Variant) {
   variantForm.fiberFilling = variant?.fiberFilling ?? '';
   variantForm.originCountry = variant?.originCountry ?? '';
   variantForm.hsCode = variant?.hsCode ?? '';
+  variantForm.weightGrams = variant?.weightGrams ? String(variant.weightGrams) : '';
   variantDialog.value = true;
 }
 
@@ -138,6 +140,8 @@ async function saveVariant() {
     fiberFilling: variantForm.fiberFilling,
     originCountry: variantForm.originCountry,
     hsCode: variantForm.hsCode,
+    // Empty clears the weight.
+    weightGrams: variantForm.weightGrams.trim() === '' ? null : Number(variantForm.weightGrams),
   };
   try {
     await $fetch(`/api/products/${id.value}`, {
@@ -307,6 +311,11 @@ async function loadImages() {
 }
 onMounted(loadImages);
 
+function imageAlt(): string {
+  const color = imageColors.value.find((c) => c.value === imageColor.value)?.label;
+  return color ? `${data.value?.name ?? ''}, ${color}` : (data.value?.name ?? '');
+}
+
 /** Shopify accepts the colour only after processing the image, so ask again for up to 30 seconds. */
 async function assignColor(mediaId: string, colorId: string, name: string) {
   imagesProgress.value = `${name}: wird der Farbe zugeordnet …`;
@@ -346,7 +355,8 @@ async function uploadImages(event: Event) {
       if (!upload.ok) throw new Error(`${file.name}: Upload zu Shopify fehlgeschlagen (HTTP ${upload.status}).`);
       const attached = await $fetch<ShopifyImageAttached>(`/api/products/${id.value}/images`, {
         method: 'POST',
-        body: { resourceUrl: target.resourceUrl },
+        // Alt text for accessibility and image search; can be refined in Shopify.
+        body: { resourceUrl: target.resourceUrl, alt: imageAlt() },
       });
       images.value = attached.images;
       if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColor(attached.mediaId, imageColor.value, file.name);
@@ -935,6 +945,9 @@ async function pushShopify() {
                 <UInput v-model="variantForm.hsCode" class="w-full font-mono" />
               </UFormField>
             </div>
+            <UFormField label="Gewicht (g)" :error="fieldErrors.weightGrams" help="Versandgewicht je Stück inkl. Verpackung; für Versandkosten und Etiketten in Shopify.">
+              <UInput v-model="variantForm.weightGrams" type="number" min="1" class="w-40" />
+            </UFormField>
             <div class="flex justify-end gap-2 pt-2">
               <UButton
                 color="neutral"

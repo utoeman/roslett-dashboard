@@ -43,6 +43,14 @@ const textileFields = {
   fiberFilling: optionalText(200),
   originCountry: originCountrySchema,
   hsCode: hsCodeSchema,
+  /** Shipping weight per unit; empty = unknown. */
+  weightGrams: z.coerce
+    .number()
+    .int({ message: 'Gewicht in ganzen Gramm.' })
+    .min(1, { message: 'Gewicht muss mindestens 1 g sein.' })
+    .max(100_000, { message: 'Gewicht höchstens 100 kg.' })
+    .nullable()
+    .optional(),
 };
 
 export const createVariantSchema = z.object({

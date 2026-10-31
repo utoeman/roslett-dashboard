@@ -20,9 +20,10 @@ const product = (extra: Partial<ProductPushProduct> = {}): ProductPushProduct =>
   safetyNotes: null,
   archived: false,
   shopifyProductId: null,
+  shopifyCategoryId: null,
   variants: [
-    { sku: 'ROS-KIS-0012-SAN-4545', colorName: 'Sand', size: '45×45', priceGross: 3990, fiber: '100 % Leinen', fiberFilling: null, hsCode: '630492', originCountry: 'PT', shopifyVariantId: null },
-    { sku: 'ROS-KIS-0012-SAN-5050', colorName: 'Sand', size: '50×50', priceGross: 4490, fiber: '100 % Leinen', fiberFilling: null, hsCode: null, originCountry: null, shopifyVariantId: null },
+    { sku: 'ROS-KIS-0012-SAN-4545', colorName: 'Sand', size: '45×45', priceGross: 3990, fiber: '100 % Leinen', fiberFilling: null, hsCode: '630492', originCountry: 'PT', weightGrams: 850, shopifyVariantId: null },
+    { sku: 'ROS-KIS-0012-SAN-5050', colorName: 'Sand', size: '50×50', priceGross: 4490, fiber: '100 % Leinen', fiberFilling: null, hsCode: null, originCountry: null, weightGrams: null, shopifyVariantId: null },
   ],
   ...extra,
 });
@@ -57,11 +58,23 @@ describe('buildProductSet', () => {
         { optionName: 'Farbe', name: 'Sand' },
         { optionName: 'Größe', name: '45×45' },
       ],
-      inventoryItem: { tracked: true, requiresShipping: true, harmonizedSystemCode: '630492', countryCodeOfOrigin: 'PT' },
+      inventoryItem: {
+        tracked: true,
+        requiresShipping: true,
+        harmonizedSystemCode: '630492',
+        countryCodeOfOrigin: 'PT',
+        measurement: { weight: { value: 850, unit: 'GRAMS' } },
+      },
       metafields: [{ namespace: 'custom', key: 'fiber', type: 'multi_line_text_field', value: '100 % Leinen' }],
     });
     // Always sent, so an emptied value is cleared in Shopify too.
-    expect(input.variants[1]?.inventoryItem).toEqual({ tracked: true, requiresShipping: true, harmonizedSystemCode: null, countryCodeOfOrigin: null });
+    expect(input.variants[1]?.inventoryItem).toEqual({
+      tracked: true,
+      requiresShipping: true,
+      harmonizedSystemCode: null,
+      countryCodeOfOrigin: null,
+      measurement: { weight: { value: 0, unit: 'GRAMS' } },
+    });
   });
 
   it('ändert bei verknüpften Produkten weder Handle noch Status und nutzt die IDs', () => {
@@ -116,6 +129,15 @@ describe('buildProductSet', () => {
   });
 });
 
+describe('buildProductSet – Kategorie', () => {
+  it('schickt die Shopify-Kategorie nur, wenn sie gesetzt ist', () => {
+    expect(buildProductSet(product(), manufacturer).input.category).toBeUndefined();
+    expect(
+      buildProductSet(product({ shopifyCategoryId: 'gid://shopify/TaxonomyCategory/hg-15-3-3' }), manufacturer).input.category,
+    ).toBe('gid://shopify/TaxonomyCategory/hg-15-3-3');
+  });
+});
+
 describe('diffProductSet', () => {
   const desired = (): ProductSetInput => buildProductSet(product(), manufacturer).input;
 
@@ -136,7 +158,7 @@ describe('diffProductSet', () => {
     current.variants = [
       { ...current.variants[0]!, price: '34.90' },
       { ...current.variants[1]! },
-      { sku: 'FREMD-1', price: '1.00', taxable: true, optionValues: [], inventoryItem: { tracked: true, requiresShipping: true, harmonizedSystemCode: null, countryCodeOfOrigin: null }, metafields: [] },
+      { sku: 'FREMD-1', price: '1.00', taxable: true, optionValues: [], inventoryItem: { tracked: true, requiresShipping: true, harmonizedSystemCode: null, countryCodeOfOrigin: null, measurement: { weight: { value: 0, unit: 'GRAMS' } } }, metafields: [] },
     ];
     expect(diffProductSet(desired(), current)).toEqual({
       changes: [
@@ -145,6 +167,14 @@ describe('diffProductSet', () => {
       ],
       removedVariants: ['FREMD-1'],
     });
+  });
+
+  it('zeigt Gewicht und Kategorie im Vergleich', () => {
+    const want = buildProductSet(product({ shopifyCategoryId: 'gid://shopify/TaxonomyCategory/hg-1' }), manufacturer).input;
+    const { changes } = diffProductSet(want, { ...desired(), category: undefined });
+    expect(changes).toContainEqual({ field: 'Shopify-Kategorie', from: null, to: 'gid://shopify/TaxonomyCategory/hg-1' });
+    expect(diffProductSet(want, want).changes).toEqual([]);
+    expect(diffProductSet(desired(), null).changes).toContainEqual({ field: 'ROS-KIS-0012-SAN-4545 · Gewicht', from: null, to: '850 g' });
   });
 
   it('ignoriert den Status bei verknüpften Produkten', () => {

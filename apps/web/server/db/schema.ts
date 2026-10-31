@@ -97,6 +97,9 @@ export const categories = pgTable('categories', {
   code: text('code').notNull().unique(),
   name: text('name').notNull(),
   group: categoryGroupEnum('group').notNull(),
+  /** Shopify standard product taxonomy (e.g. Placemats); sent as the product category. */
+  shopifyCategoryId: text('shopify_category_id'),
+  shopifyCategoryName: text('shopify_category_name'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt,
 });
@@ -172,6 +175,8 @@ export const variants = pgTable(
     originCountry: text('origin_country'),
     /** Customs tariff number, 6 to 10 digits. */
     hsCode: text('hs_code'),
+    /** Shipping weight per unit in grams; goes to Shopify for shipping rates and labels. */
+    weightGrams: integer('weight_grams'),
     /** Shopify GIDs, set when linked by SKU (G5); the inventory item carries stock and cost. */
     shopifyVariantId: text('shopify_variant_id'),
     shopifyInventoryItemId: text('shopify_inventory_item_id'),

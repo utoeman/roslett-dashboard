@@ -89,7 +89,8 @@ Produkt (synchron) mit Titel, Beschreibung, Marke (= Hersteller; ohne Hersteller
 Shopify-Marke), Produkttyp (= Kategorie), Optionen Farbe/Größe, Varianten mit SKU und Preis,
 Produktmetafeldern (`custom.fiber`, `fiber_filling`, `care_instructions`, `safety_information`,
 `manufacturer`), Variantenmetafeldern `custom.fiber`/`fiber_filling` sowie HS-Code und
-Herkunftsland am Inventarartikel (immer gesendet, leer = in Shopify gelöscht). Handle und Status
+Herkunftsland am Inventarartikel (immer gesendet, leer = in Shopify gelöscht), Versandgewicht in Gramm
+(`measurement.weight`, leer = 0) und die Shopify-Standardkategorie der Dashboard-Kategorie (`category`, G27). Handle und Status
 „Entwurf“ nur beim Anlegen; ein unverknüpftes Produkt, dessen Handle es in Shopify schon gibt, wird
 abgelehnt (erst verknüpfen). Einstandspreis bleibt bei 2a. Die Vorschau vergleicht Feld für Feld
 mit Shopify und nennt Varianten, die Shopify entfernen würde. Prüfsumme ohne IDs, Handle und

@@ -53,6 +53,8 @@ export interface ProductPushVariant {
   fiberFilling: string | null;
   hsCode: string | null;
   originCountry: string | null;
+  /** Shipping weight per unit in grams; null = unknown. */
+  weightGrams: number | null;
   shopifyVariantId: string | null;
 }
 
@@ -66,6 +68,8 @@ export interface ProductPushProduct {
   safetyNotes: string | null;
   archived: boolean;
   shopifyProductId: string | null;
+  /** Shopify standard product taxonomy of the dashboard category; null = not chosen. */
+  shopifyCategoryId: string | null;
   /** Active variants only. */
   variants: ProductPushVariant[];
 }
@@ -84,7 +88,14 @@ export interface VariantSetInput {
   taxable: boolean;
   optionValues: { optionName: string; name: string }[];
   /** HS code and origin always sent: null clears a value removed in the dashboard. */
-  inventoryItem: { tracked: boolean; requiresShipping: boolean; harmonizedSystemCode: string | null; countryCodeOfOrigin: string | null };
+  inventoryItem: {
+    tracked: boolean;
+    requiresShipping: boolean;
+    harmonizedSystemCode: string | null;
+    countryCodeOfOrigin: string | null;
+    /** Always sent; 0 clears a weight removed in the dashboard. */
+    measurement: { weight: { value: number; unit: 'GRAMS' } };
+  };
   metafields: MetafieldInput[];
 }
 
@@ -99,6 +110,8 @@ export interface ProductSetInput {
   /** Manufacturer name; absent without manufacturer data, so Shopify keeps its vendor. */
   vendor?: string | undefined;
   productType: string;
+  /** Shopify taxonomy category; absent when the dashboard category has none. */
+  category?: string | undefined;
   /** Draft on create, archived for archived products; otherwise publishing stays in Shopify. */
   status?: ProductStatus | undefined;
   productOptions: { name: string; values: { name: string }[] }[];
@@ -144,6 +157,7 @@ export function buildProductSet(
     descriptionHtml: textToHtml(product.description ?? ''),
     ...(manufacturer ? { vendor: manufacturer.name } : {}),
     productType: product.categoryName,
+    ...(product.shopifyCategoryId ? { category: product.shopifyCategoryId } : {}),
     ...(product.archived ? { status: 'ARCHIVED' as const } : linked ? {} : { status: 'DRAFT' as const }),
     productOptions: options.map((o) => ({ name: o.name, values: [...new Set(product.variants.map(o.value))].map((name) => ({ name })) })),
     metafields,
@@ -158,6 +172,7 @@ export function buildProductSet(
         requiresShipping: true,
         harmonizedSystemCode: v.hsCode || null,
         countryCodeOfOrigin: v.originCountry || null,
+        measurement: { weight: { value: v.weightGrams ?? 0, unit: 'GRAMS' as const } },
       },
       metafields: [
         ...(v.fiber ? [text('fiber', v.fiber)] : []),
@@ -191,6 +206,7 @@ function flatten(input: ProductSetInput): Map<string, string | null> {
     ['Optionen', input.productOptions.map((o) => `${o.name}: ${o.values.map((v) => v.name).join(', ')}`).join(' · ')],
   ]);
   if (input.vendor !== undefined) fields.set('Marke', input.vendor);
+  if (input.category !== undefined) fields.set('Shopify-Kategorie', input.category);
   if (input.status !== undefined) fields.set('Status', input.status);
   for (const m of input.metafields) fields.set(METAFIELD_LABELS[m.key] ?? m.key, m.value);
   for (const v of input.variants) {
@@ -198,6 +214,8 @@ function flatten(input: ProductSetInput): Map<string, string | null> {
     fields.set(`${v.sku} · Optionen`, v.optionValues.map((o) => o.name).join(' / '));
     fields.set(`${v.sku} · HS-Code`, v.inventoryItem.harmonizedSystemCode);
     fields.set(`${v.sku} · Herkunft`, v.inventoryItem.countryCodeOfOrigin);
+    const grams = v.inventoryItem.measurement.weight.value;
+    fields.set(`${v.sku} · Gewicht`, grams > 0 ? `${grams} g` : null);
     for (const m of v.metafields) fields.set(`${v.sku} · ${METAFIELD_LABELS[m.key] ?? m.key}`, m.value);
   }
   return fields;

@@ -3,6 +3,12 @@ import { flagSchema, moneySchema, percentSchema, requiredText } from './common.j
 
 export const pricingRuleSchema = z.enum(['same_margin', 'fixed']);
 
+/** Shopify `sourceName` values of the channel's orders, e.g. `web`. */
+const shopifySourcesSchema = z
+  .array(z.string().trim().min(1).max(100, { message: 'Eine Shopify-Quelle ist zu lang.' }))
+  .max(20, { message: 'Höchstens 20 Shopify-Quellen je Kanal.' })
+  .transform((sources) => [...new Set(sources)]);
+
 /**
  * Sales channels. `same_margin` derives the price from the target margin
  * after fees; `fixed` takes a given price and shows what is left.
@@ -19,6 +25,7 @@ export const createChannelSchema = z.object({
   freeShippingFrom: moneySchema('Versandkostenfrei ab').nullable().default(null),
   defaultPostage: moneySchema('Porto').default(0),
   active: flagSchema().default(true),
+  shopifySources: shopifySourcesSchema.default([]),
 });
 
 /**
@@ -34,6 +41,7 @@ export const updateChannelSchema = z.object({
   freeShippingFrom: moneySchema('Versandkostenfrei ab').nullable().optional(),
   defaultPostage: moneySchema('Porto').optional(),
   active: flagSchema().optional(),
+  shopifySources: shopifySourcesSchema.optional(),
 });
 
 export type CreateChannel = z.infer<typeof createChannelSchema>;

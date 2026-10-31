@@ -5,6 +5,7 @@ import { readJsonBody, readId, requireFound } from '../../utils/validation.js';
 import { databaseError } from '../../utils/errors.js';
 import { centsToNumeric, rateToNumeric } from '../../utils/money.js';
 import { mapChannel } from '../../utils/mapping.js';
+import { assertShopifySourcesFree } from '../../utils/shopify-sync.js';
 
 export default defineEventHandler(async (event) => {
   const id = readId(event);
@@ -33,6 +34,10 @@ export default defineEventHandler(async (event) => {
   if (input.defaultPostage !== undefined)
     changes.defaultPostage = centsToNumeric(input.defaultPostage);
   if (input.active !== undefined) changes.active = input.active;
+  if (input.shopifySources !== undefined) {
+    await assertShopifySourcesFree(db, input.shopifySources, id);
+    changes.shopifySources = input.shopifySources;
+  }
 
   if (Object.keys(changes).length === 0) {
     // Empty body: return the record unchanged.

@@ -94,8 +94,10 @@ Einstellungen wird eine Zuordnung Quelle → Dashboard-Kanal gepflegt:
 | Marketplace Connect (Amazon) | Amazon |
 | Instagram/Facebook-Kanal | Instagram |
 
-Unbekannte Quelle: Bestellung wird gebucht, Kanal leer, Warnung in der Übersicht.
-Konkrete Werte nach Einrichtung der Apps an echten Bestellungen ablesen.
+Unbekannte Quelle: Bestellung wird gebucht, Kanal leer, ohne Gebühren und Porto, Warnung im
+Abrufergebnis. Gepflegt wird die Zuordnung am Kanal (Feld „Shopify-Quellen“, eine Quelle gehört
+zu genau einem Kanal). Bekannte Werte: `web` (Onlineshop), `shopify_draft_order` (im Admin
+angelegte Bestellung); weitere an echten Bestellungen ablesen.
 
 ## 6. Einstandspreis-Push
 
@@ -113,13 +115,17 @@ geändert hat. Shopify nutzt das Feld nur für eigene Berichte; maßgeblich blei
   `NUXT_SHOPIFY_CLIENT_ID`, `NUXT_SHOPIFY_CLIENT_SECRET`.
 - **Scopes (G4):** `read_products`, `write_products`, `read_inventory`, `write_inventory`,
   `read_orders`, `read_locations`, `write_files` – alle gleich bei der Einrichtung.
-  Bestellungen setzen Zugriff auf *protected customer data* voraus (in der App beantragen).
+  Bestellungen gehen ohne Freigabe für *protected customer data*; gelesen wird vom Kunden nur
+  das Lieferland (C4). Fehlt die Lieferadresse, gilt DE mit Warnung.
 - **Mutationen** (gegen die aktuelle API-Version prüfen): `productSet`,
   `productVariantsBulkUpdate`, `inventoryItemUpdate` (Kosten), `inventoryAdjustQuantities`,
   `metafieldsSet`. Massenänderungen über Bulk Operations.
 - **Abruf in Stufe 1:** Polling alle 15 Minuten (Scheduled Function) und Button
   „Jetzt abrufen“: Bestellungen, Erstattungen, Stornos seit dem letzten Abruf, idempotent
-  über die Shopify-ID. Import ab Anbindung, keine Altbestellungen (kein `read_all_orders`).
+  über die Shopify-ID (Bestellung, Position, Erstattung). Eine Bestellung, die nicht gebucht
+  werden kann (z. B. unbekannte SKU, Nummer schon von Hand erfasst), erscheint als Fehler und
+  hält den Abrufstand an ihrer Änderungszeit fest, damit der nächste Abruf sie erneut versucht.
+  Nachträgliche Positionsänderungen (`orders/edited`) gleicht der Abruf nicht ab. Import ab Anbindung, keine Altbestellungen (kein `read_all_orders`).
 - **Webhooks ab Stufe 2:** `orders/create`, `orders/updated`, `orders/cancelled`, `orders/edited`,
   `refunds/create`, `inventory_levels/update`, `products/update`.
 - **Webhook-Verarbeitung** (Netlify Function): HMAC prüfen, Event mit `X-Shopify-Event-Id`

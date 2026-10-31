@@ -134,6 +134,8 @@ export interface Channel {
   freeShippingFrom: number | null;
   defaultPostage: number | null;
   active: boolean;
+  /** Shopify `sourceName` values mapped to this channel. */
+  shopifySources: string[];
 }
 
 export type DeliveryState = 'open' | 'partial' | 'complete';
@@ -346,6 +348,19 @@ export interface ShopifyStatus {
   rows: ShopifyMatchRow[];
   /** Shopify variants with an empty or unknown SKU. */
   unknownInShopify: { sku: string | null; variantId: string }[];
+  /** Where the next order import starts; null before the first one. */
+  ordersSyncedTo: string | null;
+}
+
+export interface ShopifySyncResult {
+  fetched: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  warnings: { order: string; message: string }[];
+  /** Orders not booked; the next import tries them again. */
+  errors: { order: string; message: string }[];
+  syncedTo: string;
 }
 
 /** Envelope of all list responses. */

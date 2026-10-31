@@ -1,9 +1,9 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { schema, useDb } from '../../../db/client.js';
 import { cancelSaleSchema } from '../../../../shared/schemas/sale.js';
 import { readId, readJsonBody, requireFound } from '../../../utils/validation.js';
 import { conflict, databaseError } from '../../../utils/errors.js';
-import { reverseEntry } from '../../../utils/stock.js';
+import { cancelSale } from '../../../utils/sale-booking.js';
 import { loadSales } from '../../../utils/sales.js';
 
 /**
@@ -29,24 +29,10 @@ export default defineEventHandler(async (event) => {
     throw conflict('Zu dieser Bestellung gibt es schon Erstattungen; ein Storno ist nicht mehr möglich.');
   }
 
-  const entries = await db.query.stockEntries.findMany({
-    where: and(
-      inArray(
-        schema.stockEntries.saleItemId,
-        sale.items.map((i) => i.id),
-      ),
-      eq(schema.stockEntries.kind, 'sale'),
-    ),
-    with: { allocations: true },
-  });
-
   try {
-    await db.transaction(async (tx) => {
-      for (const entry of entries) {
-        await reverseEntry(tx, entry, note ?? `Storno ${sale.externalOrderNumber}`);
-      }
-      await tx.update(schema.sales).set({ status: 'cancelled' }).where(eq(schema.sales.id, id));
-    });
+    await db.transaction((tx) =>
+      cancelSale(tx, { id, externalOrderNumber: sale.externalOrderNumber, itemIds: sale.items.map((i) => i.id) }, note ?? null),
+    );
   } catch (error) {
     throw databaseError(error, 'Verkauf stornieren');
   }

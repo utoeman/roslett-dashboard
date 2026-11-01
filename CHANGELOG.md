@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.15.0 (2026-11-01)
+
+### Neu
+
+- delete unused suppliers (#49)
+
 ## v0.14.1 (2026-11-01)
 
 ### Fehlerbehebungen
@@ -141,6 +147,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

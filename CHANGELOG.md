@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.14.0 (2026-11-01)
+
+### Neu
+
+- delete draft goods receipts (#47)
+
 ## v0.13.1 (2026-11-01)
 
 ### Neu
@@ -129,6 +135,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

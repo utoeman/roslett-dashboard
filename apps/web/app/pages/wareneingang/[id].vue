@@ -92,21 +92,29 @@ function saveHeader() {
 // --- Positions (drafts) ---------------------------------------------------
 type Row = { variantId?: string; quantityOrdered: number; unitPrice: string; note: string };
 const rows = ref<Row[]>([]);
+/** Saved positions show as the list below; the editor opens on demand or while there are none. */
+const editingPositions = ref(false);
+const showPositionEditor = computed(() => isDraft.value && (editingPositions.value || data.value?.positions.length === 0));
 
-watch(
-  data,
-  (receipt) => {
-    rows.value =
-      receipt?.positions.map((p) => ({
-        variantId: p.variant.id,
-        quantityOrdered: p.quantityOrdered,
-        unitPrice: toInput(p.unitPriceForeign),
-        note: p.note ?? '',
-      })) ?? [];
-    if (receipt?.state === 'draft' && rows.value.length === 0) addRow();
-  },
-  { immediate: true },
-);
+function resetRows() {
+  const receipt = data.value;
+  rows.value =
+    receipt?.positions.map((p) => ({
+      variantId: p.variant.id,
+      quantityOrdered: p.quantityOrdered,
+      unitPrice: toInput(p.unitPriceForeign),
+      note: p.note ?? '',
+    })) ?? [];
+  if (receipt?.state === 'draft' && rows.value.length === 0) addRow();
+}
+
+watch(data, resetRows, { immediate: true });
+
+function cancelPositions() {
+  editingPositions.value = false;
+  fieldErrors.value = {};
+  resetRows();
+}
 
 function addRow() {
   rows.value.push({ variantId: undefined, quantityOrdered: 1, unitPrice: '', note: '' });
@@ -165,6 +173,7 @@ function savePositions() {
           })),
       },
     }),
+    () => (editingPositions.value = false),
   );
 }
 
@@ -410,10 +419,23 @@ const positionBadge = (p: ReceiptPosition) =>
               <h2 class="text-sm font-semibold">
                 Positionen <span class="ml-1 font-normal text-leinen-500">{{ data.positions.length }}</span>
               </h2>
-              <p v-if="isDraft" class="text-xs text-leinen-500">Einstand und Nebenkostenanteil erscheinen nach dem Speichern.</p>
+              <p v-if="showPositionEditor" class="text-xs text-leinen-500">
+                Einstand und Nebenkostenanteil erscheinen nach dem Speichern.
+              </p>
+              <UButton
+                v-else-if="isDraft"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-pencil"
+                class="rounded-[8px]"
+                @click="editingPositions = true"
+              >
+                Bearbeiten
+              </UButton>
             </div>
 
-            <form v-if="isDraft" @submit.prevent="savePositions">
+            <form v-if="showPositionEditor" @submit.prevent="savePositions">
               <table class="ros-tabelle w-full min-w-[44rem] text-sm">
                 <thead
                   class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
@@ -491,7 +513,19 @@ const positionBadge = (p: ReceiptPosition) =>
                 <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-plus" class="rounded-[8px]" @click="addRow">
                   Position hinzufügen
                 </UButton>
-                <UButton type="submit" size="sm" :loading="saving" class="rounded-[8px]">Positionen speichern</UButton>
+                <div class="flex gap-2">
+                  <UButton
+                    v-if="data.positions.length"
+                    size="sm"
+                    variant="ghost"
+                    color="neutral"
+                    class="rounded-[8px]"
+                    @click="cancelPositions"
+                  >
+                    Abbrechen
+                  </UButton>
+                  <UButton type="submit" size="sm" :loading="saving" class="rounded-[8px]">Positionen speichern</UButton>
+                </div>
               </div>
             </form>
 

@@ -58,6 +58,37 @@ async function save() {
   }
 }
 
+// Deleting is only possible for archived, never used entries; the server checks.
+const deleting = ref<Supplier | null>(null);
+const deleteOpen = computed({
+  get: () => deleting.value !== null,
+  set: (open: boolean) => {
+    if (!open) deleting.value = null;
+  },
+});
+const deleteBusy = ref(false);
+const deleteMessage = ref<string | null>(null);
+
+function askDelete(supplier: Supplier) {
+  deleteMessage.value = null;
+  deleting.value = supplier;
+}
+
+async function confirmDelete() {
+  if (deleting.value === null) return;
+  deleteBusy.value = true;
+  deleteMessage.value = null;
+  try {
+    await $fetch(`/api/suppliers/${deleting.value.id}`, { method: 'DELETE' });
+    deleting.value = null;
+    await refresh();
+  } catch (err) {
+    deleteMessage.value = readError(err).message;
+  } finally {
+    deleteBusy.value = false;
+  }
+}
+
 async function toggleArchived(supplier: Supplier) {
   try {
     await $fetch(`/api/suppliers/${supplier.id}`, {
@@ -177,6 +208,18 @@ async function toggleArchived(supplier: Supplier) {
                   >
                     {{ supplier.archivedAt ? 'Zurückholen' : 'Archivieren' }}
                   </UButton>
+                  <UButton
+                    v-if="supplier.archivedAt"
+                    size="xs"
+                    variant="ghost"
+                    color="error"
+                    icon="i-lucide-trash-2"
+                    :aria-label="`${supplier.name} löschen`"
+                    class="rounded-[8px]"
+                    @click="askDelete(supplier)"
+                  >
+                    Löschen
+                  </UButton>
                 </div>
               </td>
             </tr>
@@ -233,6 +276,22 @@ async function toggleArchived(supplier: Supplier) {
             </UButton>
           </div>
         </form>
+      </template>
+    </UModal>
+
+    <UModal v-model:open="deleteOpen" title="Lieferant löschen">
+      <template #body>
+        <div v-if="deleting" class="space-y-4">
+          <UAlert v-if="deleteMessage" color="error" variant="subtle" class="rounded-[12px]" :description="deleteMessage" />
+          <p class="text-sm">
+            {{ deleting.name }} endgültig löschen? Das lässt sich nicht rückgängig machen. Gelöscht wird nur, wenn der
+            Lieferant in keinem Wareneingang und keiner Produktion steht.
+          </p>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deleting = null">Abbrechen</UButton>
+            <UButton color="error" :loading="deleteBusy" class="rounded-[8px]" @click="confirmDelete">Endgültig löschen</UButton>
+          </div>
+        </div>
       </template>
     </UModal>
   </div>

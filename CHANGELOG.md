@@ -2,6 +2,17 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.13.1 (2026-11-01)
+
+### Neu
+
+- test data reset workflow (#44)
+
+### Fehlerbehebungen
+
+- close receipt position editor after saving (#46)
+- truncate long names in receipt positions (#45)
+
 ## v0.13.0 (2026-10-31)
 
 ### Neu
@@ -118,6 +129,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

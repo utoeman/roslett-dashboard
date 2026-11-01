@@ -55,6 +55,7 @@ export function badRequest(message: string, fields?: FieldErrors): H3Error {
 }
 
 const UNIQUE_VIOLATION = '23505';
+const FOREIGN_KEY_VIOLATION = '23503';
 
 /** Drizzle wraps the driver error; the Postgres code sits in the `cause` chain. */
 function findPostgresError(
@@ -79,6 +80,10 @@ function findPostgresError(
 
 export function isUniqueViolation(error: unknown): boolean {
   return findPostgresError(error)?.code === UNIQUE_VIOLATION;
+}
+
+export function isForeignKeyViolation(error: unknown): boolean {
+  return findPostgresError(error)?.code === FOREIGN_KEY_VIOLATION;
 }
 
 /** Translates known database errors; anything else is rethrown. */

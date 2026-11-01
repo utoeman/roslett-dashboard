@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoneyError, convertToEur, parseMoney } from '@roslett/core';
+import { MoneyError, convertToEur, parseMoney } from "@roslett/core";
 import type {
   AdditionalCost,
   GoodsReceipt,
@@ -8,7 +8,7 @@ import type {
   ReceiptPosition,
   ReceiptShopifyPreview,
   ReceiptShopifyPushResult,
-} from '~~/shared/types/api';
+} from "~~/shared/types/api";
 
 const route = useRoute();
 const id = computed(() => String(route.params.id));
@@ -16,24 +16,31 @@ const id = computed(() => String(route.params.id));
 const { formatMoney, formatForeign, formatDate, toInput } = useMoney();
 const { readError } = useApiError();
 
-const { data, pending, error, refresh } = await useFetch<GoodsReceipt>(() => `/api/goods-receipts/${id.value}`);
-useHead({ title: () => data.value?.number ?? 'Wareneingang' });
+const { data, pending, error, refresh } = await useFetch<GoodsReceipt>(
+  () => `/api/goods-receipts/${id.value}`,
+);
+useHead({ title: () => data.value?.number ?? "Wareneingang" });
 
-const { data: products } = await useFetch<List<Product>>('/api/products', { query: { limit: 500 } });
+const { data: products } = await useFetch<List<Product>>("/api/products", {
+  query: { limit: 500 },
+});
 const variantOptions = computed(
   () =>
     products.value?.items.flatMap((p) =>
-      p.variants.map((v) => ({ label: `${v.sku} · ${p.name} ${v.label}`, value: v.id })),
+      p.variants.map((v) => ({
+        label: `${v.sku} · ${p.name} ${v.label}`,
+        value: v.id,
+      })),
     ) ?? [],
 );
 
 const today = () => new Date().toISOString().slice(0, 10);
 // Plain string: Nuxt's typed routes recurse too deep on template-literal URLs.
-const api = (suffix = ''): string => `/api/goods-receipts/${id.value}${suffix}`;
-const isDraft = computed(() => data.value?.state === 'draft');
+const api = (suffix = ""): string => `/api/goods-receipts/${id.value}${suffix}`;
+const isDraft = computed(() => data.value?.state === "draft");
 // A production is a receipt with the sewing wage as unit price.
-const isProduction = computed(() => data.value?.kind === 'production');
-const priceLabel = computed(() => (isProduction.value ? 'Nählohn' : 'EK'));
+const isProduction = computed(() => data.value?.kind === "production");
+const priceLabel = computed(() => (isProduction.value ? "Nählohn" : "EK"));
 const message = ref<string | null>(null);
 const fieldErrors = ref<Record<string, string>>({});
 const saving = ref(false);
@@ -57,17 +64,46 @@ async function run(action: () => unknown, onDone?: () => void) {
 }
 
 // --- Invoice header (drafts) ---------------------------------------------
+// Drafts can be deleted; posted receipts are reversed in the journal instead (G29).
+const deleteOpen = ref(false);
+const deleteMessage = ref<string | null>(null);
+
+function askDelete() {
+  deleteMessage.value = null;
+  deleteOpen.value = true;
+}
+
+async function confirmDelete() {
+  saving.value = true;
+  deleteMessage.value = null;
+  try {
+    await $fetch(api(), { method: "DELETE" });
+    deleteOpen.value = false;
+    await navigateTo("/wareneingang");
+  } catch (err) {
+    deleteMessage.value = readError(err).message;
+  } finally {
+    saving.value = false;
+  }
+}
+
 const editingHeader = ref(false);
-const header = reactive({ invoiceNumber: '', invoiceDate: '', currency: '', manualRate: false, exchangeRate: '' });
+const header = reactive({
+  invoiceNumber: "",
+  invoiceDate: "",
+  currency: "",
+  manualRate: false,
+  exchangeRate: "",
+});
 
 function openHeader() {
   if (!data.value) return;
   Object.assign(header, {
-    invoiceNumber: data.value.invoiceNumber ?? '',
+    invoiceNumber: data.value.invoiceNumber ?? "",
     invoiceDate: data.value.invoiceDate,
     currency: data.value.currency,
-    manualRate: data.value.exchangeRateSource === 'manual',
-    exchangeRate: String(data.value.exchangeRate).replace('.', ','),
+    manualRate: data.value.exchangeRateSource === "manual",
+    exchangeRate: String(data.value.exchangeRate).replace(".", ","),
   });
   editingHeader.value = true;
 }
@@ -76,13 +112,15 @@ function saveHeader() {
   return run(
     () =>
       $fetch(api(), {
-        method: 'PATCH',
+        method: "PATCH",
         body: {
           invoiceNumber: header.invoiceNumber || null,
           invoiceDate: header.invoiceDate,
           currency: header.currency,
           // null asks the server for the ECB rate of the invoice date.
-          exchangeRate: header.manualRate ? header.exchangeRate.replace(',', '.') : null,
+          exchangeRate: header.manualRate
+            ? header.exchangeRate.replace(",", ".")
+            : null,
         },
       }),
     () => (editingHeader.value = false),
@@ -90,11 +128,20 @@ function saveHeader() {
 }
 
 // --- Positions (drafts) ---------------------------------------------------
-type Row = { variantId?: string; quantityOrdered: number; unitPrice: string; note: string };
+type Row = {
+  variantId?: string;
+  quantityOrdered: number;
+  unitPrice: string;
+  note: string;
+};
 const rows = ref<Row[]>([]);
 /** Saved positions show as the list below; the editor opens on demand or while there are none. */
 const editingPositions = ref(false);
-const showPositionEditor = computed(() => isDraft.value && (editingPositions.value || data.value?.positions.length === 0));
+const showPositionEditor = computed(
+  () =>
+    isDraft.value &&
+    (editingPositions.value || data.value?.positions.length === 0),
+);
 
 function resetRows() {
   const receipt = data.value;
@@ -103,9 +150,9 @@ function resetRows() {
       variantId: p.variant.id,
       quantityOrdered: p.quantityOrdered,
       unitPrice: toInput(p.unitPriceForeign),
-      note: p.note ?? '',
+      note: p.note ?? "",
     })) ?? [];
-  if (receipt?.state === 'draft' && rows.value.length === 0) addRow();
+  if (receipt?.state === "draft" && rows.value.length === 0) addRow();
 }
 
 watch(data, resetRows, { immediate: true });
@@ -117,12 +164,17 @@ function cancelPositions() {
 }
 
 function addRow() {
-  rows.value.push({ variantId: undefined, quantityOrdered: 1, unitPrice: '', note: '' });
+  rows.value.push({
+    variantId: undefined,
+    quantityOrdered: 1,
+    unitPrice: "",
+    note: "",
+  });
 }
 
 /** Unit price in minor units, or null while the input is empty or invalid. */
 function unitMinor(input: string): number | null {
-  if (input.trim() === '') return null;
+  if (input.trim() === "") return null;
   try {
     return parseMoney(input);
   } catch (error) {
@@ -132,106 +184,151 @@ function unitMinor(input: string): number | null {
 }
 
 /** EUR preview while typing, converted like the server does when saving. */
-const toEur = (minor: number) => convertToEur(minor, data.value?.exchangeRate ?? 1);
+const toEur = (minor: number) =>
+  convertToEur(minor, data.value?.exchangeRate ?? 1);
 
 function rowTotal(row: Row): number | null {
   const unit = unitMinor(row.unitPrice);
-  return unit === null || !Number.isFinite(row.quantityOrdered) ? null : unit * row.quantityOrdered;
+  return unit === null || !Number.isFinite(row.quantityOrdered)
+    ? null
+    : unit * row.quantityOrdered;
 }
 
 /** Line total as on the supplier invoice, plus EUR for foreign currencies. */
 function formatTotal(minor: number | null): string {
-  if (minor === null || !data.value) return '–';
+  if (minor === null || !data.value) return "–";
   const foreign = formatForeign(minor, data.value.currency);
-  return data.value.currency === 'EUR' ? foreign : `${foreign} ≈ ${formatMoney(toEur(minor))}`;
+  return data.value.currency === "EUR"
+    ? foreign
+    : `${foreign} ≈ ${formatMoney(toEur(minor))}`;
 }
 
-const draftTotal = computed(() => rows.value.reduce((sum, row) => sum + (rowTotal(row) ?? 0), 0));
+const draftTotal = computed(() =>
+  rows.value.reduce((sum, row) => sum + (rowTotal(row) ?? 0), 0),
+);
 
 /** Per-row messages of the positions form, e.g. "Position 2 · EK: Pflichtfeld." */
 const positionErrors = computed(() => {
-  const fieldNames: Record<string, string> = { variantId: 'Variante', quantityOrdered: 'Menge', unitPrice: priceLabel.value };
+  const fieldNames: Record<string, string> = {
+    variantId: "Variante",
+    quantityOrdered: "Menge",
+    unitPrice: priceLabel.value,
+  };
   return Object.entries(fieldErrors.value).flatMap(([key, text]) => {
     const match = /^positions\.(\d+)\.(\w+)$/.exec(key);
     if (!match) return [];
-    return [`Position ${Number(match[1]) + 1} · ${fieldNames[match[2] ?? ''] ?? match[2]}: ${text}`];
+    return [
+      `Position ${Number(match[1]) + 1} · ${fieldNames[match[2] ?? ""] ?? match[2]}: ${text}`,
+    ];
   });
 });
 
 function savePositions() {
-  return run(() =>
-    $fetch(api(), {
-      method: 'PATCH',
-      body: {
-        positions: rows.value
-          .filter((r) => r.variantId)
-          .map((r) => ({
-            variantId: r.variantId,
-            quantityOrdered: r.quantityOrdered,
-            unitPrice: r.unitPrice,
-            note: r.note || null,
-          })),
-      },
-    }),
+  return run(
+    () =>
+      $fetch(api(), {
+        method: "PATCH",
+        body: {
+          positions: rows.value
+            .filter((r) => r.variantId)
+            .map((r) => ({
+              variantId: r.variantId,
+              quantityOrdered: r.quantityOrdered,
+              unitPrice: r.unitPrice,
+              note: r.note || null,
+            })),
+        },
+      }),
     () => (editingPositions.value = false),
   );
 }
 
 // --- Additional costs -----------------------------------------------------
-const kindLabels: Record<AdditionalCost['kind'], string> = {
-  freight: 'Fracht',
-  customs: 'Zoll',
-  fabric: 'Stoff',
-  accessories: 'Zubehör',
-  other: 'Sonstiges',
-  credit: 'Gutschrift',
+const kindLabels: Record<AdditionalCost["kind"], string> = {
+  freight: "Fracht",
+  customs: "Zoll",
+  fabric: "Stoff",
+  accessories: "Zubehör",
+  other: "Sonstiges",
+  credit: "Gutschrift",
 };
-const productionOnly = new Set<string>(['fabric', 'accessories']);
+const productionOnly = new Set<string>(["fabric", "accessories"]);
 const kindOptions = computed(() =>
   Object.entries(kindLabels)
     .filter(([value]) => isProduction.value || !productionOnly.has(value))
     .map(([value, label]) => ({ value, label })),
 );
 const methodOptions = [
-  { label: 'nach Warenwert', value: 'value' },
-  { label: 'nach Stückzahl', value: 'quantity' },
+  { label: "nach Warenwert", value: "value" },
+  { label: "nach Stückzahl", value: "quantity" },
 ];
-const costForm = reactive({ kind: 'freight', amount: '', distributionMethod: 'value', incurredOn: today(), note: '' });
+const costForm = reactive({
+  kind: "freight",
+  amount: "",
+  distributionMethod: "value",
+  incurredOn: today(),
+  note: "",
+});
 
 function addCost() {
   return run(
-    () => $fetch(api('/costs'), { method: 'POST', body: { ...costForm, note: costForm.note || null } }),
-    () => Object.assign(costForm, { kind: 'freight', amount: '', distributionMethod: 'value', incurredOn: today(), note: '' }),
+    () =>
+      $fetch(api("/costs"), {
+        method: "POST",
+        body: { ...costForm, note: costForm.note || null },
+      }),
+    () =>
+      Object.assign(costForm, {
+        kind: "freight",
+        amount: "",
+        distributionMethod: "value",
+        incurredOn: today(),
+        note: "",
+      }),
   );
 }
 
 // --- Receiving --------------------------------------------------------------
 const receiveOpen = ref(false);
-const receive = reactive({ postedAt: today(), quantities: {} as Record<string, number> });
-const open = (p: ReceiptPosition) => Math.max(0, p.quantityOrdered - p.delivered);
-const canReceive = computed(() => !!data.value?.positions.length && data.value.deliveryState !== 'complete');
+const receive = reactive({
+  postedAt: today(),
+  quantities: {} as Record<string, number>,
+});
+const open = (p: ReceiptPosition) =>
+  Math.max(0, p.quantityOrdered - p.delivered);
+const canReceive = computed(
+  () =>
+    !!data.value?.positions.length && data.value.deliveryState !== "complete",
+);
 
 function openReceive() {
   if (!data.value) return;
   message.value = null;
   fieldErrors.value = {};
   receive.postedAt = today();
-  receive.quantities = Object.fromEntries(data.value.positions.map((p) => [p.id, open(p)]));
+  receive.quantities = Object.fromEntries(
+    data.value.positions.map((p) => [p.id, open(p)]),
+  );
   receiveOpen.value = true;
 }
 
-const receiveTotal = computed(() => Object.values(receive.quantities).reduce((s, q) => s + (Number(q) || 0), 0));
+const receiveTotal = computed(() =>
+  Object.values(receive.quantities).reduce((s, q) => s + (Number(q) || 0), 0),
+);
 
 function submitReceive() {
   return run(
     () =>
-      $fetch(api('/receive'), {
-        method: 'POST',
+      $fetch(api("/receive"), {
+        method: "POST",
         body: {
           postedAt: receive.postedAt,
           lines: Object.entries(receive.quantities)
             .filter(([, q]) => Number(q) > 0)
-            .map(([batchId, quantity]) => ({ batchId, quantity: Number(quantity) })),
+            .map(([batchId, quantity]) => ({
+              batchId,
+              quantity: Number(quantity),
+            })),
         },
       }),
     () => (receiveOpen.value = false),
@@ -253,8 +350,11 @@ async function openShopify() {
   shopifyDone.value = null;
   shopifyPreview.value = null;
   try {
-    shopifyPreview.value = await $fetch<ReceiptShopifyPreview>(api('/shopify'));
-    shopifyLocation.value = shopifyPreview.value.locations.length === 1 ? shopifyPreview.value.locations[0]?.id : undefined;
+    shopifyPreview.value = await $fetch<ReceiptShopifyPreview>(api("/shopify"));
+    shopifyLocation.value =
+      shopifyPreview.value.locations.length === 1
+        ? shopifyPreview.value.locations[0]?.id
+        : undefined;
   } catch (err) {
     shopifyMessage.value = readError(err).message;
   } finally {
@@ -266,10 +366,13 @@ async function pushShopify() {
   shopifyLoading.value = true;
   shopifyMessage.value = null;
   try {
-    shopifyDone.value = await $fetch<ReceiptShopifyPushResult>(api('/shopify'), {
-      method: 'POST',
-      body: { locationId: shopifyLocation.value ?? null },
-    });
+    shopifyDone.value = await $fetch<ReceiptShopifyPushResult>(
+      api("/shopify"),
+      {
+        method: "POST",
+        body: { locationId: shopifyLocation.value ?? null },
+      },
+    );
     shopifyPreview.value = null;
   } catch (err) {
     shopifyMessage.value = readError(err).message;
@@ -279,41 +382,86 @@ async function pushShopify() {
 }
 
 const stateBadge = computed(() => {
-  if (!data.value) return { label: '', color: 'neutral' as const };
-  if (data.value.state === 'draft') return { label: 'Entwurf', color: 'neutral' as const };
+  if (!data.value) return { label: "", color: "neutral" as const };
+  if (data.value.state === "draft")
+    return { label: "Entwurf", color: "neutral" as const };
   return {
-    complete: { label: 'vollständig', color: 'success' as const },
-    partial: { label: 'teilgeliefert', color: 'info' as const },
-    open: { label: 'offen', color: 'warning' as const },
+    complete: { label: "vollständig", color: "success" as const },
+    partial: { label: "teilgeliefert", color: "info" as const },
+    open: { label: "offen", color: "warning" as const },
   }[data.value.deliveryState];
 });
 const positionBadge = (p: ReceiptPosition) =>
   p.delivered > p.quantityOrdered
-    ? { label: 'Mehrlieferung', color: 'info' as const }
-    : p.deliveryState === 'complete'
-      ? { label: 'vollständig', color: 'success' as const }
-      : { label: `offen ${open(p)}`, color: 'warning' as const };
+    ? { label: "Mehrlieferung", color: "info" as const }
+    : p.deliveryState === "complete"
+      ? { label: "vollständig", color: "success" as const }
+      : { label: `offen ${open(p)}`, color: "warning" as const };
 </script>
 
 <template>
   <div>
     <div v-if="error" class="p-6">
-      <UAlert color="error" variant="subtle" class="rounded-[12px]" title="Wareneingang nicht gefunden" />
-      <UButton to="/wareneingang" variant="ghost" class="mt-4 rounded-[8px]" icon="i-lucide-arrow-left">
+      <UAlert
+        color="error"
+        variant="subtle"
+        class="rounded-[12px]"
+        title="Wareneingang nicht gefunden"
+      />
+      <UButton
+        to="/wareneingang"
+        variant="ghost"
+        class="mt-4 rounded-[8px]"
+        icon="i-lucide-arrow-left"
+      >
         Zur Liste
       </UButton>
     </div>
 
-    <div v-else-if="pending && !data" class="p-6 text-sm text-leinen-500">Wird geladen …</div>
+    <div v-else-if="pending && !data" class="p-6 text-sm text-leinen-500">
+      Wird geladen …
+    </div>
 
     <div v-else-if="data">
-      <SeitenKopf :titel="data.number" :hinweis="`${data.supplier.name} · Rechnung vom ${formatDate(data.invoiceDate)}`">
+      <SeitenKopf
+        :titel="data.number"
+        :hinweis="`${data.supplier.name} · Rechnung vom ${formatDate(data.invoiceDate)}`"
+      >
         <template #aktionen>
-          <UBadge :color="stateBadge.color" variant="subtle" class="rounded-[8px]">{{ stateBadge.label }}</UBadge>
-          <UButton to="/wareneingang" variant="ghost" color="neutral" size="sm" icon="i-lucide-arrow-left" class="rounded-[8px]">
+          <UBadge
+            :color="stateBadge.color"
+            variant="subtle"
+            class="rounded-[8px]"
+            >{{ stateBadge.label }}</UBadge
+          >
+          <UButton
+            to="/wareneingang"
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-arrow-left"
+            class="rounded-[8px]"
+          >
             Alle
           </UButton>
-          <UButton v-if="canReceive" icon="i-lucide-package-check" size="sm" class="rounded-[8px]" @click="openReceive">
+          <UButton
+            v-if="isDraft"
+            icon="i-lucide-trash-2"
+            size="sm"
+            variant="ghost"
+            color="error"
+            class="rounded-[8px]"
+            @click="askDelete"
+          >
+            Entwurf löschen
+          </UButton>
+          <UButton
+            v-if="canReceive"
+            icon="i-lucide-package-check"
+            size="sm"
+            class="rounded-[8px]"
+            @click="openReceive"
+          >
             Zugang buchen
           </UButton>
           <UButton
@@ -342,7 +490,10 @@ const positionBadge = (p: ReceiptPosition) =>
           />
 
           <!-- Invoice -->
-          <section class="rounded-[12px] border border-leinen-200/70 bg-white p-4" style="border-width: 0.5px">
+          <section
+            class="rounded-[12px] border border-leinen-200/70 bg-white p-4"
+            style="border-width: 0.5px"
+          >
             <div class="mb-3 flex items-center justify-between">
               <h2 class="text-sm font-semibold">Rechnung</h2>
               <UButton
@@ -358,19 +509,36 @@ const positionBadge = (p: ReceiptPosition) =>
               </UButton>
             </div>
 
-            <form v-if="editingHeader" class="space-y-3" @submit.prevent="saveHeader">
+            <form
+              v-if="editingHeader"
+              class="space-y-3"
+              @submit.prevent="saveHeader"
+            >
               <div class="grid gap-3 sm:grid-cols-3">
-                <UFormField label="Rechnungsnummer" :error="fieldErrors.invoiceNumber">
+                <UFormField
+                  label="Rechnungsnummer"
+                  :error="fieldErrors.invoiceNumber"
+                >
                   <UInput v-model="header.invoiceNumber" class="w-full" />
                 </UFormField>
-                <UFormField label="Rechnungsdatum" :error="fieldErrors.invoiceDate">
-                  <UInput v-model="header.invoiceDate" type="date" class="w-full" />
+                <UFormField
+                  label="Rechnungsdatum"
+                  :error="fieldErrors.invoiceDate"
+                >
+                  <UInput
+                    v-model="header.invoiceDate"
+                    type="date"
+                    class="w-full"
+                  />
                 </UFormField>
                 <UFormField label="Währung" :error="fieldErrors.currency">
                   <WaehrungAuswahl v-model="header.currency" />
                 </UFormField>
               </div>
-              <UCheckbox v-model="header.manualRate" label="Kurs von Hand statt EZB-Referenzkurs" />
+              <UCheckbox
+                v-model="header.manualRate"
+                label="Kurs von Hand statt EZB-Referenzkurs"
+              />
               <UFormField
                 v-if="header.manualRate"
                 label="Kurs"
@@ -380,21 +548,30 @@ const positionBadge = (p: ReceiptPosition) =>
                 <UInput v-model="header.exchangeRate" class="w-48 font-mono" />
               </UFormField>
               <div class="flex justify-end gap-2">
-                <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="editingHeader = false">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  class="rounded-[8px]"
+                  @click="editingHeader = false"
+                >
                   Abbrechen
                 </UButton>
-                <UButton type="submit" :loading="saving" class="rounded-[8px]">Speichern</UButton>
+                <UButton type="submit" :loading="saving" class="rounded-[8px]"
+                  >Speichern</UButton
+                >
               </div>
             </form>
 
             <dl v-else class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               <div>
-                <dt class="text-xs text-leinen-500">{{ isProduction ? 'Näherei' : 'Lieferant' }}</dt>
+                <dt class="text-xs text-leinen-500">
+                  {{ isProduction ? "Näherei" : "Lieferant" }}
+                </dt>
                 <dd>{{ data.supplier.name }}</dd>
               </div>
               <div>
                 <dt class="text-xs text-leinen-500">Rechnungsnummer</dt>
-                <dd>{{ data.invoiceNumber ?? '–' }}</dd>
+                <dd>{{ data.invoiceNumber ?? "–" }}</dd>
               </div>
               <div>
                 <dt class="text-xs text-leinen-500">Rechnungsdatum</dt>
@@ -404,9 +581,17 @@ const positionBadge = (p: ReceiptPosition) =>
                 <dt class="text-xs text-leinen-500">Währung und Kurs</dt>
                 <dd v-if="data.currency === 'EUR'">EUR</dd>
                 <dd v-else>
-                  <span class="font-mono">1 EUR = {{ String(data.exchangeRate).replace('.', ',') }} {{ data.currency }}</span>
+                  <span class="font-mono"
+                    >1 EUR = {{ String(data.exchangeRate).replace(".", ",") }}
+                    {{ data.currency }}</span
+                  >
                   <span class="text-xs text-leinen-500">
-                    · {{ data.exchangeRateSource === 'ecb' ? 'EZB-Referenzkurs, letzter Handelstag bis Rechnungsdatum' : 'von Hand' }}
+                    ·
+                    {{
+                      data.exchangeRateSource === "ecb"
+                        ? "EZB-Referenzkurs, letzter Handelstag bis Rechnungsdatum"
+                        : "von Hand"
+                    }}
                   </span>
                 </dd>
               </div>
@@ -414,10 +599,16 @@ const positionBadge = (p: ReceiptPosition) =>
           </section>
 
           <!-- Positions -->
-          <section class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white" style="border-width: 0.5px">
+          <section
+            class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white"
+            style="border-width: 0.5px"
+          >
             <div class="flex items-center justify-between px-4 py-3">
               <h2 class="text-sm font-semibold">
-                Positionen <span class="ml-1 font-normal text-leinen-500">{{ data.positions.length }}</span>
+                Positionen
+                <span class="ml-1 font-normal text-leinen-500">{{
+                  data.positions.length
+                }}</span>
               </h2>
               <p v-if="showPositionEditor" class="text-xs text-leinen-500">
                 Einstand und Nebenkostenanteil erscheinen nach dem Speichern.
@@ -437,15 +628,24 @@ const positionBadge = (p: ReceiptPosition) =>
 
             <form v-if="showPositionEditor" @submit.prevent="savePositions">
               <!-- Fixed layout: a long product name must not squeeze the number columns; the select truncates it. -->
-              <table class="ros-tabelle w-full min-w-[44rem] table-fixed text-sm">
+              <table
+                class="ros-tabelle w-full min-w-[44rem] table-fixed text-sm"
+              >
                 <thead
                   class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
                 >
                   <tr>
                     <th class="px-4">Variante</th>
                     <th class="w-28 px-4 text-right">Menge</th>
-                    <th class="w-40 px-4 text-right">{{ priceLabel }} netto je Stück ({{ data.currency }})</th>
-                    <th v-if="data.currency !== 'EUR'" class="w-32 px-4 text-right">≈ EUR je Stück</th>
+                    <th class="w-40 px-4 text-right">
+                      {{ priceLabel }} netto je Stück ({{ data.currency }})
+                    </th>
+                    <th
+                      v-if="data.currency !== 'EUR'"
+                      class="w-32 px-4 text-right"
+                    >
+                      ≈ EUR je Stück
+                    </th>
                     <th class="w-32 px-4 text-right">Summe</th>
                     <th class="w-10 px-2" />
                   </tr>
@@ -460,7 +660,11 @@ const positionBadge = (p: ReceiptPosition) =>
                         placeholder="SKU oder Produkt suchen"
                         class="w-full min-w-0"
                         :aria-label="`Variante Position ${index + 1}`"
-                        :color="fieldErrors[`positions.${index}.variantId`] ? 'error' : undefined"
+                        :color="
+                          fieldErrors[`positions.${index}.variantId`]
+                            ? 'error'
+                            : undefined
+                        "
                       />
                     </td>
                     <td class="px-4 py-2">
@@ -470,7 +674,11 @@ const positionBadge = (p: ReceiptPosition) =>
                         min="1"
                         class="w-full"
                         :aria-label="`Menge Position ${index + 1}`"
-                        :color="fieldErrors[`positions.${index}.quantityOrdered`] ? 'error' : undefined"
+                        :color="
+                          fieldErrors[`positions.${index}.quantityOrdered`]
+                            ? 'error'
+                            : undefined
+                        "
                       />
                     </td>
                     <td class="px-4 py-2">
@@ -478,11 +686,22 @@ const positionBadge = (p: ReceiptPosition) =>
                         v-model="row.unitPrice"
                         class="w-full"
                         :aria-label="`${priceLabel} Position ${index + 1}`"
-                        :color="fieldErrors[`positions.${index}.unitPrice`] ? 'error' : undefined"
+                        :color="
+                          fieldErrors[`positions.${index}.unitPrice`]
+                            ? 'error'
+                            : undefined
+                        "
                       />
                     </td>
-                    <td v-if="data.currency !== 'EUR'" class="zahl px-4 text-leinen-500">
-                      {{ unitMinor(row.unitPrice) === null ? '–' : formatMoney(toEur(unitMinor(row.unitPrice) ?? 0)) }}
+                    <td
+                      v-if="data.currency !== 'EUR'"
+                      class="zahl px-4 text-leinen-500"
+                    >
+                      {{
+                        unitMinor(row.unitPrice) === null
+                          ? "–"
+                          : formatMoney(toEur(unitMinor(row.unitPrice) ?? 0))
+                      }}
                     </td>
                     <td class="zahl px-4">{{ formatTotal(rowTotal(row)) }}</td>
                     <td class="px-2">
@@ -497,21 +716,39 @@ const positionBadge = (p: ReceiptPosition) =>
                     </td>
                   </tr>
                 </tbody>
-                <tfoot v-if="rows.length > 1" class="border-t border-leinen-200/70">
+                <tfoot
+                  v-if="rows.length > 1"
+                  class="border-t border-leinen-200/70"
+                >
                   <tr>
-                    <td :colspan="data.currency !== 'EUR' ? 4 : 3" class="px-4 text-right text-xs text-leinen-500">
+                    <td
+                      :colspan="data.currency !== 'EUR' ? 4 : 3"
+                      class="px-4 text-right text-xs text-leinen-500"
+                    >
                       Summe aller Positionen
                     </td>
-                    <td class="zahl px-4 font-medium">{{ formatTotal(draftTotal) }}</td>
+                    <td class="zahl px-4 font-medium">
+                      {{ formatTotal(draftTotal) }}
+                    </td>
                     <td />
                   </tr>
                 </tfoot>
               </table>
-              <ul v-if="positionErrors.length" class="space-y-0.5 px-4 pt-3 text-xs text-red-700">
+              <ul
+                v-if="positionErrors.length"
+                class="space-y-0.5 px-4 pt-3 text-xs text-red-700"
+              >
                 <li v-for="text in positionErrors" :key="text">{{ text }}</li>
               </ul>
               <div class="flex flex-wrap justify-between gap-2 px-4 py-3">
-                <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-plus" class="rounded-[8px]" @click="addRow">
+                <UButton
+                  size="sm"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-plus"
+                  class="rounded-[8px]"
+                  @click="addRow"
+                >
                   Position hinzufügen
                 </UButton>
                 <div class="flex gap-2">
@@ -525,12 +762,21 @@ const positionBadge = (p: ReceiptPosition) =>
                   >
                     Abbrechen
                   </UButton>
-                  <UButton type="submit" size="sm" :loading="saving" class="rounded-[8px]">Positionen speichern</UButton>
+                  <UButton
+                    type="submit"
+                    size="sm"
+                    :loading="saving"
+                    class="rounded-[8px]"
+                    >Positionen speichern</UButton
+                  >
                 </div>
               </div>
             </form>
 
-            <table v-if="data.positions.length" class="ros-tabelle w-full min-w-[44rem] text-sm">
+            <table
+              v-if="data.positions.length"
+              class="ros-tabelle w-full min-w-[44rem] text-sm"
+            >
               <thead
                 class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
               >
@@ -547,19 +793,41 @@ const positionBadge = (p: ReceiptPosition) =>
               <tbody class="divide-y divide-leinen-200/60">
                 <tr v-for="p in data.positions" :key="p.id">
                   <td class="px-4">
-                    <NuxtLink :to="`/produkte/${p.variant.productId}`" class="hover:text-ros-600">
+                    <NuxtLink
+                      :to="`/produkte/${p.variant.productId}`"
+                      class="hover:text-ros-600"
+                    >
                       {{ p.variant.productName }} {{ p.variant.label }}
                     </NuxtLink>
-                    <div class="font-mono text-xs text-leinen-500">{{ p.variant.sku }}</div>
+                    <div class="font-mono text-xs text-leinen-500">
+                      {{ p.variant.sku }}
+                    </div>
                   </td>
                   <td class="zahl px-4">{{ p.quantityOrdered }}</td>
-                  <td class="zahl px-4">{{ formatForeign(p.unitPriceForeign, data.currency) }}</td>
+                  <td class="zahl px-4">
+                    {{ formatForeign(p.unitPriceForeign, data.currency) }}
+                  </td>
                   <td class="zahl px-4">{{ formatMoney(p.unitPriceEur) }}</td>
-                  <td class="zahl px-4 text-leinen-500">{{ formatMoney(Math.round(p.additionalCostsEur / p.quantityOrdered)) }}</td>
-                  <td class="zahl px-4 font-medium">{{ formatMoney(p.landedCostEur) }}</td>
+                  <td class="zahl px-4 text-leinen-500">
+                    {{
+                      formatMoney(
+                        Math.round(p.additionalCostsEur / p.quantityOrdered),
+                      )
+                    }}
+                  </td>
+                  <td class="zahl px-4 font-medium">
+                    {{ formatMoney(p.landedCostEur) }}
+                  </td>
                   <td v-if="!isDraft" class="px-4">
-                    <span class="mr-2 font-mono text-xs">{{ p.delivered }}/{{ p.quantityOrdered }}</span>
-                    <UBadge size="sm" :color="positionBadge(p).color" variant="subtle" class="rounded-[8px]">
+                    <span class="mr-2 font-mono text-xs"
+                      >{{ p.delivered }}/{{ p.quantityOrdered }}</span
+                    >
+                    <UBadge
+                      size="sm"
+                      :color="positionBadge(p).color"
+                      variant="subtle"
+                      class="rounded-[8px]"
+                    >
                       {{ positionBadge(p).label }}
                     </UBadge>
                   </td>
@@ -569,44 +837,94 @@ const positionBadge = (p: ReceiptPosition) =>
           </section>
 
           <!-- Additional costs -->
-          <section class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white" style="border-width: 0.5px">
+          <section
+            class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white"
+            style="border-width: 0.5px"
+          >
             <div class="px-4 py-3">
               <h2 class="text-sm font-semibold">Nebenkosten</h2>
               <p class="mt-0.5 text-xs text-leinen-500">
-                {{ isProduction ? 'Stoff, Zubehör, Fracht und Zoll' : 'Fracht, Zoll und Gutschriften' }} verteilen sich auf alle Positionen – auch nachträglich, der Einstand
-                ändert sich dann rückwirkend. Einfuhrumsatzsteuer gehört nicht hierher.
+                {{
+                  isProduction
+                    ? "Stoff, Zubehör, Fracht und Zoll"
+                    : "Fracht, Zoll und Gutschriften"
+                }}
+                verteilen sich auf alle Positionen – auch nachträglich, der
+                Einstand ändert sich dann rückwirkend. Einfuhrumsatzsteuer
+                gehört nicht hierher.
               </p>
             </div>
-            <table v-if="data.additionalCosts.length" class="ros-tabelle w-full text-sm">
-              <tbody class="divide-y divide-leinen-200/60 border-t border-leinen-200/70">
+            <table
+              v-if="data.additionalCosts.length"
+              class="ros-tabelle w-full text-sm"
+            >
+              <tbody
+                class="divide-y divide-leinen-200/60 border-t border-leinen-200/70"
+              >
                 <tr v-for="c in data.additionalCosts" :key="c.id">
                   <td class="px-4">{{ kindLabels[c.kind] }}</td>
-                  <td class="px-4 text-leinen-500">{{ c.note ?? '' }}</td>
+                  <td class="px-4 text-leinen-500">{{ c.note ?? "" }}</td>
                   <td class="px-4 text-leinen-500">
-                    {{ c.distributionMethod === 'value' ? 'nach Warenwert' : 'nach Stückzahl' }} · {{ formatDate(c.incurredOn) }}
+                    {{
+                      c.distributionMethod === "value"
+                        ? "nach Warenwert"
+                        : "nach Stückzahl"
+                    }}
+                    · {{ formatDate(c.incurredOn) }}
                   </td>
                   <td class="zahl px-4">{{ formatMoney(c.amountEur) }}</td>
                 </tr>
               </tbody>
             </table>
-            <form class="grid gap-3 border-t border-leinen-200/70 p-4 sm:grid-cols-6" @submit.prevent="addCost">
+            <form
+              class="grid gap-3 border-t border-leinen-200/70 p-4 sm:grid-cols-6"
+              @submit.prevent="addCost"
+            >
               <UFormField label="Art" class="sm:col-span-1">
-                <USelectMenu v-model="costForm.kind" :items="kindOptions" value-key="value" class="w-full" />
+                <USelectMenu
+                  v-model="costForm.kind"
+                  :items="kindOptions"
+                  value-key="value"
+                  class="w-full"
+                />
               </UFormField>
-              <UFormField label="Betrag EUR" :error="fieldErrors.amount" class="sm:col-span-1">
+              <UFormField
+                label="Betrag EUR"
+                :error="fieldErrors.amount"
+                class="sm:col-span-1"
+              >
                 <BetragFeld v-model="costForm.amount" class="w-full" />
               </UFormField>
               <UFormField label="Verteilung" class="sm:col-span-2">
-                <USelectMenu v-model="costForm.distributionMethod" :items="methodOptions" value-key="value" class="w-full" />
+                <USelectMenu
+                  v-model="costForm.distributionMethod"
+                  :items="methodOptions"
+                  value-key="value"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Datum" class="sm:col-span-2">
-                <UInput v-model="costForm.incurredOn" type="date" class="w-full" />
+                <UInput
+                  v-model="costForm.incurredOn"
+                  type="date"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Notiz" class="sm:col-span-4">
-                <UInput v-model="costForm.note" class="w-full" placeholder="z. B. Zollbescheid vom …" />
+                <UInput
+                  v-model="costForm.note"
+                  class="w-full"
+                  placeholder="z. B. Zollbescheid vom …"
+                />
               </UFormField>
               <div class="flex items-end sm:col-span-2">
-                <UButton type="submit" :loading="saving" icon="i-lucide-plus" block class="rounded-[8px]">
+                <UButton
+                  type="submit"
+                  :loading="saving"
+                  icon="i-lucide-plus"
+                  block
+                  class="rounded-[8px]"
+                >
                   Hinzufügen
                 </UButton>
               </div>
@@ -615,31 +933,52 @@ const positionBadge = (p: ReceiptPosition) =>
         </div>
 
         <!-- Summary -->
-        <aside class="h-fit rounded-[12px] border border-leinen-200/70 bg-white p-4 text-sm lg:sticky lg:top-4" style="border-width: 0.5px">
+        <aside
+          class="h-fit rounded-[12px] border border-leinen-200/70 bg-white p-4 text-sm lg:sticky lg:top-4"
+          style="border-width: 0.5px"
+        >
           <h2 class="mb-3 text-sm font-semibold">Zusammenfassung</h2>
           <dl class="space-y-2">
             <div class="flex justify-between">
               <dt class="text-leinen-500">Positionen · Stück</dt>
-              <dd class="font-mono">{{ data.positions.length }} · {{ data.totals.quantityOrdered }}</dd>
+              <dd class="font-mono">
+                {{ data.positions.length }} · {{ data.totals.quantityOrdered }}
+              </dd>
             </div>
             <div v-if="!isDraft" class="flex justify-between">
               <dt class="text-leinen-500">Geliefert</dt>
-              <dd class="font-mono">{{ data.totals.delivered }} / {{ data.totals.quantityOrdered }}</dd>
+              <dd class="font-mono">
+                {{ data.totals.delivered }} / {{ data.totals.quantityOrdered }}
+              </dd>
             </div>
             <div class="flex justify-between">
               <dt class="text-leinen-500">Warenwert</dt>
-              <dd class="font-mono">{{ formatMoney(data.totals.goodsValueEur) }}</dd>
+              <dd class="font-mono">
+                {{ formatMoney(data.totals.goodsValueEur) }}
+              </dd>
             </div>
             <div class="flex justify-between">
               <dt class="text-leinen-500">Nebenkosten</dt>
-              <dd class="font-mono">{{ formatMoney(data.totals.additionalCostsEur) }}</dd>
+              <dd class="font-mono">
+                {{ formatMoney(data.totals.additionalCostsEur) }}
+              </dd>
             </div>
-            <div class="flex justify-between border-t border-leinen-200/70 pt-2 font-medium">
+            <div
+              class="flex justify-between border-t border-leinen-200/70 pt-2 font-medium"
+            >
               <dt>Einstand gesamt</dt>
-              <dd class="font-mono">{{ formatMoney(data.totals.landedTotalEur) }}</dd>
+              <dd class="font-mono">
+                {{ formatMoney(data.totals.landedTotalEur) }}
+              </dd>
             </div>
           </dl>
-          <UButton v-if="canReceive" icon="i-lucide-package-check" block class="mt-4 rounded-[8px]" @click="openReceive">
+          <UButton
+            v-if="canReceive"
+            icon="i-lucide-package-check"
+            block
+            class="mt-4 rounded-[8px]"
+            @click="openReceive"
+          >
             Zugang buchen
           </UButton>
         </aside>
@@ -657,13 +996,21 @@ const positionBadge = (p: ReceiptPosition) =>
               :description="message"
             />
             <p class="text-sm text-leinen-500">
-              Gelieferte Mengen je Position. Vorbelegt ist der offene Rest; weniger bucht eine Teillieferung.
+              Gelieferte Mengen je Position. Vorbelegt ist der offene Rest;
+              weniger bucht eine Teillieferung.
             </p>
-            <div v-for="p in data.positions" :key="p.id" class="flex items-center justify-between gap-3">
+            <div
+              v-for="p in data.positions"
+              :key="p.id"
+              class="flex items-center justify-between gap-3"
+            >
               <div class="min-w-0">
-                <div class="truncate text-sm">{{ p.variant.productName }} {{ p.variant.label }}</div>
+                <div class="truncate text-sm">
+                  {{ p.variant.productName }} {{ p.variant.label }}
+                </div>
                 <div class="font-mono text-xs text-leinen-500">
-                  {{ p.variant.sku }} · offen {{ open(p) }} von {{ p.quantityOrdered }}
+                  {{ p.variant.sku }} · offen {{ open(p) }} von
+                  {{ p.quantityOrdered }}
                 </div>
               </div>
               <UInput
@@ -678,10 +1025,20 @@ const positionBadge = (p: ReceiptPosition) =>
               <UInput v-model="receive.postedAt" type="date" class="w-48" />
             </UFormField>
             <div class="flex justify-end gap-2 pt-2">
-              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="receiveOpen = false">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                class="rounded-[8px]"
+                @click="receiveOpen = false"
+              >
                 Abbrechen
               </UButton>
-              <UButton type="submit" :loading="saving" :disabled="receiveTotal === 0" class="rounded-[8px]">
+              <UButton
+                type="submit"
+                :loading="saving"
+                :disabled="receiveTotal === 0"
+                class="rounded-[8px]"
+              >
                 {{ receiveTotal }} Stück buchen
               </UButton>
             </div>
@@ -692,8 +1049,19 @@ const positionBadge = (p: ReceiptPosition) =>
       <UModal v-model:open="shopifyOpen" title="Zugang nach Shopify übertragen">
         <template #body>
           <div class="space-y-4">
-            <UAlert v-if="shopifyMessage" color="error" variant="subtle" class="rounded-[12px]" :description="shopifyMessage" />
-            <p v-if="shopifyLoading && !shopifyPreview" class="text-sm text-leinen-500">Shopify wird abgefragt …</p>
+            <UAlert
+              v-if="shopifyMessage"
+              color="error"
+              variant="subtle"
+              class="rounded-[12px]"
+              :description="shopifyMessage"
+            />
+            <p
+              v-if="shopifyLoading && !shopifyPreview"
+              class="text-sm text-leinen-500"
+            >
+              Shopify wird abgefragt …
+            </p>
 
             <UAlert
               v-if="shopifyDone"
@@ -701,30 +1069,53 @@ const positionBadge = (p: ReceiptPosition) =>
               variant="subtle"
               class="rounded-[12px]"
               :title="`In Shopify gebucht (${shopifyDone.location})`"
-              :description="shopifyDone.lines.map((l) => `${l.sku} +${l.delta}`).join(', ')"
+              :description="
+                shopifyDone.lines.map((l) => `${l.sku} +${l.delta}`).join(', ')
+              "
             />
 
             <template v-if="shopifyPreview">
-              <p v-if="shopifyPreview.lines.length === 0" class="text-sm text-leinen-500">
+              <p
+                v-if="shopifyPreview.lines.length === 0"
+                class="text-sm text-leinen-500"
+              >
                 Alle gebuchten Zugänge dieses Belegs sind schon in Shopify.
               </p>
               <template v-else>
                 <p class="text-sm text-leinen-500">
-                  Gebuchte Zugänge, die noch nicht in Shopify sind. Shopify erhöht den Bestand um die Menge; jede Buchung
-                  wird nur einmal übertragen.
+                  Gebuchte Zugänge, die noch nicht in Shopify sind. Shopify
+                  erhöht den Bestand um die Menge; jede Buchung wird nur einmal
+                  übertragen.
                 </p>
                 <ul class="space-y-1 text-sm">
-                  <li v-for="l in shopifyPreview.lines" :key="l.sku" class="flex justify-between gap-3">
+                  <li
+                    v-for="l in shopifyPreview.lines"
+                    :key="l.sku"
+                    class="flex justify-between gap-3"
+                  >
                     <span class="font-mono text-xs">{{ l.sku }}</span>
                     <span class="tabular-nums">
-                      +{{ l.delta }}<template v-if="l.shopifyStock !== null">, Shopify {{ l.shopifyStock }} → {{ l.shopifyStock + l.delta }}</template>
+                      +{{ l.delta
+                      }}<template v-if="l.shopifyStock !== null"
+                        >, Shopify {{ l.shopifyStock }} →
+                        {{ l.shopifyStock + l.delta }}</template
+                      >
                     </span>
                   </li>
                 </ul>
-                <UFormField v-if="shopifyPreview.locations.length > 1" label="Lagerort" required>
+                <UFormField
+                  v-if="shopifyPreview.locations.length > 1"
+                  label="Lagerort"
+                  required
+                >
                   <USelectMenu
                     v-model="shopifyLocation"
-                    :items="shopifyPreview.locations.map((l) => ({ label: l.name, value: l.id }))"
+                    :items="
+                      shopifyPreview.locations.map((l) => ({
+                        label: l.name,
+                        value: l.id,
+                      }))
+                    "
                     value-key="value"
                     class="w-full"
                   />
@@ -733,7 +1124,13 @@ const positionBadge = (p: ReceiptPosition) =>
             </template>
 
             <div class="flex justify-end gap-2 pt-2">
-              <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="shopifyOpen = false">Schließen</UButton>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                class="rounded-[8px]"
+                @click="shopifyOpen = false"
+                >Schließen</UButton
+              >
               <UButton
                 v-if="shopifyPreview && shopifyPreview.lines.length > 0"
                 :loading="shopifyLoading"
@@ -743,6 +1140,41 @@ const positionBadge = (p: ReceiptPosition) =>
               >
                 Übertragen
               </UButton>
+            </div>
+          </div>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="deleteOpen" title="Entwurf löschen">
+        <template #body>
+          <div class="space-y-4">
+            <UAlert
+              v-if="deleteMessage"
+              color="error"
+              variant="subtle"
+              class="rounded-[12px]"
+              :description="deleteMessage"
+            />
+            <p class="text-sm">
+              {{ data.number }} samt Positionen ({{ data.positions.length }})
+              und Nebenkosten endgültig löschen? Das lässt sich nicht rückgängig
+              machen. Die Nummer wird nicht neu vergeben.
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                class="rounded-[8px]"
+                @click="deleteOpen = false"
+                >Abbrechen</UButton
+              >
+              <UButton
+                color="error"
+                :loading="saving"
+                class="rounded-[8px]"
+                @click="confirmDelete"
+                >Endgültig löschen</UButton
+              >
             </div>
           </div>
         </template>

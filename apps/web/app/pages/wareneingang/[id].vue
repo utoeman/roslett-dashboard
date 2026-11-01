@@ -414,7 +414,8 @@ const positionBadge = (p: ReceiptPosition) =>
             </div>
 
             <form v-if="isDraft" @submit.prevent="savePositions">
-              <table class="ros-tabelle w-full min-w-[44rem] text-sm">
+              <!-- Fixed layout: a long product name must not squeeze the number columns; the select truncates it. -->
+              <table class="ros-tabelle w-full min-w-[44rem] table-fixed text-sm">
                 <thead
                   class="border-y border-leinen-200/70 bg-leinen-50/60 text-left text-xs font-medium uppercase tracking-wide text-leinen-500"
                 >
@@ -422,8 +423,8 @@ const positionBadge = (p: ReceiptPosition) =>
                     <th class="px-4">Variante</th>
                     <th class="w-28 px-4 text-right">Menge</th>
                     <th class="w-40 px-4 text-right">{{ priceLabel }} netto je Stück ({{ data.currency }})</th>
-                    <th v-if="data.currency !== 'EUR'" class="px-4 text-right">≈ EUR je Stück</th>
-                    <th class="px-4 text-right">Summe</th>
+                    <th v-if="data.currency !== 'EUR'" class="w-32 px-4 text-right">≈ EUR je Stück</th>
+                    <th class="w-32 px-4 text-right">Summe</th>
                     <th class="w-10 px-2" />
                   </tr>
                 </thead>
@@ -435,7 +436,7 @@ const positionBadge = (p: ReceiptPosition) =>
                         :items="variantOptions"
                         value-key="value"
                         placeholder="SKU oder Produkt suchen"
-                        class="w-full"
+                        class="w-full min-w-0"
                         :aria-label="`Variante Position ${index + 1}`"
                         :color="fieldErrors[`positions.${index}.variantId`] ? 'error' : undefined"
                       />

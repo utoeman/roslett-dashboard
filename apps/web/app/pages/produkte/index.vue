@@ -51,7 +51,6 @@ const vatOptions = [
 const form = reactive({
   name: '',
   categoryId: undefined as string | undefined,
-  basePriceGross: '',
   vatCategory: 'standard' as 'standard' | 'reduced',
 });
 
@@ -65,7 +64,6 @@ async function create() {
       body: {
         name: form.name,
         categoryId: form.categoryId,
-        basePriceGross: form.basePriceGross || null,
         vatCategory: form.vatCategory,
       },
     });
@@ -100,6 +98,11 @@ function openRow(id: string, event: MouseEvent) {
   if (target?.closest('a, button, input, label')) return;
   if ((window.getSelection()?.toString() ?? '') !== '') return;
   navigateTo(`/produkte/${id}`);
+}
+
+/** Prices are set after the first receipt (G31); until then a variant has no price. */
+function priceMissing(product: Product): boolean {
+  return product.basePriceGross === null && product.variants.some((v) => v.archivedAt === null && v.priceGross === null);
 }
 
 /** Gross price range across all variants. */
@@ -249,7 +252,12 @@ function stockOf(product: Product) {
                   {{ product.variants.map((v) => v.sku).join(', ') }}
                 </span>
               </td>
-              <td class="zahl px-4">{{ priceRange(product) }}</td>
+              <td class="zahl px-4">
+                <UBadge v-if="priceMissing(product)" size="sm" color="warning" variant="subtle" class="rounded-[8px]">
+                  Preis fehlt
+                </UBadge>
+                <template v-else>{{ priceRange(product) }}</template>
+              </td>
               <td class="zahl px-4">
                 <UBadge
                   v-if="stockOf(product).low"
@@ -336,24 +344,16 @@ function stockOf(product: Product) {
             />
           </UFormField>
 
-          <div class="grid gap-4 sm:grid-cols-2">
-            <UFormField
-              label="Preis brutto"
-              :error="fieldErrors.basePriceGross"
-              help="Gilt für alle Varianten. Zum Beispiel 39,90"
-            >
-              <BetragFeld v-model="form.basePriceGross" class="w-full" />
-            </UFormField>
-            <UFormField label="MwSt" :error="fieldErrors.vatCategory">
-              <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />
-            </UFormField>
-          </div>
+          <UFormField label="MwSt" :error="fieldErrors.vatCategory">
+            <USelectMenu v-model="form.vatCategory" :items="vatOptions" value-key="value" class="w-full" />
+          </UFormField>
 
           <p
             class="rounded-[8px] bg-leinen-50 px-3 py-2 text-xs text-leinen-600 dark:bg-leinen-900 dark:text-leinen-400"
           >
             Produktnummer und SKU werden automatisch vergeben. Farben und Größen
-            legen Sie anschließend als Varianten in der Detailansicht an.
+            legen Sie anschließend als Varianten in der Detailansicht an. Den Preis
+            legen Sie nach dem ersten Wareneingang fest, wenn die Marge sichtbar ist.
           </p>
 
           <div class="flex justify-end gap-2 pt-2">

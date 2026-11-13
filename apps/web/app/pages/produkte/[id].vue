@@ -90,13 +90,21 @@ const colorOptions = computed(
   () => colors.value?.items.map((c) => ({ label: `${c.code} · ${c.name}`, value: c.id })) ?? [],
 );
 
+const { channels, totalCost } = await useChannelMargins();
+
+/** Cost figures of one variant for the margin preview. */
+function variantCosts(v: Variant) {
+  const landed = v.inventory?.averageCostEur ?? null;
+  return {
+    landed,
+    purchase: v.inventory?.averagePurchaseEur ?? null,
+    total: totalCost(landed, v.id, data.value?.costItems ?? []),
+  };
+}
+
 /** Landed costs of the active variants that use the base price; feeds the margin preview. */
 const baseCosts = computed(
-  () =>
-    data.value?.variants
-      .filter((v) => v.archivedAt === null && v.priceGross === null)
-      .map((v) => ({ landed: v.inventory?.averageCostEur ?? null, purchase: v.inventory?.averagePurchaseEur ?? null })) ??
-    [],
+  () => data.value?.variants.filter((v) => v.archivedAt === null && v.priceGross === null).map(variantCosts) ?? [],
 );
 
 const variantDialog = ref(false);
@@ -502,6 +510,7 @@ async function pushShopify() {
               :price="form.basePriceGross"
               :vat-rate="data.vatRates[form.vatCategory]"
               :costs="baseCosts"
+              :channels="channels"
             />
             <UFormField label="Beschreibung">
               <UTextarea v-model="form.description" :rows="3" class="w-full" />
@@ -898,25 +907,24 @@ async function pushShopify() {
                 und ist danach fest.
               </p>
             </template>
-            <UFormField
-              label="Preis brutto"
-              :error="fieldErrors.priceGross"
-              help="Nur bei Abweichung vom Produktpreis. Zum Beispiel 44,90"
-            >
-              <BetragFeld v-model="variantForm.priceGross" class="w-full" placeholder="wie Produkt" />
-            </UFormField>
-            <MargeVorschau
-              v-if="data"
-              :price="variantForm.priceGross"
-              :fallback-cents="data.basePriceGross"
-              :vat-rate="data.vatRates[data.vatCategory]"
-              :costs="[
-                {
-                  landed: editingVariant?.inventory?.averageCostEur ?? null,
-                  purchase: editingVariant?.inventory?.averagePurchaseEur ?? null,
-                },
-              ]"
-            />
+            <!-- New variants get their price after the first receipt (G31). -->
+            <template v-if="editingVariant">
+              <UFormField
+                label="Preis brutto"
+                :error="fieldErrors.priceGross"
+                help="Nur bei Abweichung vom Produktpreis. Zum Beispiel 44,90"
+              >
+                <BetragFeld v-model="variantForm.priceGross" class="w-full" placeholder="wie Produkt" />
+              </UFormField>
+              <MargeVorschau
+                v-if="data"
+                :price="variantForm.priceGross"
+                :fallback-cents="data.basePriceGross"
+                :vat-rate="data.vatRates[data.vatCategory]"
+                :costs="[variantCosts(editingVariant)]"
+                :channels="channels"
+              />
+            </template>
             <UFormField label="Mindestbestand" :error="fieldErrors.minimumStock">
               <UInput
                 v-model.number="variantForm.minimumStock"

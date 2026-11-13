@@ -9,6 +9,14 @@ export default defineAppConfig({
       info: 'rosinfo',
       neutral: 'leinen',
     },
+    // Long names (SKU · product · colour) must stay readable, also on touch screens without tooltips:
+    // the list may grow wider than the field and wraps instead of cutting off.
+    selectMenu: {
+      slots: {
+        content: 'w-max min-w-(--reka-combobox-trigger-width) max-w-[min(32rem,calc(100vw-2rem))]',
+        itemLabel: 'whitespace-normal! break-words',
+      },
+    },
   },
 
   /** Raw brand values, independent of Nuxt UI. */

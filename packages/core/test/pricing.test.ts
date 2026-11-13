@@ -8,6 +8,9 @@ import {
   minimumMargin,
   marginBeforeFees,
   costItemsForVariant,
+  channelMarginGross,
+  roundUpToNinety,
+  suggestGrossPrice,
 } from '../src/pricing.js';
 import { MoneyError } from '../src/money.js';
 import type { Channel, CostItem } from '../src/types.js';
@@ -382,5 +385,84 @@ describe('marginBeforeFees', () => {
 
   it('wird negativ, wenn der Einstand ueber dem Nettopreis liegt', () => {
     expect(marginBeforeFees(1070, 0.07, 1200).contributionMarginEur).toBe(-200);
+  });
+});
+
+const etsy = { feePercent: 0.105, feeFixed: 48 };
+const shop = { feePercent: 0.021, feeFixed: 30 };
+
+describe('channelMarginGross – Marge nach Pauschalgebühr (G31)', () => {
+  it('zieht die Gebühr auf den Bruttopreis ab wie beim Verkauf (E10)', () => {
+    // 70.90 gross: net 59.58; fee 10.5 % of 70.90 = 7.44 + 0.48 = 7.92
+    const m = channelMarginGross(7090, 0.19, 2775, etsy);
+    expect(m.salesPriceNetEur).toBe(5958);
+    expect(m.contributionMarginEur).toBe(5958 - 2775 - 792);
+    expect(m.margin).toBeCloseTo(0.4013, 4);
+  });
+
+  it('ohne Gebühr entspricht sie der Marge vor Gebühren', () => {
+    const ohne = channelMarginGross(3990, 0.19, 906, { feePercent: 0, feeFixed: 0 });
+    expect(ohne).toEqual(marginBeforeFees(3990, 0.19, 906));
+  });
+
+  it('liefert bei Preis 0 eine Marge von 0 statt eines Fehlers', () => {
+    expect(channelMarginGross(0, 0.19, 906, etsy).margin).toBe(0);
+  });
+});
+
+describe('roundUpToNinety', () => {
+  it('rundet auf den nächsten Betrag mit ,90 auf', () => {
+    expect(roundUpToNinety(7072)).toBe(7090);
+    expect(roundUpToNinety(7001)).toBe(7090);
+  });
+
+  it('lässt einen Betrag mit ,90 stehen', () => {
+    expect(roundUpToNinety(7090)).toBe(7090);
+  });
+
+  it('springt über ,90 hinaus in den nächsten Euro', () => {
+    expect(roundUpToNinety(7091)).toBe(7190);
+    expect(roundUpToNinety(7099)).toBe(7190);
+  });
+});
+
+describe('suggestGrossPrice – Preisvorschlag aus Zielmarge (G31)', () => {
+  it('rechnet den Bruttopreis für die Zielmarge nach Etsy-Gebühr', () => {
+    // (27.75 + 0.48) / (0.60 / 1.19 - 0.105) = 70.72 -> 70.90
+    expect(suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 0.4, channels: [etsy] })).toBe(7090);
+  });
+
+  it('der teuerste Kanal bestimmt den Preis', () => {
+    const nurShop = suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 0.4, channels: [shop] });
+    const beide = suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 0.4, channels: [shop, etsy] });
+    expect(nurShop).toBe(5890);
+    expect(beide).toBe(7090);
+  });
+
+  it('erreicht die Zielmarge auf jedem Kanal trotz Rundung', () => {
+    for (let cost = 100; cost <= 20000; cost += 137) {
+      const price = suggestGrossPrice({ totalCostEur: cost, vatRate: 0.19, targetMargin: 0.4, channels: [shop, etsy] });
+      expect(price % 100).toBe(90);
+      for (const c of [shop, etsy]) {
+        expect(channelMarginGross(price, 0.19, cost, c).margin).toBeGreaterThanOrEqual(0.4);
+      }
+    }
+  });
+
+  it('ohne Kanal gilt die Marge vor Gebühren', () => {
+    // 27.75 / 0.6 * 1.19 = 55.04 -> 55.90
+    expect(suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 0.4, channels: [] })).toBe(5590);
+  });
+
+  it('meldet einen Fehler, wenn Zielmarge und Gebühr keinen Preis zulassen', () => {
+    expect(() =>
+      suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 0.8, channels: [{ feePercent: 0.2, feeFixed: 0 }] }),
+    ).toThrow(PricingError);
+  });
+
+  it('lehnt eine Zielmarge ab 100 % ab', () => {
+    expect(() => suggestGrossPrice({ totalCostEur: 2775, vatRate: 0.19, targetMargin: 1, channels: [] })).toThrow(
+      PricingError,
+    );
   });
 });

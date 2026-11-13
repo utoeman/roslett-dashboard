@@ -229,3 +229,68 @@ export function marginBeforeFees(priceGrossEur: Cents, vatRate: Rate, landedCost
   }
   return calculateMargin(round(priceGrossEur / (1 + vatRate)), landedCostEur);
 }
+
+type FlatFee = Pick<Channel, 'feePercent' | 'feeFixed'>;
+
+/**
+ * Margin of a gross shelf price on one channel after its flat fee. The fee is
+ * charged on the gross price like on a sale (E10); shipping is left out.
+ */
+export function channelMarginGross(
+  priceGrossEur: Cents,
+  vatRate: Rate,
+  totalCostEur: Cents,
+  channel: FlatFee,
+): MarginResult {
+  const before = marginBeforeFees(priceGrossEur, vatRate, totalCostEur);
+  if (priceGrossEur === 0) return before;
+  const fees = round(share(priceGrossEur, channel.feePercent)) + assertCents(channel.feeFixed, 'Fixgebühr');
+  return calculateMargin(before.salesPriceNetEur, totalCostEur + fees);
+}
+
+/** Smallest amount ending in ,90 that is not below the given amount. */
+export function roundUpToNinety(amount: Cents): Cents {
+  assertCents(amount, 'Betrag');
+  const candidate = Math.floor(amount / 100) * 100 + 90;
+  return candidate >= amount ? candidate : candidate + 100;
+}
+
+/**
+ * Gross price that reaches the target margin on every channel (the most
+ * expensive one decides), rounded up to ,90. Without channels the margin
+ * before fees applies. Per channel:
+ *
+ *   price = (total cost + fixed fee) / ((1 - target margin) / (1 + VAT) - fee rate)
+ */
+export function suggestGrossPrice(parameters: {
+  totalCostEur: Cents;
+  vatRate: Rate;
+  targetMargin: Rate;
+  channels: readonly FlatFee[];
+}): Cents {
+  const { totalCostEur, vatRate, targetMargin } = parameters;
+  assertCents(totalCostEur, 'Selbstkosten');
+  if (!Number.isFinite(targetMargin) || targetMargin >= 1) {
+    throw new PricingError('Die Zielmarge muss unter 100 % liegen.');
+  }
+  const channels = parameters.channels.length > 0 ? parameters.channels : [{ feePercent: 0, feeFixed: 0 }];
+
+  let price = 0;
+  for (const channel of channels) {
+    const denominator = (1 - targetMargin) / (1 + vatRate) - channel.feePercent;
+    if (denominator <= 0) {
+      throw new PricingError(
+        `Zielmarge ${formatPercent(targetMargin)} ist bei ${formatPercent(channel.feePercent)} Gebühr nicht erreichbar. ` +
+          'Bitte die Zielmarge senken.',
+      );
+    }
+    price = Math.max(price, Math.ceil((totalCostEur + channel.feeFixed) / denominator));
+  }
+
+  // Rounding the net price can cost a fraction of a percent; step up until every channel fits.
+  let suggestion = roundUpToNinety(price);
+  while (channels.some((c) => channelMarginGross(suggestion, vatRate, totalCostEur, c).margin < targetMargin)) {
+    suggestion += 100;
+  }
+  return suggestion;
+}

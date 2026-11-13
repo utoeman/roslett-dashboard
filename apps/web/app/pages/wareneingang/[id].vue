@@ -648,6 +648,9 @@ const positionBadge = (p: ReceiptPosition) =>
               </div>
             </form>
           </section>
+
+          <!-- Prices once the landed cost is known (G31) -->
+          <PreiseFestlegen v-if="!isDraft && data.positions.length > 0" :positions="data.positions" @shopify="openShopify" />
         </div>
 
         <!-- Summary -->

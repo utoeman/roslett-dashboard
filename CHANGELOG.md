@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.16.1 (2026-11-13)
+
+### Fehlerbehebungen
+
+- keep database url out of the bundle (#55)
+
 ## v0.16.0 (2026-11-13)
 
 ### Neu
@@ -158,6 +164,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

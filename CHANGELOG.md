@@ -2,6 +2,17 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.16.0 (2026-11-13)
+
+### Neu
+
+- set prices after goods receipt (#53)
+- price suggestion from target margin (#52)
+
+### Fehlerbehebungen
+
+- readable long dropdown labels (#54)
+
 ## v0.15.0 (2026-11-01)
 
 ### Neu
@@ -147,6 +158,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

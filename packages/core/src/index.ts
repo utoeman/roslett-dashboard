@@ -17,3 +17,4 @@ export * from './shopify-inventory.js';
 export * from './shopify-product.js';
 export * from './shopify-images.js';
 export * from './sales.js';
+export * from './receipt-deletion.js';

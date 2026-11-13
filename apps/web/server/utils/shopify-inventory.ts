@@ -244,6 +244,65 @@ export async function pushReceiptToShopify(
   return { location: location.name, lines };
 }
 
+/**
+ * Takes back what a deleted receipt sent to Shopify (G32). Runs inside the
+ * deleting transaction, so a refusal deletes nothing; the key derived from the
+ * receipt id stops a retry from taking back twice.
+ */
+export async function takeBackFromShopify(
+  db: Reader,
+  receipt: { id: string; number: string },
+  changes: readonly { variantId: string; locationId: string; delta: number }[],
+): Promise<{ sku: string; delta: number }[]> {
+  if (changes.length === 0) return [];
+  const variants = await db.query.variants.findMany({
+    where: inArray(schema.variants.id, [...new Set(changes.map((c) => c.variantId))]),
+    columns: { id: true, sku: true, shopifyInventoryItemId: true },
+  });
+  const byId = new Map(variants.map((v) => [v.id, v]));
+
+  const taken: { sku: string; delta: number }[] = [];
+  for (const locationId of new Set(changes.map((c) => c.locationId))) {
+    const here = changes
+      .filter((c) => c.locationId === locationId)
+      .map((c) => {
+        const variant = byId.get(c.variantId);
+        if (!variant?.shopifyInventoryItemId) {
+          throw badRequest(`${variant?.sku ?? 'Eine Variante'} ist nicht mehr mit Shopify verknüpft; der Bestand lässt sich dort nicht abziehen.`);
+        }
+        return { sku: variant.sku, inventoryItemId: variant.shopifyInventoryItemId, delta: c.delta };
+      });
+    const available = await availableAt(here.map((c) => c.inventoryItemId), locationId);
+    const missing = here.find((c) => !available.has(c.inventoryItemId));
+    if (missing) throw badRequest(`${missing.sku} wird am Shopify-Lagerort nicht mehr geführt.`);
+
+    const key = createHash('sha256').update(`delete-${receipt.id}-${locationId}`).digest('hex');
+    const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
+      `mutation Adjust($input: InventoryAdjustQuantitiesInput!, $key: String!) {
+        inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
+      }`,
+      {
+        key: `roslett-${key}`,
+        input: {
+          reason: 'correction',
+          name: 'available',
+          referenceDocumentUri: `gid://roslett/GoodsReceipt/${receipt.number}`,
+          changes: here.map((c) => ({
+            delta: c.delta,
+            changeFromQuantity: available.get(c.inventoryItemId),
+            inventoryItemId: c.inventoryItemId,
+            locationId,
+          })),
+        },
+      },
+    );
+    const errors = data.inventoryAdjustQuantities.userErrors;
+    if (errors.length > 0) throw badRequest(`Shopify hat das Abziehen abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
+    taken.push(...here.map((c) => ({ sku: c.sku, delta: c.delta })));
+  }
+  return taken;
+}
+
 // --- All open stock changes (stage 4) ------------------------------------------
 
 export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPreview> {

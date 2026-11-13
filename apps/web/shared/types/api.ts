@@ -375,6 +375,19 @@ export interface ReceiptShopifyPreview {
   locations: { id: string; name: string }[];
 }
 
+/** Preview of deleting a posted receipt (G32). */
+export interface ReceiptDeletionPreview {
+  number: string;
+  positions: number;
+  /** Units leaving the stock with the receipt. */
+  quantity: number;
+  additionalCosts: number;
+  /** Labels of other bookings on its batches; any of them blocks the deletion. */
+  blockedBy: string[];
+  /** Taken back in Shopify on deletion (negative). */
+  shopify: { sku: string; delta: number }[];
+}
+
 export interface ReceiptShopifyPushResult {
   location: string;
   lines: { sku: string; delta: number }[];

@@ -5,6 +5,7 @@ import type {
   GoodsReceipt,
   List,
   Product,
+  ReceiptDeletionPreview,
   ReceiptPosition,
   ReceiptShopifyPreview,
   ReceiptShopifyPushResult,
@@ -56,22 +57,42 @@ async function run(action: () => unknown, onDone?: () => void) {
   }
 }
 
-// --- Invoice header (drafts) ---------------------------------------------
-// Drafts can be deleted; posted receipts are reversed in the journal instead (G29).
+// --- Delete ----------------------------------------------------------------
+// Drafts go at once (G29); a posted receipt only after a preview and typing its number (G32).
 const deleteOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteMessage = ref<string | null>(null);
+const deletePreview = ref<ReceiptDeletionPreview | null>(null);
+const deleteConfirm = ref('');
+const deleteAllowed = computed(
+  () =>
+    isDraft.value ||
+    (deletePreview.value !== null &&
+      deletePreview.value.blockedBy.length === 0 &&
+      deleteConfirm.value.trim() === deletePreview.value.number),
+);
 
-function askDelete() {
+async function askDelete() {
   deleteMessage.value = null;
+  deletePreview.value = null;
+  deleteConfirm.value = '';
   deleteOpen.value = true;
+  if (isDraft.value) return;
+  deleteBusy.value = true;
+  try {
+    deletePreview.value = await $fetch<ReceiptDeletionPreview>(api('/deletion'));
+  } catch (err) {
+    deleteMessage.value = readError(err).message;
+  } finally {
+    deleteBusy.value = false;
+  }
 }
 
 async function confirmDelete() {
   deleteBusy.value = true;
   deleteMessage.value = null;
   try {
-    await $fetch(api(), { method: 'DELETE' });
+    await $fetch(api(), { method: 'DELETE', body: isDraft.value ? undefined : { confirm: deleteConfirm.value } });
     deleteOpen.value = false;
     await navigateTo('/wareneingang');
   } catch (err) {
@@ -348,7 +369,6 @@ const positionBadge = (p: ReceiptPosition) =>
             Alle
           </UButton>
           <UButton
-            v-if="isDraft"
             icon="i-lucide-trash-2"
             size="sm"
             variant="ghost"
@@ -357,7 +377,7 @@ const positionBadge = (p: ReceiptPosition) =>
             :disabled="saving"
             @click="askDelete"
           >
-            Entwurf löschen
+            {{ isDraft ? 'Entwurf löschen' : 'Löschen' }}
           </UButton>
           <UButton v-if="canReceive" icon="i-lucide-package-check" size="sm" class="rounded-[8px]" @click="openReceive">
             Zugang buchen
@@ -797,17 +817,56 @@ const positionBadge = (p: ReceiptPosition) =>
         </template>
       </UModal>
 
-      <UModal v-model:open="deleteOpen" title="Entwurf löschen">
+      <UModal v-model:open="deleteOpen" :title="isDraft ? 'Entwurf löschen' : 'Gebuchten Wareneingang löschen'">
         <template #body>
           <div class="space-y-4">
             <UAlert v-if="deleteMessage" color="error" variant="subtle" class="rounded-[12px]" :description="deleteMessage" />
-            <p class="text-sm">
+            <p v-if="isDraft" class="text-sm">
               {{ data.number }} samt Positionen ({{ data.positions.length }}) und Nebenkosten endgültig löschen? Das lässt sich
               nicht rückgängig machen. War es der neueste Eingang, bekommt der nächste dieselbe Nummer.
             </p>
+            <template v-else-if="deletePreview">
+              <UAlert
+                v-if="deletePreview.blockedBy.length > 0"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-triangle-alert"
+                class="rounded-[12px]"
+                :description="`Aus diesem Wareneingang gibt es schon weitere Buchungen (${deletePreview.blockedBy.join(', ')}). Löschen ist dann nicht möglich – korrigieren Sie den Preis per Gutschrift oder stornieren Sie im Bestandsjournal.`"
+              />
+              <template v-else>
+                <p class="text-sm">
+                  Nur für falsch erfasste Eingänge. Gelöscht werden endgültig und ohne Storno-Spur:
+                </p>
+                <ul class="list-disc space-y-1 pl-5 text-sm">
+                  <li>{{ deletePreview.positions }} Positionen und {{ deletePreview.additionalCosts }} Nebenkosten</li>
+                  <li>die Zugangsbuchungen: <strong>{{ deletePreview.quantity }} Stück</strong> gehen aus dem Bestand</li>
+                  <li v-if="deletePreview.shopify.length > 0">
+                    in Shopify wieder abgezogen:
+                    {{ deletePreview.shopify.map((s) => `${s.sku} ${s.delta}`).join(', ') }}
+                  </li>
+                  <li v-else>Shopify: nichts zu tun, der Zugang war dort nicht übertragen</li>
+                </ul>
+                <p class="text-xs text-leinen-500">
+                  War es der neueste Eingang, bekommt der nächste dieselbe Nummer.
+                </p>
+                <UFormField :label="`Zum Bestätigen die Belegnummer ${deletePreview.number} eingeben`">
+                  <UInput v-model="deleteConfirm" class="w-full" autocomplete="off" />
+                </UFormField>
+              </template>
+            </template>
+            <p v-else class="text-sm text-leinen-500">Wird geprüft …</p>
             <div class="flex justify-end gap-2 pt-2">
               <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deleteOpen = false">Abbrechen</UButton>
-              <UButton color="error" :loading="deleteBusy" class="rounded-[8px]" @click="confirmDelete">Endgültig löschen</UButton>
+              <UButton
+                color="error"
+                :loading="deleteBusy"
+                :disabled="!deleteAllowed"
+                class="rounded-[8px]"
+                @click="confirmDelete"
+              >
+                Endgültig löschen
+              </UButton>
             </div>
           </div>
         </template>

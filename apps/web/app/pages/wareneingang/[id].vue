@@ -130,9 +130,15 @@ function resetRows() {
       note: p.note ?? '',
     })) ?? [];
   if (receipt?.state === 'draft' && rows.value.length === 0) addRow();
+  loadedRows = JSON.stringify(rows.value);
 }
 
-watch(data, resetRows, { immediate: true });
+/** Rows as last loaded; a difference means unsaved edits in the editor. */
+let loadedRows = JSON.stringify(rows.value);
+const positionsDirty = () => JSON.stringify(rows.value) !== loadedRows;
+
+// Reloads after other actions (header, additional costs) must not discard unsaved positions.
+watch(data, () => (positionsDirty() ? undefined : resetRows()), { immediate: true });
 
 function cancelPositions() {
   editingPositions.value = false;
@@ -197,7 +203,11 @@ function savePositions() {
           })),
       },
     }),
-    () => (editingPositions.value = false),
+    () => {
+      editingPositions.value = false;
+      // Saved: the reload may replace the rows with the server's version.
+      loadedRows = JSON.stringify(rows.value);
+    },
   );
 }
 

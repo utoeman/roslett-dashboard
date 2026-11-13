@@ -24,9 +24,11 @@ export default defineNuxtConfig({
   // All config comes from the environment. `public` is empty: the client
   // only calls the API via relative paths.
   runtimeConfig: {
-    databaseUrl: process.env.DATABASE_URL ?? '',
-    // Set at runtime via NUXT_ACCESS_PASSWORD_HASH; empty at build time so no
-    // secret ends up in the bundle. NUXT_SESSION_PASSWORD is read by nuxt-auth-utils.
+    // Empty at build time so the URL never ends up in the bundle (Netlify's
+    // secrets scan fails the build); the db client falls back to DATABASE_URL at runtime.
+    databaseUrl: '',
+    // Set at runtime via NUXT_ACCESS_PASSWORD_HASH, empty at build time for the same reason.
+    // The session is sealed with a key derived from NUXT_APP_SECRET (nuxt-auth-utils 0.6).
     accessPasswordHash: '',
     // Dev Dashboard app (G3), set via NUXT_SHOPIFY_SHOP / _CLIENT_ID / _CLIENT_SECRET.
     shopify: { shop: '', clientId: '', clientSecret: '' },

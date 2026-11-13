@@ -2,6 +2,16 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.17.0 (2026-11-13)
+
+### Neu
+
+- delete posted goods receipts (#57)
+
+### Fehlerbehebungen
+
+- keep unsaved positions on reload (#56)
+
 ## v0.16.1 (2026-11-13)
 
 ### Fehlerbehebungen
@@ -164,6 +174,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

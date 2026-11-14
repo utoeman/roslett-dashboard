@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { planReceiptDeletion, type DeletionEntry, type DeletionPush } from '../src/receipt-deletion.js';
 
-const entry = (id: string, kind: string, reversesId: string | null = null, variantId = 'v1'): DeletionEntry => ({
+const entry = (id: string, kind: string, reversesId: string | null = null, variantId = 'v1', quantity = 1): DeletionEntry => ({
   id,
   kind,
   reversesId,
   variantId,
+  quantity,
 });
 const push = (stockEntryId: string, delta: number, reason: DeletionPush['reason'] = 'pushed', locationId = 'L1'): DeletionPush => ({
+  id: `p-${stockEntryId}`,
   stockEntryId,
   delta,
   reason,
@@ -56,8 +58,8 @@ describe('planReceiptDeletion – Shopify zurücknehmen', () => {
       [push('z1', 4), push('z2', 2), push('z3', 1)],
     );
     expect(plan.shopify).toEqual([
-      { variantId: 'v1', locationId: 'L1', delta: -5 },
-      { variantId: 'v2', locationId: 'L1', delta: -2 },
+      { variantId: 'v1', locationId: 'L1', delta: -5, pushIds: ['p-z1', 'p-z3'] },
+      { variantId: 'v2', locationId: 'L1', delta: -2, pushIds: ['p-z2'] },
     ]);
   });
 
@@ -75,14 +77,37 @@ describe('planReceiptDeletion – Shopify zurücknehmen', () => {
 
   it('ein noch nicht übertragenes Storno zählt nicht – Shopify hat den Zugang noch', () => {
     const plan = planReceiptDeletion([entry('z1', 'goods_receipt'), entry('s1', 'reversal', 'z1')], [push('z1', 4)]);
-    expect(plan.shopify).toEqual([{ variantId: 'v1', locationId: 'L1', delta: -4 }]);
+    expect(plan.shopify).toEqual([{ variantId: 'v1', locationId: 'L1', delta: -4, pushIds: ['p-z1'] }]);
   });
 
   it('ignoriert vermerkte, aber nie gesendete Buchungen', () => {
     const plan = planReceiptDeletion(
       [entry('z1', 'goods_receipt')],
-      [{ stockEntryId: 'z1', delta: 4, reason: 'before_stage4', locationId: null }],
+      [{ id: 'p1', stockEntryId: 'z1', delta: 4, reason: 'before_stage4', locationId: null }],
     );
     expect(plan.shopify).toEqual([]);
+  });
+});
+
+describe('planReceiptDeletion – Stück, die aus dem Bestand gehen', () => {
+  it('summiert die Zugänge', () => {
+    const plan = planReceiptDeletion(
+      [entry('z1', 'goods_receipt', null, 'v1', 4), entry('z2', 'goods_receipt', null, 'v2', 2)],
+      [],
+    );
+    expect(plan.quantity).toBe(6);
+  });
+
+  it('ein Storno nimmt seinen Zugang wieder heraus', () => {
+    const plan = planReceiptDeletion(
+      [entry('z1', 'goods_receipt', null, 'v1', 4), entry('z2', 'goods_receipt', null, 'v1', 2), entry('s1', 'reversal', 'z1', 'v1', -4)],
+      [],
+    );
+    expect(plan.quantity).toBe(2);
+  });
+
+  it('zählt fremde Buchungen nicht mit', () => {
+    const plan = planReceiptDeletion([entry('z1', 'goods_receipt', null, 'v1', 4), entry('k1', 'sale', null, 'v1', -1)], []);
+    expect(plan.quantity).toBe(4);
   });
 });

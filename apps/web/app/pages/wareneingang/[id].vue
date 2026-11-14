@@ -72,7 +72,10 @@ const deleteAllowed = computed(
       deleteConfirm.value.trim() === deletePreview.value.number),
 );
 
+let deleteRequest = 0;
+
 async function askDelete() {
+  const request = ++deleteRequest;
   deleteMessage.value = null;
   deletePreview.value = null;
   deleteConfirm.value = '';
@@ -80,11 +83,13 @@ async function askDelete() {
   if (isDraft.value) return;
   deleteBusy.value = true;
   try {
-    deletePreview.value = await $fetch<ReceiptDeletionPreview>(api('/deletion'));
+    const preview = await $fetch<ReceiptDeletionPreview>(api('/deletion'));
+    // A dialog closed and opened again meanwhile has its own request.
+    if (request === deleteRequest) deletePreview.value = preview;
   } catch (err) {
-    deleteMessage.value = readError(err).message;
+    if (request === deleteRequest) deleteMessage.value = readError(err).message;
   } finally {
-    deleteBusy.value = false;
+    if (request === deleteRequest) deleteBusy.value = false;
   }
 }
 
@@ -97,6 +102,10 @@ async function confirmDelete() {
     await navigateTo('/wareneingang');
   } catch (err) {
     deleteMessage.value = readError(err).message;
+    // The attempt may have changed what Shopify still gets back.
+    if (!isDraft.value) {
+      deletePreview.value = await $fetch<ReceiptDeletionPreview>(api('/deletion')).catch(() => deletePreview.value);
+    }
   } finally {
     deleteBusy.value = false;
   }
@@ -844,8 +853,15 @@ const positionBadge = (p: ReceiptPosition) =>
                   <li v-if="deletePreview.shopify.length > 0">
                     in Shopify wieder abgezogen:
                     {{ deletePreview.shopify.map((s) => `${s.sku} ${s.delta}`).join(', ') }}
+                    – vorher werden die Bestellungen von dort abgerufen
                   </li>
-                  <li v-else>Shopify: nichts zu tun, der Zugang war dort nicht übertragen</li>
+                  <li v-else-if="deletePreview.unlinked.length === 0">
+                    Shopify: nichts zu tun, der Zugang war dort nicht übertragen
+                  </li>
+                  <li v-if="deletePreview.unlinked.length > 0">
+                    nicht mehr mit Shopify verknüpft: {{ deletePreview.unlinked.join(', ') }} – der Bestand dort bleibt
+                    unverändert, bitte von Hand korrigieren
+                  </li>
                 </ul>
                 <p class="text-xs text-leinen-500">
                   War es der neueste Eingang, bekommt der nächste dieselbe Nummer.
@@ -855,7 +871,7 @@ const positionBadge = (p: ReceiptPosition) =>
                 </UFormField>
               </template>
             </template>
-            <p v-else class="text-sm text-leinen-500">Wird geprüft …</p>
+            <p v-else-if="!deleteMessage" class="text-sm text-leinen-500">Wird geprüft …</p>
             <div class="flex justify-end gap-2 pt-2">
               <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="deleteOpen = false">Abbrechen</UButton>
               <UButton

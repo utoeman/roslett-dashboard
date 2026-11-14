@@ -386,6 +386,8 @@ export interface ReceiptDeletionPreview {
   blockedBy: string[];
   /** Taken back in Shopify on deletion (negative). */
   shopify: { sku: string; delta: number }[];
+  /** SKUs sent to Shopify but no longer linked; Shopify keeps their stock. */
+  unlinked: string[];
 }
 
 export interface ReceiptShopifyPushResult {

@@ -25,7 +25,7 @@ import { badRequest, conflict } from './errors.js';
 import { fetchShopifyVariants, shopifyGraphql } from './shopify.js';
 
 type Db = ReturnType<typeof useDb>;
-type Reader = Pick<Db, 'select' | 'selectDistinct' | 'query'>;
+export type Reader = Pick<Db, 'select' | 'selectDistinct' | 'query'>;
 
 interface Pending extends PendingEntry {
   kind: PushedKind;
@@ -140,6 +140,43 @@ async function availableAt(inventoryItemIds: readonly string[], locationId: stri
   return result;
 }
 
+const idempotencyKey = (text: string) => `roslett-${createHash('sha256').update(text).digest('hex')}`;
+
+/**
+ * One relative adjustment of `available` at a location. `changeFromQuantity`
+ * makes Shopify refuse when a quantity moved since it was read.
+ */
+async function adjustAvailable(input: {
+  reason: string;
+  referenceDocumentUri: string;
+  key: string;
+  locationId: string;
+  changes: readonly { inventoryItemId: string; delta: number }[];
+  available: ReadonlyMap<string, number>;
+}): Promise<void> {
+  const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
+    `mutation Adjust($input: InventoryAdjustQuantitiesInput!, $key: String!) {
+      inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
+    }`,
+    {
+      key: input.key,
+      input: {
+        reason: input.reason,
+        name: 'available',
+        referenceDocumentUri: input.referenceDocumentUri,
+        changes: input.changes.map((c) => ({
+          delta: c.delta,
+          changeFromQuantity: input.available.get(c.inventoryItemId),
+          inventoryItemId: c.inventoryItemId,
+          locationId: input.locationId,
+        })),
+      },
+    },
+  );
+  const errors = data.inventoryAdjustQuantities.userErrors;
+  if (errors.length > 0) throw badRequest(`Shopify hat die Änderung abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
+}
+
 /**
  * One adjustment per Shopify reason. Each claims its entries first (unique per
  * entry) and rolls the claim back if Shopify refuses; `changeFromQuantity`
@@ -168,34 +205,18 @@ async function pushEntries(
     const missing = changes.find((c) => !available.has(c.inventoryItemId));
     if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
 
-    const key = createHash('sha256')
-      .update(group.map((e) => e.entryId).sort().join(','))
-      .digest('hex');
     await db.transaction(async (tx) => {
       await tx
         .insert(schema.shopifyInventoryPushes)
         .values(group.map((e) => ({ stockEntryId: e.entryId, delta: e.quantity, locationId: location.id, reason: 'pushed' as const })));
-      const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
-        `mutation Adjust($input: InventoryAdjustQuantitiesInput!, $key: String!) {
-          inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
-        }`,
-        {
-          key: `roslett-${key}`,
-          input: {
-            reason,
-            name: 'available',
-            referenceDocumentUri,
-            changes: changes.map((c) => ({
-              delta: c.delta,
-              changeFromQuantity: available.get(c.inventoryItemId),
-              inventoryItemId: c.inventoryItemId,
-              locationId: location.id,
-            })),
-          },
-        },
-      );
-      const errors = data.inventoryAdjustQuantities.userErrors;
-      if (errors.length > 0) throw badRequest(`Shopify hat die Änderung abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
+      await adjustAvailable({
+        reason,
+        referenceDocumentUri,
+        key: idempotencyKey(group.map((e) => e.entryId).sort().join(',')),
+        locationId: location.id,
+        changes,
+        available,
+      });
     });
     for (const c of changes) sent.set(c.sku, (sent.get(c.sku) ?? 0) + c.delta);
   }
@@ -244,63 +265,58 @@ export async function pushReceiptToShopify(
   return { location: location.name, lines };
 }
 
+/** What Shopify gets back for one variant at one location, with the push rows it settles. */
+export interface TakeBack {
+  sku: string;
+  inventoryItemId: string;
+  locationId: string;
+  /** Negative. */
+  delta: number;
+  pushIds: string[];
+}
+
 /**
- * Takes back what a deleted receipt sent to Shopify (G32). Runs inside the
- * deleting transaction, so a refusal deletes nothing; the key derived from the
- * receipt id stops a retry from taking back twice.
+ * Takes back at one location what a receipt about to be deleted sent to
+ * Shopify (G32) – a push in reverse: the push rows go with the adjustment, so
+ * the receipt counts as not sent from then on, whether or not the deletion
+ * follows. A second attempt finds no rows and takes nothing back again; the key
+ * derived from the rows covers the gap between Shopify's answer and the commit.
  */
 export async function takeBackFromShopify(
-  db: Reader,
-  receipt: { id: string; number: string },
-  changes: readonly { variantId: string; locationId: string; delta: number }[],
+  db: Db,
+  receiptNumber: string,
+  locationId: string,
+  changes: readonly TakeBack[],
 ): Promise<{ sku: string; delta: number }[]> {
-  if (changes.length === 0) return [];
-  const variants = await db.query.variants.findMany({
-    where: inArray(schema.variants.id, [...new Set(changes.map((c) => c.variantId))]),
-    columns: { id: true, sku: true, shopifyInventoryItemId: true },
-  });
-  const byId = new Map(variants.map((v) => [v.id, v]));
-
-  const taken: { sku: string; delta: number }[] = [];
-  for (const locationId of new Set(changes.map((c) => c.locationId))) {
-    const here = changes
-      .filter((c) => c.locationId === locationId)
-      .map((c) => {
-        const variant = byId.get(c.variantId);
-        if (!variant?.shopifyInventoryItemId) {
-          throw badRequest(`${variant?.sku ?? 'Eine Variante'} ist nicht mehr mit Shopify verknüpft; der Bestand lässt sich dort nicht abziehen.`);
-        }
-        return { sku: variant.sku, inventoryItemId: variant.shopifyInventoryItemId, delta: c.delta };
-      });
-    const available = await availableAt(here.map((c) => c.inventoryItemId), locationId);
-    const missing = here.find((c) => !available.has(c.inventoryItemId));
-    if (missing) throw badRequest(`${missing.sku} wird am Shopify-Lagerort nicht mehr geführt.`);
-
-    const key = createHash('sha256').update(`delete-${receipt.id}-${locationId}`).digest('hex');
-    const data = await shopifyGraphql<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
-      `mutation Adjust($input: InventoryAdjustQuantitiesInput!, $key: String!) {
-        inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { message } }
-      }`,
-      {
-        key: `roslett-${key}`,
-        input: {
-          reason: 'correction',
-          name: 'available',
-          referenceDocumentUri: `gid://roslett/GoodsReceipt/${receipt.number}`,
-          changes: here.map((c) => ({
-            delta: c.delta,
-            changeFromQuantity: available.get(c.inventoryItemId),
-            inventoryItemId: c.inventoryItemId,
-            locationId,
-          })),
-        },
-      },
-    );
-    const errors = data.inventoryAdjustQuantities.userErrors;
-    if (errors.length > 0) throw badRequest(`Shopify hat das Abziehen abgelehnt: ${errors.map((e) => e.message).join('; ')}`);
-    taken.push(...here.map((c) => ({ sku: c.sku, delta: c.delta })));
+  const available = await availableAt(changes.map((c) => c.inventoryItemId), locationId);
+  for (const c of changes) {
+    const stock = available.get(c.inventoryItemId);
+    if (stock === undefined) throw badRequest(`${c.sku} wird am Shopify-Lagerort nicht mehr geführt.`);
+    if (stock + c.delta < 0) {
+      throw conflict(
+        `Shopify führt von ${c.sku} nur noch ${stock} Stück, abzuziehen wären ${-c.delta}. ` +
+          'Dort ist vermutlich schon verkauft oder korrigiert worden; bitte erst klären.',
+      );
+    }
   }
-  return taken;
+
+  const pushIds = changes.flatMap((c) => c.pushIds);
+  await db.transaction(async (tx) => {
+    const released = await tx
+      .delete(schema.shopifyInventoryPushes)
+      .where(inArray(schema.shopifyInventoryPushes.id, pushIds))
+      .returning({ id: schema.shopifyInventoryPushes.id });
+    if (released.length !== pushIds.length) throw conflict('Der Wareneingang wurde inzwischen geändert. Bitte neu laden.');
+    await adjustAvailable({
+      reason: 'correction',
+      referenceDocumentUri: `gid://roslett/GoodsReceipt/${receiptNumber}`,
+      key: idempotencyKey(`delete:${[...pushIds].sort().join(',')}`),
+      locationId,
+      changes,
+      available,
+    });
+  });
+  return changes.map(({ sku, delta }) => ({ sku, delta }));
 }
 
 // --- All open stock changes (stage 4) ------------------------------------------

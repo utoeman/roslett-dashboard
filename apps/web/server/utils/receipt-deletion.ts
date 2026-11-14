@@ -5,21 +5,10 @@
 
 import { eq, inArray } from 'drizzle-orm';
 import { planReceiptDeletion } from '@roslett/core';
-import { schema, type useDb } from '../db/client.js';
-
-type Db = ReturnType<typeof useDb>;
-type Reader = Pick<Db, 'select' | 'selectDistinct' | 'query'>;
-
-export const ENTRY_KIND_LABELS: Record<string, string> = {
-  goods_receipt: 'Wareneingang',
-  sale: 'Verkauf',
-  return: 'Retoure',
-  shrinkage: 'Schwund',
-  own_use: 'Eigenverbrauch',
-  stocktake: 'Inventur',
-  supplier_return: 'Rückgabe an Lieferant',
-  reversal: 'Storno',
-};
+import { schema } from '../db/client.js';
+import { STOCK_ENTRY_KIND_LABELS } from '../../shared/stock-entry-kinds.js';
+import type { StockEntryKind } from '../../shared/types/api.js';
+import type { Reader, TakeBack } from './shopify-inventory.js';
 
 export async function loadReceiptDeletion(db: Reader, receiptId: string) {
   const batchIds = (
@@ -46,6 +35,7 @@ export async function loadReceiptDeletion(db: Reader, receiptId: string) {
       ? []
       : await db
           .select({
+            id: schema.shopifyInventoryPushes.id,
             stockEntryId: schema.shopifyInventoryPushes.stockEntryId,
             delta: schema.shopifyInventoryPushes.delta,
             reason: schema.shopifyInventoryPushes.reason,
@@ -55,12 +45,32 @@ export async function loadReceiptDeletion(db: Reader, receiptId: string) {
           .where(inArray(schema.shopifyInventoryPushes.stockEntryId, entries.map((e) => e.id)));
 
   const plan = planReceiptDeletion(entries, pushes);
-  const own = new Set(plan.entryIds);
+  const variants =
+    plan.shopify.length === 0
+      ? []
+      : await db.query.variants.findMany({
+          where: inArray(schema.variants.id, [...new Set(plan.shopify.map((s) => s.variantId))]),
+          columns: { id: true, sku: true, shopifyInventoryItemId: true },
+        });
+
+  // Without the link there is nothing to adjust in Shopify; the receipt goes all the same.
+  const shopify: TakeBack[] = [];
+  const unlinked = new Set<string>();
+  for (const { variantId, ...change } of plan.shopify) {
+    const variant = variants.find((v) => v.id === variantId);
+    if (variant?.shopifyInventoryItemId) {
+      shopify.push({ ...change, sku: variant.sku, inventoryItemId: variant.shopifyInventoryItemId });
+    } else {
+      unlinked.add(variant?.sku ?? variantId);
+    }
+  }
+
   return {
-    batchIds,
-    plan,
-    /** Units the receipt still adds to the stock; they leave with it. */
-    quantity: entries.filter((e) => own.has(e.id)).reduce((total, e) => total + e.quantity, 0),
-    blockedBy: plan.blockedBy.map((kind) => ENTRY_KIND_LABELS[kind] ?? kind),
+    positions: batchIds.length,
+    entryIds: plan.entryIds,
+    quantity: plan.quantity,
+    blockedBy: plan.blockedBy.map((kind) => STOCK_ENTRY_KIND_LABELS[kind as StockEntryKind] ?? kind),
+    shopify,
+    unlinked: [...unlinked],
   };
 }

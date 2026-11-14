@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { STOCK_ENTRY_KIND_LABELS } from '~~/shared/stock-entry-kinds';
 import type { BatchOption, List, Product, StockEntry, StockEntryKind } from '~~/shared/types/api';
 
 useHead({ title: 'Bestandsjournal' });
@@ -10,16 +11,7 @@ const { readError } = useApiError();
 const PAGE_SIZE = 50;
 const today = () => new Date().toISOString().slice(0, 10);
 
-const kindLabels: Record<StockEntryKind, string> = {
-  goods_receipt: 'Wareneingang',
-  sale: 'Verkauf',
-  return: 'Retoure',
-  shrinkage: 'Schwund',
-  own_use: 'Eigenverbrauch',
-  stocktake: 'Inventur',
-  supplier_return: 'Rückgabe an Lieferant',
-  reversal: 'Storno',
-};
+const kindLabels = STOCK_ENTRY_KIND_LABELS;
 const kindColors: Record<StockEntryKind, 'success' | 'info' | 'warning' | 'neutral'> = {
   goods_receipt: 'success',
   sale: 'info',

@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.18.0 (2026-11-14)
+
+### Fehlerbehebungen
+
+- safer deletion of posted receipts (#58)
+
 ## v0.17.0 (2026-11-13)
 
 ### Neu
@@ -174,6 +180,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

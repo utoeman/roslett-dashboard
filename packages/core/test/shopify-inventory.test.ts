@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUSHED_KINDS, inventoryReason, planInventoryPush } from '../src/shopify-inventory';
+import { PUSHED_KINDS, inventoryReason, overshootsDashboard, planInventoryPush } from '../src/shopify-inventory';
 
 const linked = new Map([
   ['v1', { sku: 'ROS-KIS-0012-SAN-4545', inventoryItemId: 'gid://shopify/InventoryItem/1' }],
@@ -23,7 +23,7 @@ describe('planInventoryPush', () => {
   });
 
   it('ist leer ohne offene Buchungen', () => {
-    expect(planInventoryPush([], linked)).toEqual({ changes: [], unlinked: [] });
+    expect(planInventoryPush([], linked)).toEqual({ changes: [], unlinkedVariantIds: [] });
   });
 
   it('überspringt Varianten ohne Shopify-Verknüpfung und überträgt den Rest', () => {
@@ -37,7 +37,7 @@ describe('planInventoryPush', () => {
       linked,
     );
     expect(plan.changes.map((c) => [c.variantId, c.delta, c.entryIds])).toEqual([['v1', 3, ['e2']]]);
-    expect(plan.unlinked).toEqual(['v9', 'v8']);
+    expect(plan.unlinkedVariantIds).toEqual(['v9', 'v8']);
   });
 });
 
@@ -54,5 +54,24 @@ describe('inventoryReason', () => {
   it('überträgt nie Verkäufe und Retouren, die kommen aus Shopify', () => {
     expect(PUSHED_KINDS).not.toContain('sale');
     expect(PUSHED_KINDS).not.toContain('return');
+  });
+});
+
+describe('overshootsDashboard', () => {
+  it('ist unauffällig, wenn Shopify nach der Übertragung dem Dashboard entspricht', () => {
+    expect(overshootsDashboard({ shopifyStock: 0, delta: 10, dashboardStock: 10 })).toBe(false);
+    expect(overshootsDashboard({ shopifyStock: 5, delta: 10, dashboardStock: 15 })).toBe(false);
+  });
+
+  it('ist unauffällig, wenn Shopify darunter bleibt – ein Verkauf ist noch nicht abgerufen', () => {
+    expect(overshootsDashboard({ shopifyStock: 3, delta: 10, dashboardStock: 15 })).toBe(false);
+  });
+
+  it('warnt, wenn Shopify den Zugang offenbar schon führt', () => {
+    expect(overshootsDashboard({ shopifyStock: 10, delta: 10, dashboardStock: 10 })).toBe(true);
+  });
+
+  it('warnt nicht ohne Shopify-Bestand', () => {
+    expect(overshootsDashboard({ shopifyStock: null, delta: 10, dashboardStock: 0 })).toBe(false);
   });
 });

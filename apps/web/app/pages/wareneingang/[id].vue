@@ -99,6 +99,7 @@ async function confirmDelete() {
   try {
     await $fetch(api(), { method: 'DELETE', body: isDraft.value ? undefined : { confirm: deleteConfirm.value } });
     deleteOpen.value = false;
+    allowLeave();
     await navigateTo('/wareneingang');
   } catch (err) {
     deleteMessage.value = readError(err).message;
@@ -166,6 +167,7 @@ function resetRows() {
 /** Rows as last loaded; a difference means unsaved edits in the editor. */
 let loadedRows = JSON.stringify(rows.value);
 const positionsDirty = () => JSON.stringify(rows.value) !== loadedRows;
+const { allowLeave } = useUnsavedChanges(() => positionsDirty() || editingHeader.value);
 
 // Reloads after other actions (header, additional costs) must not discard unsaved positions.
 watch(data, () => (positionsDirty() ? undefined : resetRows()), { immediate: true });

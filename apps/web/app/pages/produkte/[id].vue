@@ -57,6 +57,20 @@ watchEffect(() => {
   }
 });
 
+// Only the open master data form counts; dialogs close without saving on purpose.
+useUnsavedChanges(
+  () =>
+    editing.value &&
+    data.value !== undefined &&
+    data.value !== null &&
+    (form.name !== data.value.name ||
+      form.description !== (data.value.description ?? '') ||
+      form.basePriceGross !== toInput(data.value.basePriceGross) ||
+      form.vatCategory !== data.value.vatCategory ||
+      form.careNotes !== (data.value.careNotes ?? '') ||
+      form.safetyNotes !== (data.value.safetyNotes ?? '')),
+);
+
 async function saveProduct() {
   saving.value = true;
   message.value = null;

@@ -476,8 +476,8 @@ export interface ShopifySyncResult {
   updated: number;
   unchanged: number;
   warnings: { order: string; message: string }[];
-  /** Orders not booked; the next import tries them again. */
-  errors: { order: string; message: string }[];
+  /** Orders not booked; the next import tries them again. `orderId` is missing in runs before it was added. */
+  errors: { order: string; orderId?: string; message: string }[];
   syncedTo: string;
 }
 

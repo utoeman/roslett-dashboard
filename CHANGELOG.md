@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.19.2 (2026-11-15)
+
+### Fehlerbehebungen
+
+- report partial stock pushes (#61)
+
 ## v0.19.1 (2026-11-15)
 
 ### Fehlerbehebungen

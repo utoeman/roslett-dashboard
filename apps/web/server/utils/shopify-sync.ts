@@ -19,7 +19,7 @@ import {
 import { schema, type useDb } from '../db/client.js';
 import type { ShopifySyncResult } from '../../shared/types/api.js';
 import { conflict } from './errors.js';
-import { cancelSale, insertRefund, insertSale, prepareSale } from './sale-booking.js';
+import { cancelSale, insertRefund, insertSale, lockSale, prepareSale } from './sale-booking.js';
 import { shopifyGraphql } from './shopify.js';
 import type { Tx } from './stock.js';
 
@@ -202,6 +202,11 @@ async function importOrder(db: Db, order: ShopifyOrder, channels: readonly Chann
 
     let outcome: Outcome = 'unchanged';
     let sale = await loadImported(tx, order.id);
+    if (sale !== undefined) {
+      // Read again under the lock: a manual refund may have been booked meanwhile.
+      await lockSale(tx, sale.id);
+      sale = await loadImported(tx, order.id);
+    }
     if (sale === undefined) {
       await createSale(tx, order, channels, warnings);
       sale = await loadImported(tx, order.id);

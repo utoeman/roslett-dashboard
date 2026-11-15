@@ -20,7 +20,7 @@ export interface InventoryChange {
 export interface InventoryPushPlan {
   changes: InventoryChange[];
   /** Variants without a Shopify link; their entries stay open until they are linked. */
-  unlinked: string[];
+  unlinkedVariantIds: string[];
 }
 
 export function planInventoryPush(
@@ -40,7 +40,16 @@ export function planInventoryPush(
     change.entryIds.push(entry.entryId);
     byVariant.set(entry.variantId, change);
   }
-  return { changes: [...byVariant.values()], unlinked: [...unlinked] };
+  return { changes: [...byVariant.values()], unlinkedVariantIds: [...unlinked] };
+}
+
+/**
+ * After a push Shopify should hold what the dashboard holds, or less while a
+ * sale is not imported yet. More means Shopify already carries the stock, e.g.
+ * entered by hand before the variant was linked, and the push would count it twice.
+ */
+export function overshootsDashboard(line: { shopifyStock: number | null; delta: number; dashboardStock: number }): boolean {
+  return line.shopifyStock !== null && line.shopifyStock + line.delta > line.dashboardStock;
 }
 
 /**

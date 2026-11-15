@@ -40,6 +40,16 @@ export async function batchStock(db: Reader, variantId: string): Promise<BatchSt
     .where(and(eq(schema.batches.variantId, variantId), eq(schema.goodsReceipts.state, 'posted')));
 }
 
+export async function currentStocks(db: Reader, variantIds: readonly string[]): Promise<Map<string, number>> {
+  if (variantIds.length === 0) return new Map();
+  const rows = await db
+    .select({ variantId: schema.stockEntries.variantId, total: sql<number>`coalesce(sum(${schema.stockEntries.quantity}), 0)::int` })
+    .from(schema.stockEntries)
+    .where(inArray(schema.stockEntries.variantId, [...variantIds]))
+    .groupBy(schema.stockEntries.variantId);
+  return new Map(rows.map((r) => [r.variantId, r.total]));
+}
+
 export async function currentStock(db: Reader, variantId: string): Promise<number> {
   const [row] = await db
     .select({ total: sql<number>`coalesce(sum(${schema.stockEntries.quantity}), 0)::int` })

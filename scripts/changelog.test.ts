@@ -84,4 +84,10 @@ describe('prependSection', () => {
     expect(second.indexOf('v0.3.0')).toBeLessThan(second.indexOf('v0.2.0'));
     expect(second.match(/# Changelog/g)).toHaveLength(1);
   });
+
+  it('endet nach jedem Release mit genau einem Zeilenumbruch', () => {
+    let file = '';
+    for (const version of ['v0.1.0', 'v0.2.0', 'v0.3.0']) file = prependSection(file, `## ${version} (2026-10-19)\n`);
+    expect(file.endsWith('v0.1.0 (2026-10-19)\n')).toBe(true);
+  });
 });

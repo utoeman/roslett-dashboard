@@ -786,14 +786,7 @@ const positionBadge = (p: ReceiptPosition) =>
             />
 
             <template v-if="shopifyPreview">
-              <UAlert
-                v-if="shopifyPreview.unlinked.length > 0"
-                color="warning"
-                variant="subtle"
-                class="rounded-[12px]"
-                :title="`Nicht mit Shopify verknüpft, wird übersprungen: ${shopifyPreview.unlinked.join(', ')}`"
-                description="Bitte das Produkt erst nach Shopify übertragen oder verknüpfen; die Buchungen bleiben offen."
-              />
+              <ShopifyHinweise :unlinked="shopifyPreview.unlinked" :lines="shopifyPreview.lines" />
               <p v-if="shopifyPreview.lines.length === 0 && shopifyPreview.unlinked.length === 0" class="text-sm text-leinen-500">
                 Alle gebuchten Zugänge dieses Belegs sind schon in Shopify.
               </p>

@@ -9,7 +9,9 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import {
   PUSHED_KINDS,
   inventoryReason,
+  overshootsDashboard,
   planInventoryPush,
+  type InventoryChange,
   type PendingEntry,
   type PushedKind,
 } from '@roslett/core';
@@ -21,6 +23,7 @@ import type {
 } from '../../shared/types/api.js';
 import { badRequest, conflict } from './errors.js';
 import { fetchShopifyVariants, shopifyGraphql } from './shopify.js';
+import { currentStocks } from './stock.js';
 
 type Db = ReturnType<typeof useDb>;
 export type Reader = Pick<Db, 'select' | 'selectDistinct' | 'query'>;
@@ -86,8 +89,31 @@ async function planPush(db: Reader, entries: readonly Pending[]) {
   const linked = new Map(
     variants.flatMap((v) => (v.shopifyInventoryItemId ? [[v.id, { sku: v.sku, inventoryItemId: v.shopifyInventoryItemId }] as const] : [])),
   );
-  const { changes, unlinked } = planInventoryPush(entries, linked);
-  return { changes, linked, unlinked: unlinked.map((id) => variants.find((v) => v.id === id)?.sku ?? id) };
+  const { changes, unlinkedVariantIds } = planInventoryPush(entries, linked);
+  const skipped = new Set(unlinkedVariantIds);
+  return { changes, linked, unlinked: variants.filter((v) => skipped.has(v.id)).map((v) => v.sku) };
+}
+
+type PushPlan = Awaited<ReturnType<typeof planPush>>;
+
+/** Refuses before Shopify is asked anything when no variant is linked. */
+async function planSendable(db: Reader, entries: readonly Pending[]): Promise<PushPlan> {
+  const plan = await planPush(db, entries);
+  if (plan.changes.length === 0) {
+    throw badRequest(
+      `Nicht mit Shopify verknüpft: ${plan.unlinked.join(', ')}. Bitte das Produkt erst nach Shopify übertragen oder verknüpfen.`,
+    );
+  }
+  return plan;
+}
+
+/** Preview lines with the Shopify and dashboard stock and the double-count warning. */
+async function previewLines(db: Reader, changes: readonly InventoryChange[], stock: ReadonlyMap<string, number>) {
+  const dashboard = await currentStocks(db, changes.map((c) => c.variantId));
+  return changes.map((c) => {
+    const line = { sku: c.sku, delta: c.delta, shopifyStock: stock.get(c.inventoryItemId) ?? null, dashboardStock: dashboard.get(c.variantId) ?? 0 };
+    return { variantId: c.variantId, line: { ...line, overshoots: overshootsDashboard(line) } };
+  });
 }
 
 async function activeLocations(): Promise<{ id: string; name: string }[]> {
@@ -177,19 +203,14 @@ async function adjustAvailable(input: {
 async function pushEntries(
   db: Db,
   entries: readonly Pending[],
+  { linked, unlinked }: PushPlan,
   location: { id: string; name: string },
   referenceDocumentUri: string,
-): Promise<{ lines: { sku: string; delta: number }[]; unlinked: string[] }> {
-  const { linked, unlinked } = await planPush(db, entries);
-  const sendable = entries.filter((e) => linked.has(e.variantId));
-  if (sendable.length === 0) {
-    throw badRequest(
-      `Nicht mit Shopify verknüpft: ${unlinked.join(', ')}. Bitte das Produkt erst nach Shopify übertragen oder verknüpfen.`,
-    );
-  }
-
+): Promise<ReceiptShopifyPushResult> {
   const groups = new Map<string, Pending[]>();
-  for (const entry of sendable) {
+  for (const entry of entries) {
+    // Entries of unlinked variants get no push row and stay open.
+    if (!linked.has(entry.variantId)) continue;
     const reason = inventoryReason(entry.kind);
     groups.set(reason, [...(groups.get(reason) ?? []), entry]);
   }
@@ -216,7 +237,7 @@ async function pushEntries(
     });
     for (const c of changes) sent.set(c.sku, (sent.get(c.sku) ?? 0) + c.delta);
   }
-  return { lines: [...sent].map(([sku, delta]) => ({ sku, delta })), unlinked };
+  return { location: location.name, lines: [...sent].map(([sku, delta]) => ({ sku, delta })), unlinked };
 }
 
 async function shopifyStock(): Promise<Map<string, number>> {
@@ -244,7 +265,7 @@ export async function receiptShopifyPreview(db: Db, receiptId: string): Promise<
   if (changes.length === 0) return { lines: [], locations: [], unlinked };
   const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
   return {
-    lines: changes.map((c) => ({ sku: c.sku, delta: c.delta, shopifyStock: stock.get(c.inventoryItemId) ?? null })),
+    lines: (await previewLines(db, changes, stock)).map(({ line }) => line),
     locations,
     unlinked,
   };
@@ -258,8 +279,8 @@ export async function pushReceiptToShopify(
   const receipt = await requireReceipt(db, receiptId);
   const entries = await pendingReceiptEntries(db, receiptId);
   if (entries.length === 0) throw conflict('Dieser Zugang ist schon in Shopify.');
-  const location = await resolveLocation(locationId);
-  return { location: location.name, ...(await pushEntries(db, entries, location, `gid://roslett/GoodsReceipt/${receipt.number}`)) };
+  const plan = await planSendable(db, entries);
+  return pushEntries(db, entries, plan, await resolveLocation(locationId), `gid://roslett/GoodsReceipt/${receipt.number}`);
 }
 
 /** What Shopify gets back for one variant at one location, with the push rows it settles. */
@@ -325,12 +346,10 @@ export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPr
   if (changes.length === 0) return { lines: [], locations: [], unlinked };
   const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
   return {
-    lines: changes.map((c) => ({
-      sku: c.sku,
-      delta: c.delta,
-      shopifyStock: stock.get(c.inventoryItemId) ?? null,
+    lines: (await previewLines(db, changes, stock)).map(({ variantId, line }) => ({
+      ...line,
       entries: entries
-        .filter((e) => e.variantId === c.variantId)
+        .filter((e) => e.variantId === variantId)
         .map((e) => ({ kind: e.kind, quantity: e.quantity, postedAt: e.postedAt.toISOString() })),
     })),
     locations,
@@ -341,6 +360,6 @@ export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPr
 export async function pushStockChanges(db: Db, locationId: string | null): Promise<ReceiptShopifyPushResult> {
   const entries = await pendingStockChanges(db);
   if (entries.length === 0) throw conflict('Es gibt keine offenen Bestandsänderungen.');
-  const location = await resolveLocation(locationId);
-  return { location: location.name, ...(await pushEntries(db, entries, location, 'gid://roslett/StockChanges/manual')) };
+  const plan = await planSendable(db, entries);
+  return pushEntries(db, entries, plan, await resolveLocation(locationId), 'gid://roslett/StockChanges/manual');
 }

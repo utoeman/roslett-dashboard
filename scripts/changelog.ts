@@ -70,7 +70,7 @@ export function buildSection(version: string, date: string, commits: Commit[]): 
 const HEADER = '# Changelog\n\nAlle Releases des Roslett-Dashboards, neueste zuerst.\n';
 
 export function prependSection(existing: string, section: string): string {
-  const rest = existing.startsWith(HEADER) ? existing.slice(HEADER.length).trimStart() : existing.trim();
+  const rest = (existing.startsWith(HEADER) ? existing.slice(HEADER.length) : existing).trim();
   return `${HEADER}\n${section}${rest ? `\n${rest}\n` : ''}`;
 }
 

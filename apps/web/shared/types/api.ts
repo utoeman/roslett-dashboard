@@ -369,9 +369,19 @@ export interface ShopifyPricePushResult {
   errors: { sku: string; message: string }[];
 }
 
+/** One variant of a stock push preview. */
+export interface ShopifyStockLine {
+  sku: string;
+  delta: number;
+  shopifyStock: number | null;
+  dashboardStock: number;
+  /** Shopify would hold more than the dashboard afterwards: it probably carries the stock already. */
+  overshoots: boolean;
+}
+
 export interface ReceiptShopifyPreview {
   /** Open entries of the receipt per variant; empty when everything is in Shopify. */
-  lines: { sku: string; delta: number; shopifyStock: number | null }[];
+  lines: ShopifyStockLine[];
   locations: { id: string; name: string }[];
   /** SKUs with open entries but no Shopify link; skipped until they are linked. */
   unlinked: string[];
@@ -448,12 +458,7 @@ export interface ShopifyStagedUpload {
 
 export interface ShopifyStockChangesPreview {
   /** Per variant: the sum to send and the entries behind it. */
-  lines: {
-    sku: string;
-    delta: number;
-    shopifyStock: number | null;
-    entries: { kind: string; quantity: number; postedAt: string }[];
-  }[];
+  lines: (ShopifyStockLine & { entries: { kind: string; quantity: number; postedAt: string }[] })[];
   locations: { id: string; name: string }[];
   /** SKUs with open entries but no Shopify link; skipped until they are linked. */
   unlinked: string[];

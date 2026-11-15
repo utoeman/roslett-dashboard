@@ -2,6 +2,21 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.20.0 (2026-11-15)
+
+### Neu
+
+- warn before leaving unsaved changes (#65)
+
+### Fehlerbehebungen
+
+- lock sale during refund and cancel (#63)
+- actionable Shopify import errors (#62)
+
+### Technik
+
+- remove dead code (#64)
+
 ## v0.19.2 (2026-11-15)
 
 ### Fehlerbehebungen

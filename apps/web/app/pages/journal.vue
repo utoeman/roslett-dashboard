@@ -115,6 +115,10 @@ const entry = reactive({
   note: '',
 });
 const currentStock = computed(() => variants.value.find((v) => v.value === entry.variantId)?.stock ?? 0);
+// Shrinkage and own use beyond the stock become a shortfall; almost always a typo.
+const exceedsStock = computed(
+  () => !!entry.variantId && (entry.kind === 'shrinkage' || entry.kind === 'own_use') && entry.quantity > currentStock.value,
+);
 
 const batches = ref<BatchOption[]>([]);
 const batchOptions = computed(() =>
@@ -421,6 +425,14 @@ const signed = (quantity: number) => (quantity > 0 ? `+${quantity}` : String(qua
               <UInput v-model="entry.postedAt" type="date" class="w-full" />
             </UFormField>
           </div>
+          <UAlert
+            v-if="exceedsStock"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            class="rounded-[12px]"
+            :description="`Mehr als der aktuelle Bestand (${currentStock}). Der Rest wird als Fehlmenge gebucht – bitte die Menge prüfen.`"
+          />
           <UFormField
             label="Notiz"
             :required="entry.kind !== 'supplier_return'"

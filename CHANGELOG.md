@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.19.0 (2026-11-15)
+
+### Fehlerbehebungen
+
+- skip unlinked variants in stock push (#59)
+
 ## v0.18.0 (2026-11-14)
 
 ### Fehlerbehebungen
@@ -180,6 +186,7 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
+
 
 
 

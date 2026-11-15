@@ -24,6 +24,11 @@ const triggerText = { manual: 'per Klick', scheduled: 'automatisch', nightly: 'n
 const formatTime = (iso: string) => new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
 // Own click first; otherwise the last run, so errors of scheduled runs show up here.
 const shownResult = computed(() => syncResult.value ?? data.value?.lastRun?.result ?? null);
+/** The order in the Shopify admin, to look at what the import could not book. */
+const orderAdminUrl = (orderId: string | undefined) => {
+  const numeric = orderId?.split('/').pop();
+  return data.value?.shop && numeric ? `https://${data.value.shop}/admin/orders/${numeric}` : null;
+};
 const lastRunText = computed(() => {
   const run = data.value?.lastRun;
   return run ? `Letzter Abruf ${formatTime(run.at)}, ${triggerText[run.trigger]}` : null;
@@ -250,9 +255,18 @@ async function link() {
               title="Nicht gebucht; der nächste Abruf versucht es erneut"
             >
               <template #description>
-                <ul class="list-inside list-disc">
-                  <li v-for="(e, i) in shownResult.errors" :key="i">{{ e.order }}: {{ e.message }}</li>
+                <ul class="list-inside list-disc space-y-1">
+                  <li v-for="(e, i) in shownResult.errors" :key="i">
+                    <strong>{{ e.order }}</strong>: {{ e.message }}
+                    <ULink v-if="orderAdminUrl(e.orderId)" :to="orderAdminUrl(e.orderId)!" target="_blank" class="underline">
+                      In Shopify öffnen
+                    </ULink>
+                  </li>
                 </ul>
+                <p class="mt-2">
+                  Alle anderen Bestellungen werden weiter gebucht. Solange eine Meldung offen ist, lassen sich nach Shopify
+                  übertragene Wareneingänge nicht löschen.
+                </p>
               </template>
             </UAlert>
             <UAlert v-if="shownResult.warnings.length > 0" color="warning" variant="soft" title="Hinweise">

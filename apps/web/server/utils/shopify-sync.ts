@@ -151,7 +151,12 @@ async function createSale(tx: Tx, order: ShopifyOrder, channels: readonly Channe
       where: and(eq(schema.sales.channelId, channel.id), eq(schema.sales.externalOrderNumber, sale.externalOrderNumber)),
       columns: { id: true },
     });
-    if (manual) throw new ShopifyImportError(`Die Bestellnummer ist für ${channel.name} schon von Hand erfasst.`);
+    if (manual) {
+      throw new ShopifyImportError(
+        `Die Bestellnummer ist für ${channel.name} schon von Hand erfasst. Der Abruf bucht sie deshalb nicht noch einmal; ` +
+          'bleibt die Meldung stehen, ist der Verkauf trotzdem im Dashboard.',
+      );
+    }
   }
   if (sale.countryAssumed) warnings.push('Ohne Lieferadresse; Lieferland DE angenommen.');
 
@@ -163,18 +168,33 @@ async function createSale(tx: Tx, order: ShopifyOrder, channels: readonly Channe
       ? []
       : tx.query.variants.findMany({
           where: inArray(schema.variants.shopifyVariantId, shopifyIds),
-          columns: { id: true, shopifyVariantId: true },
+          columns: { id: true, sku: true, shopifyVariantId: true, archivedAt: true },
         }),
     skus.length === 0
       ? []
-      : tx.query.variants.findMany({ where: inArray(sql`upper(${schema.variants.sku})`, skus), columns: { id: true, sku: true } }),
+      : tx.query.variants.findMany({
+          where: inArray(sql`upper(${schema.variants.sku})`, skus),
+          columns: { id: true, sku: true, archivedAt: true },
+        }),
   ]);
   const items = sale.lines.map((line) => {
     const variant =
       byId.find((v) => v.shopifyVariantId === line.variantId) ??
       bySku.find((v) => v.sku.toUpperCase() === line.sku?.trim().toUpperCase());
     if (variant === undefined) {
-      throw new ShopifyImportError(`Position ${line.sku || 'ohne SKU'} gehört zu keiner Variante im Dashboard.`);
+      throw new ShopifyImportError(
+        line.sku
+          ? `Position ${line.sku} gehört zu keiner Variante im Dashboard. Gibt es die SKU in Shopify mit Tippfehler, ` +
+              'korrigieren Sie sie dort; sonst legen Sie die Variante im Dashboard an. Danach erneut abrufen.'
+          : 'Eine Position hat keine SKU – etwa eine Geschenkkarte, ein Trinkgeld oder ein frei eingegebener Artikel. ' +
+              'Solche Bestellungen kann das Dashboard nicht buchen.',
+      );
+    }
+    if (variant.archivedAt !== null) {
+      throw new ShopifyImportError(
+        `${variant.sku} ist im Dashboard archiviert. Holen Sie die Variante auf der Produktseite zurück („Zurückholen“) ` +
+          'und rufen Sie erneut ab.',
+      );
     }
     return { variantId: variant.id, quantity: line.quantity, unitPriceGross: line.unitPriceGross, shopifyLineItemId: line.lineItemId };
   });
@@ -233,7 +253,12 @@ async function importOrder(db: Db, order: ShopifyOrder, channels: readonly Chann
       if (booked.has(refund.id)) continue;
       for (const row of refundRows(refund)) {
         const item = row.lineItemId === null ? null : sale.items.find((i) => i.shopifyLineItemId === row.lineItemId);
-        if (item === undefined) throw new ShopifyImportError('Eine Erstattung nennt eine unbekannte Position.');
+        if (item === undefined) {
+          throw new ShopifyImportError(
+            'Eine Erstattung betrifft eine Position, die beim ersten Abruf nicht in der Bestellung war – die Bestellung wurde ' +
+              'in Shopify nachträglich bearbeitet. Das kann das Dashboard nicht nachbuchen.',
+          );
+        }
         await insertRefund(tx, sale, item, {
           quantity: row.quantity,
           amountGross: row.amountGross,
@@ -292,7 +317,7 @@ export async function syncShopifyOrders(db: Db, trigger: SyncTrigger): Promise<S
     } catch (error) {
       const message = messageOf(error);
       if (message === null) throw error;
-      errors.push({ order: order.name, message });
+      errors.push({ order: order.name, orderId: order.id, message });
       if (heldBack === null || updatedAt < heldBack) heldBack = updatedAt;
     }
   }

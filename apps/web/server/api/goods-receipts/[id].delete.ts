@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
     if (sync.errors.length > 0) {
       throw conflict(
         `Der Shopify-Abruf meldet Fehler (${sync.errors.map((e) => e.order).join(', ')}). ` +
-          'Bitte erst klären; solange ist offen, ob aus diesem Wareneingang schon verkauft ist.',
+          'Details und was zu tun ist stehen auf der Seite „Shopify“. Solange ist offen, ob aus diesem Wareneingang schon verkauft ist.',
       );
     }
     deletion = await loadReceiptDeletion(db, id);

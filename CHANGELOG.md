@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.19.1 (2026-11-15)
+
+### Fehlerbehebungen
+
+- warn about double-counted stock (#60)
+
 ## v0.19.0 (2026-11-15)
 
 ### Fehlerbehebungen
@@ -186,25 +192,3 @@ Keine nennenswerten Änderungen.
 - Vorschau-Datenbank nach jedem Push auf main migrieren
 - Release-Workflow von Hand mit Changelog, Migration und production-Branch
 - ESLint und GitHub Actions (Lint, Typecheck, Tests, Build)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

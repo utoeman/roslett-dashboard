@@ -158,6 +158,15 @@ export async function insertSale(tx: Tx, prepared: PreparedSale): Promise<{ id: 
   return { id: sale.id, warnings };
 }
 
+/**
+ * Locks the sale row until the transaction ends. Manual refunds and
+ * cancellations and the Shopify import all take it, so their checks of what is
+ * still open see each other's bookings.
+ */
+export async function lockSale(tx: Tx, saleId: string): Promise<void> {
+  await tx.select({ id: schema.sales.id }).from(schema.sales).where(eq(schema.sales.id, saleId)).for('update');
+}
+
 /** Reverses every `sale` entry and sets the status to `cancelled` (F10); fees stay (F11). */
 export async function cancelSale(
   tx: Tx,

@@ -364,6 +364,13 @@ async function link() {
             :title="`In Shopify gebucht (${stockResult.location})`"
             :description="stockResult.lines.map((l) => `${l.sku} ${signed(l.delta)}`).join(', ')"
           />
+          <UAlert
+            v-if="stockChanges && stockChanges.unlinked.length > 0"
+            color="warning"
+            variant="soft"
+            :title="`Nicht mit Shopify verknüpft, wird übersprungen: ${stockChanges.unlinked.join(', ')}`"
+            description="Bitte das Produkt erst nach Shopify übertragen oder verknüpfen; die Buchungen bleiben offen."
+          />
           <table v-if="stockChanges && stockChanges.lines.length > 0" class="ros-tabelle w-full text-sm">
             <thead class="text-left text-xs font-medium uppercase tracking-wide text-leinen-500">
               <tr>
@@ -386,7 +393,9 @@ async function link() {
               </tr>
             </tbody>
           </table>
-          <p v-else-if="stockChanges" class="text-sm text-leinen-500">Shopify kennt alle Bestandsänderungen.</p>
+          <p v-else-if="stockChanges && stockChanges.unlinked.length === 0" class="text-sm text-leinen-500">
+            Shopify kennt alle Bestandsänderungen.
+          </p>
         </div>
 
         <div class="overflow-x-auto rounded-[12px] border border-leinen-200/70 bg-white" style="border-width: 0.5px">

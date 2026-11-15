@@ -779,14 +779,25 @@ const positionBadge = (p: ReceiptPosition) =>
               variant="subtle"
               class="rounded-[12px]"
               :title="`In Shopify gebucht (${shopifyDone.location})`"
-              :description="shopifyDone.lines.map((l) => `${l.sku} +${l.delta}`).join(', ')"
+              :description="
+                shopifyDone.lines.map((l) => `${l.sku} +${l.delta}`).join(', ') +
+                (shopifyDone.unlinked.length > 0 ? ` – übersprungen, nicht verknüpft: ${shopifyDone.unlinked.join(', ')}` : '')
+              "
             />
 
             <template v-if="shopifyPreview">
-              <p v-if="shopifyPreview.lines.length === 0" class="text-sm text-leinen-500">
+              <UAlert
+                v-if="shopifyPreview.unlinked.length > 0"
+                color="warning"
+                variant="subtle"
+                class="rounded-[12px]"
+                :title="`Nicht mit Shopify verknüpft, wird übersprungen: ${shopifyPreview.unlinked.join(', ')}`"
+                description="Bitte das Produkt erst nach Shopify übertragen oder verknüpfen; die Buchungen bleiben offen."
+              />
+              <p v-if="shopifyPreview.lines.length === 0 && shopifyPreview.unlinked.length === 0" class="text-sm text-leinen-500">
                 Alle gebuchten Zugänge dieses Belegs sind schon in Shopify.
               </p>
-              <template v-else>
+              <template v-else-if="shopifyPreview.lines.length > 0">
                 <p class="text-sm text-leinen-500">
                   Gebuchte Zugänge, die noch nicht in Shopify sind. Shopify erhöht den Bestand um die Menge; jede Buchung
                   wird nur einmal übertragen.

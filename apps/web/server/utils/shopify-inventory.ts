@@ -5,13 +5,11 @@
  */
 
 import { createHash } from 'node:crypto';
-import { and, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import {
-  InventoryPushError,
   PUSHED_KINDS,
   inventoryReason,
   planInventoryPush,
-  type InventoryChange,
   type PendingEntry,
   type PushedKind,
 } from '@roslett/core';
@@ -79,24 +77,17 @@ async function pendingStockChanges(db: Reader): Promise<Pending[]> {
   return asPending(rows);
 }
 
-async function linkedVariants(db: Reader, entries: readonly Pending[]) {
+/** What goes to Shopify, the link per variant and the SKUs skipped for lack of one. */
+async function planPush(db: Reader, entries: readonly Pending[]) {
   const variants = await db.query.variants.findMany({
-    where: and(
-      inArray(schema.variants.id, [...new Set(entries.map((e) => e.variantId))]),
-      isNotNull(schema.variants.shopifyInventoryItemId),
-    ),
+    where: inArray(schema.variants.id, [...new Set(entries.map((e) => e.variantId))]),
     columns: { id: true, sku: true, shopifyInventoryItemId: true },
   });
-  return new Map(variants.map((v) => [v.id, { sku: v.sku, inventoryItemId: v.shopifyInventoryItemId ?? '' }]));
-}
-
-function plan(entries: readonly Pending[], linked: Map<string, { sku: string; inventoryItemId: string }>): InventoryChange[] {
-  try {
-    return planInventoryPush(entries, linked);
-  } catch (error) {
-    if (error instanceof InventoryPushError) throw badRequest(error.message);
-    throw error;
-  }
+  const linked = new Map(
+    variants.flatMap((v) => (v.shopifyInventoryItemId ? [[v.id, { sku: v.sku, inventoryItemId: v.shopifyInventoryItemId }] as const] : [])),
+  );
+  const { changes, unlinked } = planInventoryPush(entries, linked);
+  return { changes, linked, unlinked: unlinked.map((id) => variants.find((v) => v.id === id)?.sku ?? id) };
 }
 
 async function activeLocations(): Promise<{ id: string; name: string }[]> {
@@ -188,19 +179,24 @@ async function pushEntries(
   entries: readonly Pending[],
   location: { id: string; name: string },
   referenceDocumentUri: string,
-): Promise<{ sku: string; delta: number }[]> {
-  const linked = await linkedVariants(db, entries);
-  plan(entries, linked); // fails before anything is sent if a variant is not linked
+): Promise<{ lines: { sku: string; delta: number }[]; unlinked: string[] }> {
+  const { linked, unlinked } = await planPush(db, entries);
+  const sendable = entries.filter((e) => linked.has(e.variantId));
+  if (sendable.length === 0) {
+    throw badRequest(
+      `Nicht mit Shopify verknüpft: ${unlinked.join(', ')}. Bitte das Produkt erst nach Shopify übertragen oder verknüpfen.`,
+    );
+  }
 
   const groups = new Map<string, Pending[]>();
-  for (const entry of entries) {
+  for (const entry of sendable) {
     const reason = inventoryReason(entry.kind);
     groups.set(reason, [...(groups.get(reason) ?? []), entry]);
   }
 
   const sent = new Map<string, number>();
   for (const [reason, group] of groups) {
-    const changes = plan(group, linked);
+    const { changes } = planInventoryPush(group, linked);
     const available = await availableAt(changes.map((c) => c.inventoryItemId), location.id);
     const missing = changes.find((c) => !available.has(c.inventoryItemId));
     if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
@@ -220,7 +216,7 @@ async function pushEntries(
     });
     for (const c of changes) sent.set(c.sku, (sent.get(c.sku) ?? 0) + c.delta);
   }
-  return [...sent].map(([sku, delta]) => ({ sku, delta }));
+  return { lines: [...sent].map(([sku, delta]) => ({ sku, delta })), unlinked };
 }
 
 async function shopifyStock(): Promise<Map<string, number>> {
@@ -243,12 +239,14 @@ async function requireReceipt(db: Reader, receiptId: string) {
 export async function receiptShopifyPreview(db: Db, receiptId: string): Promise<ReceiptShopifyPreview> {
   await requireReceipt(db, receiptId);
   const entries = await pendingReceiptEntries(db, receiptId);
-  if (entries.length === 0) return { lines: [], locations: [] };
-  const changes = plan(entries, await linkedVariants(db, entries));
+  if (entries.length === 0) return { lines: [], locations: [], unlinked: [] };
+  const { changes, unlinked } = await planPush(db, entries);
+  if (changes.length === 0) return { lines: [], locations: [], unlinked };
   const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
   return {
     lines: changes.map((c) => ({ sku: c.sku, delta: c.delta, shopifyStock: stock.get(c.inventoryItemId) ?? null })),
     locations,
+    unlinked,
   };
 }
 
@@ -261,8 +259,7 @@ export async function pushReceiptToShopify(
   const entries = await pendingReceiptEntries(db, receiptId);
   if (entries.length === 0) throw conflict('Dieser Zugang ist schon in Shopify.');
   const location = await resolveLocation(locationId);
-  const lines = await pushEntries(db, entries, location, `gid://roslett/GoodsReceipt/${receipt.number}`);
-  return { location: location.name, lines };
+  return { location: location.name, ...(await pushEntries(db, entries, location, `gid://roslett/GoodsReceipt/${receipt.number}`)) };
 }
 
 /** What Shopify gets back for one variant at one location, with the push rows it settles. */
@@ -323,9 +320,9 @@ export async function takeBackFromShopify(
 
 export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPreview> {
   const entries = await pendingStockChanges(db);
-  if (entries.length === 0) return { lines: [], locations: [] };
-  const linked = await linkedVariants(db, entries);
-  const changes = plan(entries, linked);
+  if (entries.length === 0) return { lines: [], locations: [], unlinked: [] };
+  const { changes, unlinked } = await planPush(db, entries);
+  if (changes.length === 0) return { lines: [], locations: [], unlinked };
   const [stock, locations] = await Promise.all([shopifyStock(), activeLocations()]);
   return {
     lines: changes.map((c) => ({
@@ -337,6 +334,7 @@ export async function stockChangesPreview(db: Db): Promise<ShopifyStockChangesPr
         .map((e) => ({ kind: e.kind, quantity: e.quantity, postedAt: e.postedAt.toISOString() })),
     })),
     locations,
+    unlinked,
   };
 }
 
@@ -344,6 +342,5 @@ export async function pushStockChanges(db: Db, locationId: string | null): Promi
   const entries = await pendingStockChanges(db);
   if (entries.length === 0) throw conflict('Es gibt keine offenen Bestandsänderungen.');
   const location = await resolveLocation(locationId);
-  const lines = await pushEntries(db, entries, location, 'gid://roslett/StockChanges/manual');
-  return { location: location.name, lines };
+  return { location: location.name, ...(await pushEntries(db, entries, location, 'gid://roslett/StockChanges/manual')) };
 }

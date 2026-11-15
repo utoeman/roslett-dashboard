@@ -373,6 +373,8 @@ export interface ReceiptShopifyPreview {
   /** Open entries of the receipt per variant; empty when everything is in Shopify. */
   lines: { sku: string; delta: number; shopifyStock: number | null }[];
   locations: { id: string; name: string }[];
+  /** SKUs with open entries but no Shopify link; skipped until they are linked. */
+  unlinked: string[];
 }
 
 /** Preview of deleting a posted receipt (G32). */
@@ -393,6 +395,8 @@ export interface ReceiptDeletionPreview {
 export interface ReceiptShopifyPushResult {
   location: string;
   lines: { sku: string; delta: number }[];
+  /** SKUs skipped for lack of a Shopify link; their entries stay open. */
+  unlinked: string[];
 }
 
 export interface ShopifyProductPreview {
@@ -451,6 +455,8 @@ export interface ShopifyStockChangesPreview {
     entries: { kind: string; quantity: number; postedAt: string }[];
   }[];
   locations: { id: string; name: string }[];
+  /** SKUs with open entries but no Shopify link; skipped until they are linked. */
+  unlinked: string[];
 }
 
 export interface ShopifyTaxonomyCategory {

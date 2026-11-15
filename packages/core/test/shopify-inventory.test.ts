@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InventoryPushError, PUSHED_KINDS, inventoryReason, planInventoryPush } from '../src/shopify-inventory';
+import { PUSHED_KINDS, inventoryReason, planInventoryPush } from '../src/shopify-inventory';
 
 const linked = new Map([
   ['v1', { sku: 'ROS-KIS-0012-SAN-4545', inventoryItemId: 'gid://shopify/InventoryItem/1' }],
@@ -16,18 +16,28 @@ describe('planInventoryPush', () => {
       ],
       linked,
     );
-    expect(plan).toEqual([
+    expect(plan.changes).toEqual([
       { variantId: 'v1', sku: 'ROS-KIS-0012-SAN-4545', inventoryItemId: 'gid://shopify/InventoryItem/1', delta: 40, entryIds: ['e1', 'e3'] },
       { variantId: 'v2', sku: 'ROS-KIS-0012-SAN-5050', inventoryItemId: 'gid://shopify/InventoryItem/2', delta: 12, entryIds: ['e2'] },
     ]);
   });
 
   it('ist leer ohne offene Buchungen', () => {
-    expect(planInventoryPush([], linked)).toEqual([]);
+    expect(planInventoryPush([], linked)).toEqual({ changes: [], unlinked: [] });
   });
 
-  it('lehnt Varianten ohne Shopify-Verknüpfung ab', () => {
-    expect(() => planInventoryPush([{ entryId: 'e1', variantId: 'v9', quantity: 5 }], linked)).toThrow(InventoryPushError);
+  it('überspringt Varianten ohne Shopify-Verknüpfung und überträgt den Rest', () => {
+    const plan = planInventoryPush(
+      [
+        { entryId: 'e1', variantId: 'v9', quantity: 5 },
+        { entryId: 'e2', variantId: 'v1', quantity: 3 },
+        { entryId: 'e3', variantId: 'v9', quantity: 2 },
+        { entryId: 'e4', variantId: 'v8', quantity: 1 },
+      ],
+      linked,
+    );
+    expect(plan.changes.map((c) => [c.variantId, c.delta, c.entryIds])).toEqual([['v1', 3, ['e2']]]);
+    expect(plan.unlinked).toEqual(['v9', 'v8']);
   });
 });
 

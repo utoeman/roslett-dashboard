@@ -3,13 +3,6 @@
  * summed per variant. Shopify owns the absolute quantity (invariant 2).
  */
 
-export class InventoryPushError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'InventoryPushError';
-  }
-}
-
 export interface PendingEntry {
   entryId: string;
   variantId: string;
@@ -24,22 +17,30 @@ export interface InventoryChange {
   entryIds: string[];
 }
 
+export interface InventoryPushPlan {
+  changes: InventoryChange[];
+  /** Variants without a Shopify link; their entries stay open until they are linked. */
+  unlinked: string[];
+}
+
 export function planInventoryPush(
   entries: readonly PendingEntry[],
   linked: ReadonlyMap<string, { sku: string; inventoryItemId: string }>,
-): InventoryChange[] {
+): InventoryPushPlan {
   const byVariant = new Map<string, InventoryChange>();
+  const unlinked = new Set<string>();
   for (const entry of entries) {
     const variant = linked.get(entry.variantId);
     if (variant === undefined) {
-      throw new InventoryPushError('Eine Variante ist nicht mit Shopify verknüpft; bitte zuerst auf der Seite „Shopify“ verknüpfen.');
+      unlinked.add(entry.variantId);
+      continue;
     }
     const change = byVariant.get(entry.variantId) ?? { variantId: entry.variantId, ...variant, delta: 0, entryIds: [] };
     change.delta += entry.quantity;
     change.entryIds.push(entry.entryId);
     byVariant.set(entry.variantId, change);
   }
-  return [...byVariant.values()];
+  return { changes: [...byVariant.values()], unlinked: [...unlinked] };
 }
 
 /**

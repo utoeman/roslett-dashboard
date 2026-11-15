@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   MoneyError,
   centsToEuros,
-  eurosToCents,
   formatMoney,
   formatPercent,
-  foreignToEur,
   isCents,
   parseMoney,
   assertCents,
@@ -57,23 +55,13 @@ describe('round', () => {
   });
 });
 
-describe('eurosToCents und centsToEuros', () => {
-  it('wandelt ohne Fliesskommaverlust', () => {
-    // 19.99 * 100 is 1998.9999999999998 in IEEE 754.
-    expect(eurosToCents(19.99)).toBe(1999);
-    expect(eurosToCents(0.1 + 0.2)).toBe(30);
-    expect(eurosToCents(1234.567)).toBe(123457);
-    expect(eurosToCents(-4.5)).toBe(-450);
-    expect(eurosToCents(0)).toBe(0);
-  });
-
+describe('centsToEuros', () => {
   it('wandelt zurueck', () => {
     expect(centsToEuros(1999)).toBeCloseTo(19.99, 10);
     expect(centsToEuros(-450)).toBeCloseTo(-4.5, 10);
   });
 
   it('lehnt Unsinn ab', () => {
-    expect(() => eurosToCents(Number.NaN)).toThrow(MoneyError);
     expect(() => centsToEuros(1.5)).toThrow(MoneyError);
   });
 });
@@ -144,30 +132,6 @@ describe('formatMoney und formatPercent', () => {
 
   it('lehnt Nicht-Cent ab', () => {
     expect(() => formatMoney(1.5)).toThrow(MoneyError);
-  });
-});
-
-describe('foreignToEur (Regel 6)', () => {
-  it('rechnet Fremdwaehrung mit eingefrorenem Kurs um', () => {
-    // 250.00 USD at 0.92 = 230.00 EUR.
-    expect(foreignToEur(25000, 0.92)).toBe(23000);
-  });
-
-  it('rundet das Ergebnis sofort, weil es persistiert wird', () => {
-    // 99.99 USD * 0.9134 = 91.330... EUR
-    expect(foreignToEur(9999, 0.9134)).toBe(9133);
-    expect(foreignToEur(1, 0.005)).toBe(0);
-    expect(foreignToEur(1, 1.5)).toBe(2);
-  });
-
-  it('lehnt Kurse von null oder darunter ab', () => {
-    expect(() => foreignToEur(1000, 0)).toThrow(MoneyError);
-    expect(() => foreignToEur(1000, -1)).toThrow(MoneyError);
-    expect(() => foreignToEur(1000, Number.NaN)).toThrow(MoneyError);
-  });
-
-  it('lehnt Nicht-Cent-Betraege ab', () => {
-    expect(() => foreignToEur(10.5, 1)).toThrow(MoneyError);
   });
 });
 

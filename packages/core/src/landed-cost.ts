@@ -4,8 +4,7 @@
  * deductible and must not be passed in.
  */
 
-import type { Cents ,
-  MoneyError} from './money.js';
+import type { MoneyError } from './money.js';
 import {
   assertCents,
   distributeByWeight,
@@ -95,14 +94,4 @@ export function distributeAdditionalCosts(
     additionalCostsTotalEur: sum(additionalCosts.map((c) => c.amountEur)),
     goodsValueTotalEur: sum(valueWeights),
   };
-}
-
-/** Single-position shortcut; uses the same distribution to avoid a second code path. */
-export function landedCostPerUnit(
-  item: BatchItem,
-  additionalCosts: readonly AdditionalCost[] = [],
-): Cents {
-  const result = distributeAdditionalCosts([item], additionalCosts);
-  /* c8 ignore next */
-  return result.items[0]?.landedCostEur ?? 0;
 }

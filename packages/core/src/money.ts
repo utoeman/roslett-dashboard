@@ -49,14 +49,6 @@ export function round(value: number): Cents {
   return sign * Math.round(Math.abs(value));
 }
 
-/** Boundary only. `toFixed` avoids losing a cent on 19.99 * 100. */
-export function eurosToCents(euros: number): Cents {
-  if (!Number.isFinite(euros)) {
-    throw new MoneyError(`Kein gueltiger Euro-Betrag: ${String(euros)}`);
-  }
-  return round(Number.parseFloat((euros * 100).toFixed(4)));
-}
-
 /** Boundary and display only. */
 export function centsToEuros(cents: Cents): number {
   assertCents(cents);
@@ -158,20 +150,6 @@ export function formatPercent(rate: Rate, fractionDigits = 1): string {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(rate);
-}
-
-/**
- * Converts with a frozen rate (EUR per foreign unit, 1 USD = 0.92 EUR → 0.92).
- * Rounded right away because the result is persisted.
- */
-export function foreignToEur(foreignAmount: Cents, rate: number): Cents {
-  assertCents(foreignAmount, 'Fremdwaehrungsbetrag');
-  if (!Number.isFinite(rate) || rate <= 0) {
-    throw new MoneyError(
-      `Wechselkurs muss groesser als null sein, erhalten: ${String(rate)}`,
-    );
-  }
-  return round(foreignAmount * rate);
 }
 
 export function sum(amounts: readonly Cents[]): Cents {

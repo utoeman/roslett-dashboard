@@ -148,7 +148,6 @@ relative Pfade an.
 | `GET POST /api/goods-receipts`, `GET PATCH /api/goods-receipts/:id` | Wareneingänge (Lieferantenrechnungen); ändern nur als Entwurf |
 | `POST /api/goods-receipts/:id/costs` | Nebenkosten oder Gutschrift, auch nach dem Buchen; Einstand wirkt rückwirkend |
 | `POST /api/goods-receipts/:id/receive` | Zugang buchen, auch als Teillieferung; löst offene Fehlmengen auf |
-| `GET /api/exchange-rate?currency=&date=` | EZB-Referenzkurs (Fremdwährung je 1 EUR) zum Rechnungsdatum |
 | `GET POST /api/stock-entries` | Bestandsjournal, Filter `variantId`, `kind`, `from`, `to`, `shortfallsOnly`; manuell: Schwund, Eigenverbrauch, Inventur, Rückgabe an Lieferant |
 | `POST /api/stock-entries/:id/reverse` | Storno als Gegenbuchung; nicht möglich, wenn die Ware schon verbraucht ist |
 | `GET /api/batches?variantId=` | Chargen einer Variante mit Restbestand (für Rückgaben) |
@@ -251,8 +250,8 @@ npm test                       # 142 Tests
 npx vitest run --coverage      # mit Abdeckungsbericht
 ```
 
-Abgedeckt sind die Kalkulations-Engine (97 Tests) sowie die Zod-Schemas und
-die Umrechnung an der Datenbankgrenze (45 Tests). Darunter Fremdwährung mit eingefrorenem Kurs, gemischte
+Abgedeckt sind die Kalkulations-Engine sowie die Zod-Schemas und
+die Umrechnung an der Datenbankgrenze. Darunter Fremdwährung mit eingefrorenem Kurs, gemischte
 Fix- und Prozentkosten, vorsteuerabzugsfähige Positionen, rechnerisch
 unmögliche Zielmargen, Nebenkostenverteilung über drei Artikel mit stark
 unterschiedlichen Werten, FIFO-Abgänge über drei Chargen mit Restmenge und die

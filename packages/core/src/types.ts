@@ -36,17 +36,6 @@ export interface CostItem {
 // Batches
 // ---------------------------------------------------------------------------
 
-/** One goods receipt of a variant. FIFO order: `receivedAt`, then `id`. */
-export interface Batch {
-  readonly id: string;
-  readonly variantId: string;
-  readonly receivedAt: Date;
-  readonly quantityReceived: number;
-  readonly quantityRemaining: number;
-  /** Landed cost per unit in EUR cents, including distributed costs. */
-  readonly landedCostEur: Cents;
-}
-
 /** Batch input before additional costs are distributed. */
 export interface BatchItem {
   readonly id: string;
@@ -54,15 +43,6 @@ export interface BatchItem {
   readonly quantity: number;
   /** Goods value of the position in EUR cents. */
   readonly goodsValueEur: Cents;
-}
-
-/** Foreign amount with its frozen exchange rate. */
-export interface ForeignAmount {
-  readonly amount: Cents;
-  /** ISO 4217, e.g. "USD". */
-  readonly currency: string;
-  /** EUR per unit of foreign currency: 1 USD = 0.92 EUR → 0.92. */
-  readonly exchangeRate: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,25 +74,6 @@ export interface DistributionResult {
   readonly items: readonly DistributedAdditionalCosts[];
   readonly additionalCostsTotalEur: Cents;
   readonly goodsValueTotalEur: Cents;
-}
-
-// ---------------------------------------------------------------------------
-// FIFO
-// ---------------------------------------------------------------------------
-
-export interface BatchAllocation {
-  readonly batchId: string;
-  readonly quantity: number;
-  readonly landedCostEur: Cents;
-}
-
-export interface FifoResult {
-  readonly allocations: readonly BatchAllocation[];
-  /** Batches after the issue, with updated remaining quantity. */
-  readonly batchesAfter: readonly Batch[];
-  readonly costOfGoodsSoldEur: Cents;
-  /** Quantity that could not be covered by stock. */
-  readonly uncoveredQuantity: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,13 +127,3 @@ export interface MarginResult {
   readonly markup: Rate;
 }
 
-export interface ChannelPriceResult {
-  readonly channelId: string;
-  readonly channelName: string;
-  readonly salesPriceNetEur: Cents;
-  readonly feesEur: Cents;
-  readonly totalCostEur: Cents;
-  readonly contributionMarginEur: Cents;
-  readonly margin: Rate;
-  readonly markup: Rate;
-}

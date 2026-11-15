@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   DistributionError,
-  landedCostPerUnit,
   distributeAdditionalCosts,
 } from '../src/landed-cost.js';
-import { foreignToEur } from '../src/money.js';
+import { convertToEur } from '../src/stock.js';
 import type { BatchItem, AdditionalCost } from '../src/types.js';
 
 const item = (
@@ -99,26 +98,26 @@ describe('distributeAdditionalCosts – drei Artikel mit stark unterschiedlichen
 
 describe('distributeAdditionalCosts – Fremdwaehrung mit eingefrorenem Kurs (Regel 6)', () => {
   it('verteilt auf Basis der bereits in Euro umgerechneten Werte', () => {
-    // Invoice 1,200.00 USD at 1 USD = 0.9150 EUR.
-    const kurs = 0.915;
-    const wertA = foreignToEur(80000, kurs); // 800.00 USD -> 732.00 EUR
-    const wertB = foreignToEur(40000, kurs); // 400.00 USD -> 366.00 EUR
-    expect(wertA).toBe(73200);
-    expect(wertB).toBe(36600);
+    // Invoice 1,200.00 USD at 1.25 USD per EUR (the stored rate is foreign units per EUR).
+    const kurs = 1.25;
+    const wertA = convertToEur(80000, kurs); // 800.00 USD -> 640.00 EUR
+    const wertB = convertToEur(40000, kurs); // 400.00 USD -> 320.00 EUR
+    expect(wertA).toBe(64000);
+    expect(wertB).toBe(32000);
 
     // Freight in USD, frozen at receipt as well.
-    const frachtEur = foreignToEur(15000, kurs); // 150.00 USD -> 137.25 EUR
-    expect(frachtEur).toBe(13725);
+    const frachtEur = convertToEur(15000, kurs); // 150.00 USD -> 120.00 EUR
+    expect(frachtEur).toBe(12000);
 
     const e = distributeAdditionalCosts(
       [item('a', 10, wertA), item('b', 5, wertB)],
       [{ label: 'Fracht', amountEur: frachtEur, distributionMethod: 'value' }],
     );
 
-    // Values are 2:1, so 9,150 vs 4,575 cents.
-    expect(e.items.map((p) => p.additionalCostsEur)).toEqual([9150, 4575]);
-    expect(e.items[0]!.landedCostEur).toBe(8235); // 82.35 EUR
-    expect(e.items[1]!.landedCostEur).toBe(8235);
+    // Values are 2:1, so 8,000 vs 4,000 cents.
+    expect(e.items.map((p) => p.additionalCostsEur)).toEqual([8000, 4000]);
+    expect(e.items[0]!.landedCostEur).toBe(7200); // 72.00 EUR
+    expect(e.items[1]!.landedCostEur).toBe(7200);
   });
 });
 
@@ -142,17 +141,6 @@ describe('distributeAdditionalCosts – Rundung auf Cent (Regel 10)', () => {
     );
     expect(e.items[0]!.landedCostEur).toBe(334);
     expect(e.items[0]!.roundingDifferenceEur).toBe(1001 - 334 * 3);
-  });
-});
-
-describe('landedCostPerUnit', () => {
-  it('rechnet den Einzelfall ueber denselben Weg', () => {
-    expect(landedCostPerUnit(item('a', 4, 10000))).toBe(2500);
-    expect(
-      landedCostPerUnit(item('a', 4, 10000), [
-        { label: 'Fracht', amountEur: 2000, distributionMethod: 'value' },
-      ]),
-    ).toBe(3000);
   });
 });
 

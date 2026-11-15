@@ -162,6 +162,8 @@ async function pushStock() {
     await Promise.all([refreshStockChanges(), refresh()]);
   } catch (err) {
     stockError.value = readError(err).message;
+    // Part of it may have gone through; show what is still open.
+    await refreshStockChanges();
   } finally {
     stockPushing.value = false;
   }

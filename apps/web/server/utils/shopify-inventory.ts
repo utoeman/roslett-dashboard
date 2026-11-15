@@ -6,6 +6,7 @@
 
 import { createHash } from 'node:crypto';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { H3Error } from 'h3';
 import {
   PUSHED_KINDS,
   inventoryReason,
@@ -199,6 +200,8 @@ async function adjustAvailable(input: {
  * entry) and rolls the claim back if Shopify refuses; `changeFromQuantity`
  * makes Shopify refuse when the quantity moved since it was read, and the
  * idempotency key derived from the entries stops a retry from adding twice.
+ * Groups are separate commits: when a later one fails, the error names what
+ * Shopify already has, and the failed entries stay open.
  */
 async function pushEntries(
   db: Db,
@@ -215,26 +218,40 @@ async function pushEntries(
     groups.set(reason, [...(groups.get(reason) ?? []), entry]);
   }
 
+  // Checked for all groups up front, so the foreseeable refusal sends nothing.
+  const { changes: all } = planInventoryPush([...groups.values()].flat(), linked);
+  const stocked = await availableAt(all.map((c) => c.inventoryItemId), location.id);
+  const missing = all.find((c) => !stocked.has(c.inventoryItemId));
+  if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
+
   const sent = new Map<string, number>();
   for (const [reason, group] of groups) {
     const { changes } = planInventoryPush(group, linked);
-    const available = await availableAt(changes.map((c) => c.inventoryItemId), location.id);
-    const missing = changes.find((c) => !available.has(c.inventoryItemId));
-    if (missing) throw badRequest(`${missing.sku} wird am Lagerort ${location.name} nicht geführt.`);
-
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(schema.shopifyInventoryPushes)
-        .values(group.map((e) => ({ stockEntryId: e.entryId, delta: e.quantity, locationId: location.id, reason: 'pushed' as const })));
-      await adjustAvailable({
-        reason,
-        referenceDocumentUri,
-        key: idempotencyKey(group.map((e) => e.entryId).sort().join(',')),
-        locationId: location.id,
-        changes,
-        available,
+    try {
+      // Read again per group: an earlier group may have moved the same item.
+      const available = sent.size === 0 ? stocked : await availableAt(changes.map((c) => c.inventoryItemId), location.id);
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(schema.shopifyInventoryPushes)
+          .values(group.map((e) => ({ stockEntryId: e.entryId, delta: e.quantity, locationId: location.id, reason: 'pushed' as const })));
+        await adjustAvailable({
+          reason,
+          referenceDocumentUri,
+          key: idempotencyKey(group.map((e) => e.entryId).sort().join(',')),
+          locationId: location.id,
+          changes,
+          available,
+        });
       });
-    });
+    } catch (error) {
+      if (sent.size === 0) throw error;
+      const message = (error instanceof H3Error && (error.data as { fehler?: string } | undefined)?.fehler) || 'Shopify-Fehler.';
+      if (!(error instanceof H3Error)) console.error(error);
+      throw conflict(
+        `${message} Schon in Shopify gebucht: ${[...sent].map(([sku, delta]) => `${sku} ${delta > 0 ? `+${delta}` : delta}`).join(', ')}. ` +
+          'Der Rest bleibt offen und lässt sich erneut übertragen.',
+      );
+    }
     for (const c of changes) sent.set(c.sku, (sent.get(c.sku) ?? 0) + c.delta);
   }
   return { location: location.name, lines: [...sent].map(([sku, delta]) => ({ sku, delta })), unlinked };

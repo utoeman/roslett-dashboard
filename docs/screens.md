@@ -1,6 +1,6 @@
 # Screens
 
-Klickbare Entwürfe aller Kern-Screens, als PDF in [`Roslett-Dashboard – Screens.pdf`](Roslett-Dashboard%20–%20Screens.pdf). Alle Desktop-Screens sind fluide Seiten (Seitennavigation links, auf schmalen Bildschirmen umbrechend). Alle Zahlen sind **Demodaten**, aber in sich stimmig.
+Entwürfe aller Kern-Screens, entstanden vor der Umsetzung. Den umgesetzten Stand zeigen die Screenshots im [README](../README.md#screenshots). Alle Desktop-Screens sind fluide Seiten (Seitennavigation links, auf schmalen Bildschirmen umbrechend). Alle Zahlen sind **Demodaten**, aber in sich stimmig.
 
 Durchgehendes Beispiel: Variante `ROS-KIS-0012-SAN-4545` (Leinenkissen Sand 45×45) hat eine **Fehlmenge von −1** nach Etsy #3318; sie wird beim Buchen von **WE-2026-014** aufgelöst.
 

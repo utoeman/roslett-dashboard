@@ -106,7 +106,7 @@ Umsetzung erst nach Abschluss aller Schritte, mit Plan und Freigabe.
 | Betrieb | **Netlify + Neon** (zunächst Vercel geplant); Docker nur für die lokale DB |
 | CI | GitHub Actions (Lint, Typecheck, Tests) – wird ergänzt |
 
-## Schritt 9: Shopify-Spezifikation ↔ Ist-Stand (entschieden 25.10.2026)
+## Schritt 9: Shopify-Spezifikation ↔ Ist-Stand (im Interview entschieden 25.10.2026)
 
 Grundlage: `roslett-dashboard-spezifikation.md` (Stand 24.10.2026), übernommen und angepasst
 als [shopify-integration.md](shopify-integration.md). Bei Widerspruch gilt diese Tabelle.
@@ -120,7 +120,7 @@ als [shopify-integration.md](shopify-integration.md). Bei Widerspruch gilt diese
 | A5 | Mengenhoheit | Shopify besitzt die Bestandsmenge | **übernommen ab Shopify-Anbindung**; das Journal bleibt Wertgrundlage (FIFO), Mengen kommen aus Shopify-Bestellungen bzw. werden relativ gepusht. Bis dahin bleibt das Dashboard Master |
 | A6 | Preis je Kanal | ein Preis, kalkuliert auf den teuersten Kanal | deckt sich mit Schritt 4; `channel_prices` und `pricing_rule` entfallen weiterhin (im Schema noch vorhanden) |
 | A7 | MwSt | fest `/ 1.19` | Satz aus `vat_rates` (Lieferland + MwSt-Kategorie), je Position gespeichert (E12) |
-| A8 | Shop-Plattform | Shopify | **Shopify**; Doku angepasst |
+| A8 | Shop-Plattform | Shopify | **Shopify**; Projekt-`CLAUDE.md` angepasst |
 | A9 | Hosting | Hetzner CAX31 + Ploi | bleibt **Netlify + Neon** (Schritt 8, läuft); Webhooks als Netlify Function, nächtlicher Abgleich als Scheduled Function. Wechsel nur bei echtem Bedarf |
 | A10 | Wareneinsatz | „historisch fix“ | bleibt rückwirkend bis zum Monatsabschluss (E6), danach „Korrektur Vormonate“ (E7) – erfüllt dasselbe Ziel |
 | A11 | Geldformat | `NUMERIC(10,4)` | bleibt wie im Code: Rechnen in ganzzahligen Cent (E14), Speichern als `NUMERIC(14,4)` |

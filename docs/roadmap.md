@@ -45,7 +45,7 @@ Bewusst nicht im Dashboard: GSAP, Three.js, Bootstrap, React, AWS/Azure-Dienste.
 - [x] Margen inkl. MwSt. und Fremdwährung (EZB-Kurs am Rechnungsdatum)
 - [x] Shopify Stufe 0: Produktion (Eigenfertigung), Herstellerangaben, Faserfelder
 - [x] Shopify Stufe 1: Bestellungen und Erstattungen aller Kanäle abrufen, FIFO und Marge rechnen
-- [x] Shopify Stufe 2–4: Preise, Zugänge, Produkte, Bilder und Bestandsänderungen übertragen
+- [x] Shopify Stufe 2–4: Preise, Zugänge, Produkte, Bilder (hochladen, Farbe zuordnen, löschen – G34) und Bestandsänderungen übertragen
 - [ ] Monatsabschluss mit „Korrektur Vormonate“
 - [ ] Diagramme (Marge pro Produkt, Lagerwert, Umsatz nach Kanal)
 

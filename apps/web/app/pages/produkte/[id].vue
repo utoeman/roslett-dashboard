@@ -339,12 +339,12 @@ function imageAlt(): string {
 }
 
 /** Shopify accepts the colour only after processing the image, so ask again for up to 30 seconds. */
-async function assignColors(mediaId: string, colorIds: string[], name: string) {
+async function assignColor(mediaId: string, colorId: string | null, name: string) {
   imagesProgress.value = `${name}: wird der Farbe zugeordnet …`;
   for (let attempt = 0; attempt < 20; attempt++) {
     const result = await $fetch<ShopifyImageAssigned>(`/api/products/${id.value}/images/assign`, {
       method: 'POST',
-      body: { mediaId, colorIds },
+      body: { mediaId, colorId },
     });
     if (result.ready) {
       images.value = result.images;
@@ -355,7 +355,7 @@ async function assignColors(mediaId: string, colorIds: string[], name: string) {
   throw new Error(`${name}: Shopify verarbeitet das Bild noch; die Farbe bitte später zuordnen (Bild anklicken).`);
 }
 
-// Editing an uploaded image: change its colours or delete it in Shopify (G34).
+// Editing an uploaded image: change its colour (G35) or delete it in Shopify (G34).
 const editingImage = ref<ShopifyImage | null>(null);
 const imageDialogOpen = computed({
   get: () => editingImage.value !== null,
@@ -363,14 +363,14 @@ const imageDialogOpen = computed({
     if (!open) editingImage.value = null;
   },
 });
-const editImageColorIds = ref<string[]>([]);
+const editImageColor = ref(NO_COLOR);
 const imageBusy = ref(false);
 const imageDialogMessage = ref<string | null>(null);
 const imageDeleteAsked = ref(false);
 
 function openImage(image: ShopifyImage) {
-  // Shopify reports colours by name (option "Farbe"); the select works with IDs.
-  editImageColorIds.value = imageColors.value.filter((c) => image.colors.includes(c.label)).map((c) => c.value);
+  // The colour comes as a name from the alt text; the select works with IDs.
+  editImageColor.value = imageColors.value.find((c) => c.label === image.color)?.value ?? NO_COLOR;
   imageDialogMessage.value = null;
   imageDeleteAsked.value = false;
   editingImage.value = image;
@@ -381,7 +381,7 @@ async function saveImageColors() {
   imageBusy.value = true;
   imageDialogMessage.value = null;
   try {
-    await assignColors(editingImage.value.id, editImageColorIds.value, 'Bild');
+    await assignColor(editingImage.value.id, editImageColor.value === NO_COLOR ? null : editImageColor.value, 'Bild');
     editingImage.value = null;
   } catch (err) {
     imageDialogMessage.value = err instanceof Error && !('data' in err) ? err.message : readError(err).message;
@@ -433,7 +433,7 @@ async function uploadImages(event: Event) {
         body: { resourceUrl: target.resourceUrl, alt: imageAlt() },
       });
       images.value = attached.images;
-      if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColors(attached.mediaId, [imageColor.value], file.name);
+      if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColor(attached.mediaId, imageColor.value, file.name);
     }
   } catch (err) {
     imagesMessage.value = err instanceof Error && !('data' in err) ? err.message : readError(err).message;
@@ -799,8 +799,9 @@ async function pushShopify() {
             <div>
               <h2 class="text-sm font-semibold">Bilder in Shopify</h2>
               <p class="mt-0.5 text-xs text-leinen-500">
-                Werden direkt zu Shopify hochgeladen. Mit Farbe zeigt der Shop das Bild bei allen Größen dieser Farbe.
-                Bild anklicken, um die Farbe zu ändern oder es zu löschen. Reihenfolge und Alt-Texte pflegen Sie in Shopify.
+                Werden direkt zu Shopify hochgeladen. Je Farbe beliebig viele Fotos; der Shop zeigt bei einer Farbe nur
+                ihre Fotos und die ohne Farbe. Bild anklicken, um die Farbe zu ändern oder es zu löschen. Die Reihenfolge
+                pflegen Sie in Shopify.
               </p>
             </div>
             <div v-if="imagesAvailable" class="flex flex-wrap items-center gap-2">
@@ -837,10 +838,12 @@ async function pushShopify() {
               <img v-if="image.url" :src="image.url" :alt="image.alt ?? ''" class="h-full w-full object-cover">
               <span v-else class="text-xs text-leinen-500">{{ image.status === 'FAILED' ? 'fehlgeschlagen' : 'wird verarbeitet' }}</span>
               <span
-                v-if="image.colors.length"
-                class="absolute bottom-1 left-1 rounded-[6px] bg-white/90 px-1.5 py-0.5 text-[11px] dark:bg-leinen-900/90"
+                v-if="image.color"
+                class="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-[6px] bg-white/90 px-1.5 py-0.5 text-[11px] dark:bg-leinen-900/90"
+                :title="image.variantImage ? 'Variantenbild: erscheint in Warenkorb und Bestellung' : undefined"
               >
-                {{ image.colors.join(', ') }}
+                <UIcon v-if="image.variantImage" name="i-lucide-star" class="size-3" aria-label="Variantenbild" />
+                {{ image.color }}
               </span>
             </button>
           </div>
@@ -1060,18 +1063,16 @@ async function pushShopify() {
                 class="h-24 w-24 shrink-0 rounded-[8px] object-cover"
               >
               <p class="text-xs text-leinen-500">
-                Mit Farbe zeigt der Shop das Bild bei allen Größen dieser Farbe. Hatte eine Farbe schon ein Bild, wird es
-                ersetzt; das alte bleibt in der Galerie.
+                Der Shop zeigt das Foto nur bei dieser Farbe, ohne Farbe bei allen. Das erste Foto einer Farbe
+                (Reihenfolge in Shopify, ★) erscheint auch in Warenkorb und Bestellung. Die Farbe steht im Alt-Text.
               </p>
             </div>
             <template v-if="!imageDeleteAsked">
-              <UFormField v-if="imageColors.length > 0" label="Farben" help="Leer = keine Farbe.">
+              <UFormField v-if="imageColors.length > 0" label="Farbe">
                 <USelectMenu
-                  v-model="editImageColorIds"
-                  :items="imageColors"
+                  v-model="editImageColor"
+                  :items="[{ value: NO_COLOR, label: 'keine Farbe' }, ...imageColors]"
                   value-key="value"
-                  multiple
-                  placeholder="keine Farbe"
                   class="w-full"
                 />
               </UFormField>

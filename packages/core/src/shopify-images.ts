@@ -59,35 +59,70 @@ export function variantsOfColor(
   return ids;
 }
 
-export interface VariantMedia {
+/**
+ * G35: a photo's colour is the text after the last comma of its alt text
+ * ("Kissen Leinen, Senfgelb"). The shop theme filters the gallery by the same
+ * rule, so the alt text is the single source.
+ */
+export function colorFromAlt(alt: string | null, colorNames: readonly string[]): string | null {
+  if (alt === null) return null;
+  const comma = alt.lastIndexOf(',');
+  if (comma < 0) return null;
+  const suffix = alt.slice(comma + 1).trim().toLocaleLowerCase('de');
+  return colorNames.find((name) => name.toLocaleLowerCase('de') === suffix) ?? null;
+}
+
+/** Alt text with the new colour; text written in Shopify is kept, otherwise the product name. */
+export function altWithColor(
+  alt: string | null,
+  productName: string,
+  colorNames: readonly string[],
+  colorName: string | null,
+): string {
+  const own = alt ?? '';
+  const base = colorFromAlt(alt, colorNames) === null ? own : own.slice(0, own.lastIndexOf(','));
+  const text = base.trim() || productName;
+  return colorName ? `${text}, ${colorName}` : text;
+}
+
+export interface VariantImage {
   variantId: string;
+  colorName: string | null;
   /** The variant's picture in Shopify, null if it has none. */
   mediaId: string | null;
 }
 
-export interface VariantMediaPlan {
+export interface GalleryImage {
+  mediaId: string;
+  colorName: string | null;
+  /** Shopify attaches only processed images to variants. */
+  ready: boolean;
+}
+
+export interface VariantImagePlan {
   detach: { variantId: string; mediaId: string }[];
-  append: string[];
+  append: { variantId: string; mediaId: string }[];
+  /** A colour's first photo is still processing; ask again later. */
+  pending: boolean;
 }
 
 /**
- * Steps to make `mediaId` the picture of exactly `targetVariantIds`. A variant
- * holds one picture, so a target's old picture is detached first.
+ * Shopify holds one picture per variant: it becomes the first photo of the
+ * variant's colour in gallery order, across all sizes. Colours without a photo
+ * lose their picture; variants without a colour stay as they are.
  */
-export function planVariantMedia(
-  current: readonly VariantMedia[],
-  targetVariantIds: readonly string[],
-  mediaId: string,
-): VariantMediaPlan {
-  const targets = new Set(targetVariantIds);
-  const shown = new Map(current.map((v) => [v.variantId, v.mediaId]));
-  const detach: VariantMediaPlan['detach'] = [];
-  for (const v of current) {
-    if (v.mediaId === null) continue;
-    if (targets.has(v.variantId) ? v.mediaId !== mediaId : v.mediaId === mediaId) {
-      detach.push({ variantId: v.variantId, mediaId: v.mediaId });
+export function planVariantImages(variants: readonly VariantImage[], gallery: readonly GalleryImage[]): VariantImagePlan {
+  const plan: VariantImagePlan = { detach: [], append: [], pending: false };
+  for (const variant of variants) {
+    if (variant.colorName === null) continue;
+    const first = gallery.find((image) => image.colorName === variant.colorName) ?? null;
+    if (first?.mediaId === variant.mediaId) continue;
+    if (first !== null && !first.ready) {
+      plan.pending = true;
+      continue;
     }
+    if (variant.mediaId !== null) plan.detach.push({ variantId: variant.variantId, mediaId: variant.mediaId });
+    if (first !== null) plan.append.push({ variantId: variant.variantId, mediaId: first.mediaId });
   }
-  const append = [...targets].filter((variantId) => shown.get(variantId) !== mediaId);
-  return { detach, append };
+  return plan;
 }

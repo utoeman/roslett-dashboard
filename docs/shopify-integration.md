@@ -39,7 +39,7 @@ Rechnungen (bleibt Shopify bzw. Lexware Office).
 | Retouren, Erstattungen, Stornos | **Shopify** | Pull |
 | Chargen, Fremdwährung, Kurse, Zoll, Fracht, FIFO | Dashboard | nur Dashboard |
 | Kanalgebühren, Versand, Kostenpositionen | Dashboard | nur Dashboard |
-| Bilder hinzufügen | Dashboard | Upload → Shopify (ab Stufe 3, G2) |
+| Bilder hinzufügen, Farbe zuordnen, löschen | Dashboard | Upload → Shopify (ab Stufe 3, G2); Farbe und Löschen nachträglich (G34) |
 | Bildreihenfolge, Alt-Texte, SEO-Texte, Kollektionen | Shopify | kein Push |
 
 ## 4. Vorgänge
@@ -111,6 +111,11 @@ Zuordnung erst an, wenn das Bild verarbeitet ist („Non-ready media cannot be a
 der Browser fragt deshalb bis zu 30 s alle 1,5 s nach statt den Server warten zu lassen
 (Funktionslimit). Je Variante gibt es in Shopify genau ein Variantenbild. `productSet` lässt auch
 diese Zuordnung stehen (geprüft).
+**Umgesetzt (G34):** Klick auf ein Bild öffnet „Bild bearbeiten“. Farben (mehrere oder keine) setzen
+das Bild als Variantenbild genau dieser Farben: `planVariantMedia` (core) bestimmt, welche Varianten
+ihr altes Bild verlieren (`productVariantDetachMedia`) und welche dieses bekommen
+(`productVariantAppendMedia`). „Löschen“ löscht das Bild per `fileDelete` endgültig in Shopify
+(Scope `write_files`, G4), erst nach Bestätigung.
 
 ### V5 Inventur, Schwund (Dashboard → Shopify)
 1. `stocktake` bzw. `shrinkage` wie im Domain-Modell (Plus → neueste Charge, Minus → FIFO,

@@ -339,12 +339,12 @@ function imageAlt(): string {
 }
 
 /** Shopify accepts the colour only after processing the image, so ask again for up to 30 seconds. */
-async function assignColor(mediaId: string, colorId: string, name: string) {
+async function assignColors(mediaId: string, colorIds: string[], name: string) {
   imagesProgress.value = `${name}: wird der Farbe zugeordnet …`;
   for (let attempt = 0; attempt < 20; attempt++) {
     const result = await $fetch<ShopifyImageAssigned>(`/api/products/${id.value}/images/assign`, {
       method: 'POST',
-      body: { mediaId, colorId },
+      body: { mediaId, colorIds },
     });
     if (result.ready) {
       images.value = result.images;
@@ -352,7 +352,59 @@ async function assignColor(mediaId: string, colorId: string, name: string) {
     }
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
-  throw new Error(`${name}: Shopify verarbeitet das Bild noch; die Farbe bitte später in Shopify zuordnen.`);
+  throw new Error(`${name}: Shopify verarbeitet das Bild noch; die Farbe bitte später zuordnen (Bild anklicken).`);
+}
+
+// Editing an uploaded image: change its colours or delete it in Shopify (G34).
+const editingImage = ref<ShopifyImage | null>(null);
+const imageDialogOpen = computed({
+  get: () => editingImage.value !== null,
+  set: (open: boolean) => {
+    if (!open) editingImage.value = null;
+  },
+});
+const editImageColorIds = ref<string[]>([]);
+const imageBusy = ref(false);
+const imageDialogMessage = ref<string | null>(null);
+const imageDeleteAsked = ref(false);
+
+function openImage(image: ShopifyImage) {
+  // Shopify reports colours by name (option "Farbe"); the select works with IDs.
+  editImageColorIds.value = imageColors.value.filter((c) => image.colors.includes(c.label)).map((c) => c.value);
+  imageDialogMessage.value = null;
+  imageDeleteAsked.value = false;
+  editingImage.value = image;
+}
+
+async function saveImageColors() {
+  if (editingImage.value === null) return;
+  imageBusy.value = true;
+  imageDialogMessage.value = null;
+  try {
+    await assignColors(editingImage.value.id, editImageColorIds.value, 'Bild');
+    editingImage.value = null;
+  } catch (err) {
+    imageDialogMessage.value = err instanceof Error && !('data' in err) ? err.message : readError(err).message;
+  } finally {
+    imageBusy.value = false;
+  }
+}
+
+async function confirmDeleteImage() {
+  if (editingImage.value === null) return;
+  imageBusy.value = true;
+  imageDialogMessage.value = null;
+  try {
+    images.value = await $fetch<ShopifyImage[]>(`/api/products/${id.value}/images`, {
+      method: 'DELETE',
+      body: { mediaId: editingImage.value.id },
+    });
+    editingImage.value = null;
+  } catch (err) {
+    imageDialogMessage.value = readError(err).message;
+  } finally {
+    imageBusy.value = false;
+  }
 }
 
 /** The file goes from the browser straight to Shopify; the dashboard never receives it. */
@@ -381,7 +433,7 @@ async function uploadImages(event: Event) {
         body: { resourceUrl: target.resourceUrl, alt: imageAlt() },
       });
       images.value = attached.images;
-      if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColor(attached.mediaId, imageColor.value, file.name);
+      if (imageColor.value !== NO_COLOR && attached.mediaId) await assignColors(attached.mediaId, [imageColor.value], file.name);
     }
   } catch (err) {
     imagesMessage.value = err instanceof Error && !('data' in err) ? err.message : readError(err).message;
@@ -748,7 +800,7 @@ async function pushShopify() {
               <h2 class="text-sm font-semibold">Bilder in Shopify</h2>
               <p class="mt-0.5 text-xs text-leinen-500">
                 Werden direkt zu Shopify hochgeladen. Mit Farbe zeigt der Shop das Bild bei allen Größen dieser Farbe.
-                Reihenfolge und Alt-Texte pflegen Sie in Shopify.
+                Bild anklicken, um die Farbe zu ändern oder es zu löschen. Reihenfolge und Alt-Texte pflegen Sie in Shopify.
               </p>
             </div>
             <div v-if="imagesAvailable" class="flex flex-wrap items-center gap-2">
@@ -774,10 +826,13 @@ async function pushShopify() {
           </div>
           <UAlert v-if="imagesMessage" color="warning" variant="subtle" class="mt-3 rounded-[12px]" :description="imagesMessage" />
           <div v-if="images.length" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            <div
+            <button
               v-for="image in images"
               :key="image.id"
-              class="relative flex aspect-square items-center justify-center overflow-hidden rounded-[8px] bg-leinen-100 dark:bg-leinen-800"
+              type="button"
+              class="relative flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-[8px] bg-leinen-100 hover:ring-2 hover:ring-leinen-400 focus-visible:ring-2 focus-visible:ring-leinen-500 focus-visible:outline-none dark:bg-leinen-800"
+              :aria-label="`Bild bearbeiten${image.alt ? `: ${image.alt}` : ''}`"
+              @click="openImage(image)"
             >
               <img v-if="image.url" :src="image.url" :alt="image.alt ?? ''" class="h-full w-full object-cover">
               <span v-else class="text-xs text-leinen-500">{{ image.status === 'FAILED' ? 'fehlgeschlagen' : 'wird verarbeitet' }}</span>
@@ -787,7 +842,7 @@ async function pushShopify() {
               >
                 {{ image.colors.join(', ') }}
               </span>
-            </div>
+            </button>
           </div>
           <p v-else-if="imagesAvailable" class="mt-3 text-sm text-leinen-500">Noch keine Bilder in Shopify.</p>
         </section>
@@ -984,6 +1039,75 @@ async function pushShopify() {
               </UButton>
             </div>
           </form>
+        </template>
+      </UModal>
+
+      <UModal v-model:open="imageDialogOpen" title="Bild bearbeiten">
+        <template #body>
+          <div v-if="editingImage" class="space-y-4">
+            <UAlert
+              v-if="imageDialogMessage"
+              color="error"
+              variant="subtle"
+              class="rounded-[12px]"
+              :description="imageDialogMessage"
+            />
+            <div class="flex items-start gap-3">
+              <img
+                v-if="editingImage.url"
+                :src="editingImage.url"
+                :alt="editingImage.alt ?? ''"
+                class="h-24 w-24 shrink-0 rounded-[8px] object-cover"
+              >
+              <p class="text-xs text-leinen-500">
+                Mit Farbe zeigt der Shop das Bild bei allen Größen dieser Farbe. Hatte eine Farbe schon ein Bild, wird es
+                ersetzt; das alte bleibt in der Galerie.
+              </p>
+            </div>
+            <template v-if="!imageDeleteAsked">
+              <UFormField v-if="imageColors.length > 0" label="Farben" help="Leer = keine Farbe.">
+                <USelectMenu
+                  v-model="editImageColorIds"
+                  :items="imageColors"
+                  value-key="value"
+                  multiple
+                  placeholder="keine Farbe"
+                  class="w-full"
+                />
+              </UFormField>
+              <p v-else class="text-sm text-leinen-500">Das Produkt hat keine Varianten mit Farbe.</p>
+              <div class="flex justify-between gap-2 pt-2">
+                <UButton color="error" variant="ghost" class="rounded-[8px]" :disabled="imageBusy" @click="imageDeleteAsked = true">
+                  Bild löschen
+                </UButton>
+                <div class="flex gap-2">
+                  <UButton color="neutral" variant="ghost" class="rounded-[8px]" @click="imageDialogOpen = false">Abbrechen</UButton>
+                  <UButton
+                    v-if="imageColors.length > 0"
+                    :loading="imageBusy"
+                    class="rounded-[8px]"
+                    @click="saveImageColors"
+                  >
+                    Speichern
+                  </UButton>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <p class="text-sm text-roswarning-700">
+                Das Bild wird in Shopify endgültig gelöscht und verschwindet damit auch aus dem Shop. Das lässt sich nicht
+                rückgängig machen.
+              </p>
+              <div class="flex justify-end gap-2 pt-2">
+                <UButton color="neutral" variant="ghost" class="rounded-[8px]" :disabled="imageBusy" @click="imageDeleteAsked = false">
+                  Zurück
+                </UButton>
+                <UButton color="error" :loading="imageBusy" class="rounded-[8px]" @click="confirmDeleteImage">
+                  Endgültig löschen
+                </UButton>
+              </div>
+            </template>
+          </div>
         </template>
       </UModal>
 

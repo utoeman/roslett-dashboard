@@ -1,10 +1,17 @@
 /**
- * Product images in Shopify (stage 3b, G2). Order and alt texts are kept in
- * Shopify; the dashboard lists, stages and attaches.
+ * Product images in Shopify (stage 3b, G2, G34). Order and alt texts are kept
+ * in Shopify; the dashboard lists, stages, attaches, sets colours and deletes.
  */
 
 import { and, eq, isNull } from 'drizzle-orm';
-import { ImageUploadError, assertStagedResource, checkImageUpload, variantsOfColor, type ImageUploadMeta } from '@roslett/core';
+import {
+  ImageUploadError,
+  assertStagedResource,
+  checkImageUpload,
+  planVariantMedia,
+  variantsOfColor,
+  type ImageUploadMeta,
+} from '@roslett/core';
 import { schema, type useDb } from '../db/client.js';
 import type { ShopifyImage, ShopifyImageAssigned, ShopifyImageAttached, ShopifyStagedUpload } from '../../shared/types/api.js';
 import { badRequest, conflict } from './errors.js';
@@ -46,11 +53,13 @@ interface MediaNode {
 
 interface MediaProduct {
   media: { nodes: MediaNode[] };
-  variants: { nodes: { selectedOptions: { name: string; value: string }[]; media: { nodes: { id: string }[] } }[] };
+  variants: {
+    nodes: { id: string; selectedOptions: { name: string; value: string }[]; media: { nodes: { id: string }[] } }[];
+  };
 }
 
 const MEDIA_FIELDS = `media(first: 50) { nodes { id alt status preview { image { url(transform: { maxWidth: 400 }) } } } }
-  variants(first: 100) { nodes { selectedOptions { name value } media(first: 1) { nodes { id } } } }`;
+  variants(first: 100) { nodes { id selectedOptions { name value } media(first: 1) { nodes { id } } } }`;
 
 /** Images with the colours whose variants show them (option "Farbe" from 3a). */
 function toImages(product: MediaProduct | null): ShopifyImage[] {
@@ -131,36 +140,71 @@ export async function attachImage(
 }
 
 /**
- * Makes an image the picture of every variant of a colour. Shopify accepts
- * this only once the image is processed, so the browser asks again while
- * `ready` is false instead of the server waiting (function time limit).
+ * Makes an image the picture of every variant of the given colours, and of no
+ * other variant (empty list = no colour). Shopify accepts attaching only once
+ * the image is processed, so the browser asks again while `ready` is false
+ * instead of the server waiting (function time limit).
  */
-export async function assignImageToColor(
+export async function setImageColors(
   db: Db,
   productId: string,
   mediaId: string,
-  colorId: string,
+  colorIds: readonly string[],
 ): Promise<ShopifyImageAssigned> {
   const id = await linkedProductId(db, productId);
   const variants = await db.query.variants.findMany({
     where: and(eq(schema.variants.productId, productId), isNull(schema.variants.archivedAt)),
     columns: { colorId: true, shopifyVariantId: true },
   });
-  const variantIds = guard(() => variantsOfColor(variants, colorId));
+  const targets = guard(() => colorIds.flatMap((colorId) => variantsOfColor(variants, colorId)));
 
-  const media = (await readMedia(id))?.media.nodes.find((m) => m.id === mediaId);
+  const product = await readMedia(id);
+  const media = product?.media.nodes.find((m) => m.id === mediaId);
   if (media === undefined) throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
   if (media.status === 'FAILED') throw badRequest('Shopify konnte das Bild nicht verarbeiten.');
-  if (media.status !== 'READY') return { ready: false, images: [] };
+  if (targets.length > 0 && media.status !== 'READY') return { ready: false, images: [] };
 
-  const data = await shopifyGraphql<{ productVariantAppendMedia: UserErrors }>(
-    `mutation Variants($productId: ID!, $variantMedia: [ProductVariantAppendMediaInput!]!) {
-      productVariantAppendMedia(productId: $productId, variantMedia: $variantMedia) { userErrors { field message } }
-    }`,
-    { productId: id, variantMedia: variantIds.map((variantId) => ({ variantId, mediaIds: [mediaId] })) },
-  );
-  if (data.productVariantAppendMedia.userErrors.length > 0) {
-    throw badRequest(`Shopify hat die Zuordnung abgelehnt: ${data.productVariantAppendMedia.userErrors.map((e) => e.message).join('; ')}`);
+  const current = (product?.variants.nodes ?? []).map((v) => ({ variantId: v.id, mediaId: v.media.nodes[0]?.id ?? null }));
+  const plan = planVariantMedia(current, targets, mediaId);
+
+  if (plan.detach.length > 0) {
+    const data = await shopifyGraphql<{ productVariantDetachMedia: UserErrors }>(
+      `mutation Detach($productId: ID!, $variantMedia: [ProductVariantDetachMediaInput!]!) {
+        productVariantDetachMedia(productId: $productId, variantMedia: $variantMedia) { userErrors { field message } }
+      }`,
+      { productId: id, variantMedia: plan.detach.map((d) => ({ variantId: d.variantId, mediaIds: [d.mediaId] })) },
+    );
+    if (data.productVariantDetachMedia.userErrors.length > 0) {
+      throw badRequest(`Shopify hat das Lösen abgelehnt: ${data.productVariantDetachMedia.userErrors.map((e) => e.message).join('; ')}`);
+    }
+  }
+  if (plan.append.length > 0) {
+    const data = await shopifyGraphql<{ productVariantAppendMedia: UserErrors }>(
+      `mutation Variants($productId: ID!, $variantMedia: [ProductVariantAppendMediaInput!]!) {
+        productVariantAppendMedia(productId: $productId, variantMedia: $variantMedia) { userErrors { field message } }
+      }`,
+      { productId: id, variantMedia: plan.append.map((variantId) => ({ variantId, mediaIds: [mediaId] })) },
+    );
+    if (data.productVariantAppendMedia.userErrors.length > 0) {
+      throw badRequest(`Shopify hat die Zuordnung abgelehnt: ${data.productVariantAppendMedia.userErrors.map((e) => e.message).join('; ')}`);
+    }
   }
   return { ready: true, images: await listImages(db, productId) };
+}
+
+/** Deletes the image in Shopify for good, so it also leaves the shop (G34). */
+export async function deleteImage(db: Db, productId: string, mediaId: string): Promise<ShopifyImage[]> {
+  const id = await linkedProductId(db, productId);
+  if (!(await readMedia(id))?.media.nodes.some((m) => m.id === mediaId)) {
+    throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
+  }
+  const data = await shopifyGraphql<{ fileDelete: UserErrors }>(
+    `mutation Delete($fileIds: [ID!]!) { fileDelete(fileIds: $fileIds) { deletedFileIds userErrors { field message } } }`,
+    { fileIds: [mediaId] },
+  );
+  if (data.fileDelete.userErrors.length > 0) {
+    throw badRequest(`Shopify hat das Löschen abgelehnt: ${data.fileDelete.userErrors.map((e) => e.message).join('; ')}`);
+  }
+  // Deletion runs asynchronously in Shopify; the list must not show the image again.
+  return (await listImages(db, productId)).filter((image) => image.id !== mediaId);
 }

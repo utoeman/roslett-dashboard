@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ImageUploadError, assertStagedResource, checkImageUpload, variantsOfColor } from '../src/shopify-images';
+import { ImageUploadError, assertStagedResource, checkImageUpload, planVariantMedia, variantsOfColor } from '../src/shopify-images';
 
 describe('checkImageUpload', () => {
   it('akzeptiert JPEG, PNG und WebP bis 20 MB', () => {
@@ -44,5 +44,43 @@ describe('variantsOfColor', () => {
 
   it('lehnt eine Farbe ohne verknüpfte Variante ab', () => {
     expect(() => variantsOfColor(variants, 'weiss')).toThrow(ImageUploadError);
+  });
+});
+
+describe('planVariantMedia', () => {
+  const v = (n: number) => `gid://shopify/ProductVariant/${n}`;
+  const bild = 'gid://shopify/MediaImage/10';
+  const anderes = 'gid://shopify/MediaImage/20';
+
+  it('hängt das Bild an Varianten ohne Bild an', () => {
+    expect(planVariantMedia([{ variantId: v(1), mediaId: null }], [v(1)], bild)).toEqual({ detach: [], append: [v(1)] });
+  });
+
+  it('ersetzt das bisherige Bild einer Zielvariante', () => {
+    expect(planVariantMedia([{ variantId: v(1), mediaId: anderes }], [v(1)], bild)).toEqual({
+      detach: [{ variantId: v(1), mediaId: anderes }],
+      append: [v(1)],
+    });
+  });
+
+  it('lässt Varianten unverändert, die das Bild schon zeigen', () => {
+    expect(planVariantMedia([{ variantId: v(1), mediaId: bild }], [v(1)], bild)).toEqual({ detach: [], append: [] });
+  });
+
+  it('löst das Bild von Varianten, die nicht mehr dazugehören', () => {
+    expect(
+      planVariantMedia(
+        [
+          { variantId: v(1), mediaId: bild },
+          { variantId: v(2), mediaId: anderes },
+        ],
+        [],
+        bild,
+      ),
+    ).toEqual({ detach: [{ variantId: v(1), mediaId: bild }], append: [] });
+  });
+
+  it('behandelt Zielvarianten, die Shopify nicht listet, wie Varianten ohne Bild', () => {
+    expect(planVariantMedia([], [v(3)], bild)).toEqual({ detach: [], append: [v(3)] });
   });
 });

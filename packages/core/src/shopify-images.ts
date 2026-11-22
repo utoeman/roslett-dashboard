@@ -58,3 +58,36 @@ export function variantsOfColor(
   }
   return ids;
 }
+
+export interface VariantMedia {
+  variantId: string;
+  /** The variant's picture in Shopify, null if it has none. */
+  mediaId: string | null;
+}
+
+export interface VariantMediaPlan {
+  detach: { variantId: string; mediaId: string }[];
+  append: string[];
+}
+
+/**
+ * Steps to make `mediaId` the picture of exactly `targetVariantIds`. A variant
+ * holds one picture, so a target's old picture is detached first.
+ */
+export function planVariantMedia(
+  current: readonly VariantMedia[],
+  targetVariantIds: readonly string[],
+  mediaId: string,
+): VariantMediaPlan {
+  const targets = new Set(targetVariantIds);
+  const shown = new Map(current.map((v) => [v.variantId, v.mediaId]));
+  const detach: VariantMediaPlan['detach'] = [];
+  for (const v of current) {
+    if (v.mediaId === null) continue;
+    if (targets.has(v.variantId) ? v.mediaId !== mediaId : v.mediaId === mediaId) {
+      detach.push({ variantId: v.variantId, mediaId: v.mediaId });
+    }
+  }
+  const append = [...targets].filter((variantId) => shown.get(variantId) !== mediaId);
+  return { detach, append };
+}

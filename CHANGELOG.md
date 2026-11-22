@@ -2,6 +2,12 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.22.0 (2026-11-22)
+
+### Neu
+
+- several photos per colour (#71)
+
 ## v0.21.0 (2026-11-22)
 
 ### Neu

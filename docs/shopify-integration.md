@@ -111,11 +111,13 @@ Zuordnung erst an, wenn das Bild verarbeitet ist („Non-ready media cannot be a
 der Browser fragt deshalb bis zu 30 s alle 1,5 s nach statt den Server warten zu lassen
 (Funktionslimit). Je Variante gibt es in Shopify genau ein Variantenbild. `productSet` lässt auch
 diese Zuordnung stehen (geprüft).
-**Umgesetzt (G34):** Klick auf ein Bild öffnet „Bild bearbeiten“. Farben (mehrere oder keine) setzen
-das Bild als Variantenbild genau dieser Farben: `planVariantMedia` (core) bestimmt, welche Varianten
-ihr altes Bild verlieren (`productVariantDetachMedia`) und welche dieses bekommen
-(`productVariantAppendMedia`). „Löschen“ löscht das Bild per `fileDelete` endgültig in Shopify
-(Scope `write_files`, G4), erst nach Bestätigung.
+**Umgesetzt (G34, G35):** Klick auf ein Bild öffnet „Bild bearbeiten“. Die Farbe (eine oder keine)
+landet im Alt-Text (`fileUpdate`, `altWithColor`/`colorFromAlt` in core). Danach gleicht
+`planVariantImages` (core) die Variantenbilder ab: je Farbe das erste Foto in Galerie-Reihenfolge,
+alte werden gelöst (`productVariantDetachMedia`), neue angehängt (`productVariantAppendMedia`).
+„Löschen“ gleicht erst ohne das Bild ab und löscht es dann per `fileDelete` endgültig in Shopify
+(Scope `write_files`, G4), erst nach Bestätigung. Das Theme (`roslett-shop`) filtert die Galerie
+nach demselben Alt-Text-Schema.
 
 ### V5 Inventur, Schwund (Dashboard → Shopify)
 1. `stocktake` bzw. `shrinkage` wie im Domain-Modell (Plus → neueste Charge, Minus → FIFO,

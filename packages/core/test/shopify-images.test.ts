@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ImageUploadError, assertStagedResource, checkImageUpload, planVariantMedia, variantsOfColor } from '../src/shopify-images';
+import {
+  ImageUploadError,
+  altWithColor,
+  assertStagedResource,
+  checkImageUpload,
+  colorFromAlt,
+  planVariantImages,
+  variantsOfColor,
+} from '../src/shopify-images';
 
 describe('checkImageUpload', () => {
   it('akzeptiert JPEG, PNG und WebP bis 20 MB', () => {
@@ -47,40 +55,95 @@ describe('variantsOfColor', () => {
   });
 });
 
-describe('planVariantMedia', () => {
-  const v = (n: number) => `gid://shopify/ProductVariant/${n}`;
-  const bild = 'gid://shopify/MediaImage/10';
-  const anderes = 'gid://shopify/MediaImage/20';
+describe('colorFromAlt', () => {
+  const farben = ['Senfgelb', 'Aubergine'];
 
-  it('hängt das Bild an Varianten ohne Bild an', () => {
-    expect(planVariantMedia([{ variantId: v(1), mediaId: null }], [v(1)], bild)).toEqual({ detach: [], append: [v(1)] });
+  it('liest die Farbe hinter dem letzten Komma', () => {
+    expect(colorFromAlt('Kissen Leinen, Senfgelb', farben)).toBe('Senfgelb');
+    expect(colorFromAlt('Kissen, groß, Aubergine', farben)).toBe('Aubergine');
   });
 
-  it('ersetzt das bisherige Bild einer Zielvariante', () => {
-    expect(planVariantMedia([{ variantId: v(1), mediaId: anderes }], [v(1)], bild)).toEqual({
-      detach: [{ variantId: v(1), mediaId: anderes }],
-      append: [v(1)],
+  it('ignoriert Groß-/Kleinschreibung und Leerzeichen', () => {
+    expect(colorFromAlt('Kissen Leinen,  senfgelb ', farben)).toBe('Senfgelb');
+  });
+
+  it('liefert null ohne bekannte Farbe', () => {
+    expect(colorFromAlt('Kissen Leinen', farben)).toBeNull();
+    expect(colorFromAlt('Kissen, Raumansicht', farben)).toBeNull();
+    expect(colorFromAlt(null, farben)).toBeNull();
+  });
+});
+
+describe('altWithColor', () => {
+  const farben = ['Senfgelb', 'Aubergine'];
+
+  it('setzt die Farbe hinter den Produktnamen', () => {
+    expect(altWithColor(null, 'Kissen Leinen', farben, 'Senfgelb')).toBe('Kissen Leinen, Senfgelb');
+  });
+
+  it('ersetzt eine vorhandene Farbe und behält eigenen Text', () => {
+    expect(altWithColor('Raumansicht Sofa, Senfgelb', 'Kissen Leinen', farben, 'Aubergine')).toBe('Raumansicht Sofa, Aubergine');
+  });
+
+  it('entfernt die Farbe bei „keine“', () => {
+    expect(altWithColor('Raumansicht Sofa, Senfgelb', 'Kissen Leinen', farben, null)).toBe('Raumansicht Sofa');
+    expect(altWithColor('', 'Kissen Leinen', farben, null)).toBe('Kissen Leinen');
+  });
+});
+
+describe('planVariantImages', () => {
+  const v = (n: number) => `gid://shopify/ProductVariant/${n}`;
+  const m = (n: number) => `gid://shopify/MediaImage/${n}`;
+  const bild = (n: number, colorName: string | null, ready = true) => ({ mediaId: m(n), colorName, ready });
+
+  it('macht das erste Foto einer Farbe zum Variantenbild aller Größen', () => {
+    const plan = planVariantImages(
+      [
+        { variantId: v(1), colorName: 'Senfgelb', mediaId: null },
+        { variantId: v(2), colorName: 'Senfgelb', mediaId: null },
+      ],
+      [bild(10, null), bild(11, 'Senfgelb'), bild(12, 'Senfgelb')],
+    );
+    expect(plan).toEqual({
+      detach: [],
+      append: [
+        { variantId: v(1), mediaId: m(11) },
+        { variantId: v(2), mediaId: m(11) },
+      ],
+      pending: false,
     });
   });
 
-  it('lässt Varianten unverändert, die das Bild schon zeigen', () => {
-    expect(planVariantMedia([{ variantId: v(1), mediaId: bild }], [v(1)], bild)).toEqual({ detach: [], append: [] });
+  it('ersetzt ein anderes Variantenbild und lässt passende unverändert', () => {
+    const plan = planVariantImages(
+      [
+        { variantId: v(1), colorName: 'Senfgelb', mediaId: m(12) },
+        { variantId: v(2), colorName: 'Aubergine', mediaId: m(20) },
+      ],
+      [bild(11, 'Senfgelb'), bild(12, 'Senfgelb'), bild(20, 'Aubergine')],
+    );
+    expect(plan).toEqual({
+      detach: [{ variantId: v(1), mediaId: m(12) }],
+      append: [{ variantId: v(1), mediaId: m(11) }],
+      pending: false,
+    });
   });
 
-  it('löst das Bild von Varianten, die nicht mehr dazugehören', () => {
-    expect(
-      planVariantMedia(
-        [
-          { variantId: v(1), mediaId: bild },
-          { variantId: v(2), mediaId: anderes },
-        ],
-        [],
-        bild,
-      ),
-    ).toEqual({ detach: [{ variantId: v(1), mediaId: bild }], append: [] });
+  it('löst das Variantenbild einer Farbe ohne Foto', () => {
+    const plan = planVariantImages([{ variantId: v(1), colorName: 'Aubergine', mediaId: m(10) }], [bild(10, null)]);
+    expect(plan).toEqual({ detach: [{ variantId: v(1), mediaId: m(10) }], append: [], pending: false });
   });
 
-  it('behandelt Zielvarianten, die Shopify nicht listet, wie Varianten ohne Bild', () => {
-    expect(planVariantMedia([], [v(3)], bild)).toEqual({ detach: [], append: [v(3)] });
+  it('wartet, solange das erste Foto noch verarbeitet wird', () => {
+    const plan = planVariantImages(
+      [{ variantId: v(1), colorName: 'Senfgelb', mediaId: m(12) }],
+      [bild(11, 'Senfgelb', false), bild(12, 'Senfgelb')],
+    );
+    expect(plan).toEqual({ detach: [], append: [], pending: true });
+  });
+
+  it('lässt Varianten ohne Farbe unberührt', () => {
+    const plan = planVariantImages([{ variantId: v(1), colorName: null, mediaId: m(10) }], [bild(11, 'Senfgelb')]);
+    expect(plan).toEqual({ detach: [], append: [], pending: false });
   });
 });

@@ -1,14 +1,17 @@
 /**
- * Product images in Shopify (stage 3b, G2, G34). Order and alt texts are kept
- * in Shopify; the dashboard lists, stages, attaches, sets colours and deletes.
+ * Product images in Shopify (stage 3b, G2, G34, G35). Order is kept in
+ * Shopify; the dashboard lists, stages, attaches, sets colours and deletes.
+ * A photo's colour lives in its alt text, so several photos can share one.
  */
 
 import { and, eq, isNull } from 'drizzle-orm';
 import {
   ImageUploadError,
+  altWithColor,
   assertStagedResource,
   checkImageUpload,
-  planVariantMedia,
+  colorFromAlt,
+  planVariantImages,
   variantsOfColor,
   type ImageUploadMeta,
 } from '@roslett/core';
@@ -61,20 +64,26 @@ interface MediaProduct {
 const MEDIA_FIELDS = `media(first: 50) { nodes { id alt status preview { image { url(transform: { maxWidth: 400 }) } } } }
   variants(first: 100) { nodes { id selectedOptions { name value } media(first: 1) { nodes { id } } } }`;
 
-/** Images with the colours whose variants show them (option "Farbe" from 3a). */
+/** Value of the option "Farbe" (from 3a), null for products without colours. */
+function variantColor(variant: MediaProduct['variants']['nodes'][number]): string | null {
+  return variant.selectedOptions.find((o) => o.name === 'Farbe')?.value ?? null;
+}
+
+function colorNamesOf(product: MediaProduct | null): string[] {
+  return [...new Set((product?.variants.nodes ?? []).flatMap((v) => variantColor(v) ?? []))];
+}
+
+/** Images with their colour from the alt text (G35) and whether a variant shows them. */
 function toImages(product: MediaProduct | null): ShopifyImage[] {
-  const colors = new Map<string, Set<string>>();
-  for (const variant of product?.variants.nodes ?? []) {
-    const color = variant.selectedOptions.find((o) => o.name === 'Farbe')?.value;
-    const mediaId = variant.media.nodes[0]?.id;
-    if (color && mediaId) colors.set(mediaId, (colors.get(mediaId) ?? new Set()).add(color));
-  }
+  const colorNames = colorNamesOf(product);
+  const variantImages = new Set((product?.variants.nodes ?? []).flatMap((v) => v.media.nodes[0]?.id ?? []));
   return (product?.media.nodes ?? []).map((m) => ({
     id: m.id,
     alt: m.alt,
     status: m.status,
     url: m.preview?.image?.url ?? null,
-    colors: [...(colors.get(m.id) ?? [])],
+    color: colorFromAlt(m.alt, colorNames),
+    variantImage: variantImages.has(m.id),
   }));
 }
 
@@ -140,39 +149,25 @@ export async function attachImage(
 }
 
 /**
- * Makes an image the picture of every variant of the given colours, and of no
- * other variant (empty list = no colour). Shopify accepts attaching only once
- * the image is processed, so the browser asks again while `ready` is false
- * instead of the server waiting (function time limit).
+ * Brings the variant pictures in line with the gallery (G35): each colour shows
+ * its first photo. `pending` while that photo is still processing.
  */
-export async function setImageColors(
-  db: Db,
-  productId: string,
-  mediaId: string,
-  colorIds: readonly string[],
-): Promise<ShopifyImageAssigned> {
-  const id = await linkedProductId(db, productId);
-  const variants = await db.query.variants.findMany({
-    where: and(eq(schema.variants.productId, productId), isNull(schema.variants.archivedAt)),
-    columns: { colorId: true, shopifyVariantId: true },
-  });
-  const targets = guard(() => colorIds.flatMap((colorId) => variantsOfColor(variants, colorId)));
-
-  const product = await readMedia(id);
-  const media = product?.media.nodes.find((m) => m.id === mediaId);
-  if (media === undefined) throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
-  if (media.status === 'FAILED') throw badRequest('Shopify konnte das Bild nicht verarbeiten.');
-  if (targets.length > 0 && media.status !== 'READY') return { ready: false, images: [] };
-
-  const current = (product?.variants.nodes ?? []).map((v) => ({ variantId: v.id, mediaId: v.media.nodes[0]?.id ?? null }));
-  const plan = planVariantMedia(current, targets, mediaId);
-
+async function syncVariantImages(shopifyProductId: string, product: MediaProduct | null, gallery: MediaNode[]): Promise<boolean> {
+  const colorNames = colorNamesOf(product);
+  const plan = planVariantImages(
+    (product?.variants.nodes ?? []).map((v) => ({
+      variantId: v.id,
+      colorName: variantColor(v),
+      mediaId: v.media.nodes[0]?.id ?? null,
+    })),
+    gallery.map((m) => ({ mediaId: m.id, colorName: colorFromAlt(m.alt, colorNames), ready: m.status === 'READY' })),
+  );
   if (plan.detach.length > 0) {
     const data = await shopifyGraphql<{ productVariantDetachMedia: UserErrors }>(
       `mutation Detach($productId: ID!, $variantMedia: [ProductVariantDetachMediaInput!]!) {
         productVariantDetachMedia(productId: $productId, variantMedia: $variantMedia) { userErrors { field message } }
       }`,
-      { productId: id, variantMedia: plan.detach.map((d) => ({ variantId: d.variantId, mediaIds: [d.mediaId] })) },
+      { productId: shopifyProductId, variantMedia: plan.detach.map((d) => ({ variantId: d.variantId, mediaIds: [d.mediaId] })) },
     );
     if (data.productVariantDetachMedia.userErrors.length > 0) {
       throw badRequest(`Shopify hat das Lösen abgelehnt: ${data.productVariantDetachMedia.userErrors.map((e) => e.message).join('; ')}`);
@@ -183,21 +178,75 @@ export async function setImageColors(
       `mutation Variants($productId: ID!, $variantMedia: [ProductVariantAppendMediaInput!]!) {
         productVariantAppendMedia(productId: $productId, variantMedia: $variantMedia) { userErrors { field message } }
       }`,
-      { productId: id, variantMedia: plan.append.map((variantId) => ({ variantId, mediaIds: [mediaId] })) },
+      { productId: shopifyProductId, variantMedia: plan.append.map((a) => ({ variantId: a.variantId, mediaIds: [a.mediaId] })) },
     );
     if (data.productVariantAppendMedia.userErrors.length > 0) {
       throw badRequest(`Shopify hat die Zuordnung abgelehnt: ${data.productVariantAppendMedia.userErrors.map((e) => e.message).join('; ')}`);
     }
   }
-  return { ready: true, images: await listImages(db, productId) };
+  return plan.pending;
 }
 
-/** Deletes the image in Shopify for good, so it also leaves the shop (G34). */
+/**
+ * Sets a photo's colour (null = none) in its alt text, then lines up the
+ * variant pictures. Shopify edits only processed images, so the browser asks
+ * again while `ready` is false instead of the server waiting (function time limit).
+ */
+export async function setImageColor(
+  db: Db,
+  productId: string,
+  mediaId: string,
+  colorId: string | null,
+): Promise<ShopifyImageAssigned> {
+  const id = await linkedProductId(db, productId);
+  let colorName: string | null = null;
+  if (colorId !== null) {
+    const variants = await db.query.variants.findMany({
+      where: and(eq(schema.variants.productId, productId), isNull(schema.variants.archivedAt)),
+      columns: { colorId: true, shopifyVariantId: true },
+    });
+    guard(() => variantsOfColor(variants, colorId));
+    const color = await db.query.colors.findFirst({ where: eq(schema.colors.id, colorId), columns: { name: true } });
+    if (color === undefined) throw badRequest('Die Farbe gibt es nicht.');
+    colorName = color.name;
+  }
+
+  const product = await readMedia(id);
+  const media = product?.media.nodes.find((m) => m.id === mediaId);
+  if (media === undefined) throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
+  if (media.status === 'FAILED') throw badRequest('Shopify konnte das Bild nicht verarbeiten.');
+  if (media.status !== 'READY') return { ready: false, images: [] };
+
+  const name = (await db.query.products.findFirst({ where: eq(schema.products.id, productId), columns: { name: true } }))?.name ?? '';
+  const alt = altWithColor(media.alt, name, colorNamesOf(product), colorName);
+  if (alt !== media.alt) {
+    const data = await shopifyGraphql<{ fileUpdate: UserErrors }>(
+      `mutation Alt($files: [FileUpdateInput!]!) { fileUpdate(files: $files) { files { id } userErrors { field message } } }`,
+      { files: [{ id: mediaId, alt }] },
+    );
+    if (data.fileUpdate.userErrors.length > 0) {
+      throw badRequest(`Shopify hat den Alt-Text abgelehnt: ${data.fileUpdate.userErrors.map((e) => e.message).join('; ')}`);
+    }
+  }
+  const gallery = (product?.media.nodes ?? []).map((m) => (m.id === mediaId ? { ...m, alt } : m));
+  const pending = await syncVariantImages(id, product, gallery);
+  return { ready: !pending, images: await listImages(db, productId) };
+}
+
+/**
+ * Deletes the image in Shopify for good, so it also leaves the shop (G34).
+ * Variant pictures move on to the next photo of their colour first.
+ */
 export async function deleteImage(db: Db, productId: string, mediaId: string): Promise<ShopifyImage[]> {
   const id = await linkedProductId(db, productId);
-  if (!(await readMedia(id))?.media.nodes.some((m) => m.id === mediaId)) {
-    throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
-  }
+  const product = await readMedia(id);
+  if (!product?.media.nodes.some((m) => m.id === mediaId)) throw badRequest('Das Bild gehört nicht zu diesem Produkt.');
+  await syncVariantImages(
+    id,
+    product,
+    product.media.nodes.filter((m) => m.id !== mediaId),
+  );
+
   const data = await shopifyGraphql<{ fileDelete: UserErrors }>(
     `mutation Delete($fileIds: [ID!]!) { fileDelete(fileIds: $fileIds) { deletedFileIds userErrors { field message } } }`,
     { fileIds: [mediaId] },

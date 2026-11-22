@@ -434,8 +434,10 @@ export interface ShopifyImage {
   status: string;
   /** Preview, null while processing. */
   url: string | null;
-  /** Colours whose variants show this image. */
-  colors: string[];
+  /** Colour from the alt text (G35), null = shown for every colour. */
+  color: string | null;
+  /** The first photo of its colour; Shopify shows it in cart and checkout. */
+  variantImage: boolean;
 }
 
 export interface ShopifyImageAttached {

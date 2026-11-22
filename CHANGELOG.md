@@ -2,6 +2,17 @@
 
 Alle Releases des Roslett-Dashboards, neueste zuerst.
 
+## v0.21.0 (2026-11-22)
+
+### Neu
+
+- edit image colours and delete images (#68)
+
+### Doku
+
+- roadmap image editing (#70)
+- portfolio readme and screenshots (#67)
+
 ## v0.20.0 (2026-11-15)
 
 ### Neu

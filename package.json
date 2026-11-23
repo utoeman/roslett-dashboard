@@ -24,8 +24,8 @@
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.17.0",
-    "@vitest/coverage-v8": "^5.1.0",
-    "eslint": "^10.14.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "eslint": "^10.15.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.5"
   }
